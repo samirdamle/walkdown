@@ -567,41 +567,60 @@ settles each.
    first (matching his other libraries), with
    vanilla as the core? What matters more for
    v0.1: embeddability anywhere, or familiarity?
+   A: Vanilla TS + Web Components at first.
 2. **Screen delimiter:** is `---` right, or
    should a `#` heading also start a new screen?
    (`---` is proposed; heading-split is the
    alternative some Markdown decks use.)
+   A: Yes `---` is good.
 3. **Reveal syntax:** is the `<!-- reveal: step -->`
    comment marker acceptable, or would he prefer
    frontmatter-per-screen, a different marker,
    or reveal-by-default with an opt-out?
+   A: Yes, HTML comment marker with parameters for 
+   reveal sequence, effect (e.g. effect: fade-in), 
+   duration e.g. (duration: 1s), etc. - comma 
+   separated key: value pairs.
 4. **Next vs. scroll:** when a screen is scrollable
    and not at its bottom, should Next scroll first
    (proposed) or always advance a step? This is
    the trickiest interaction in the product.
+   A: Scroll wheel, up/down arrows scroll. Right 
+   arrow and click in right half advances to next. 
+   Left arrow or click in left half retreats to 
+   previous.
 5. **Scenes:** is a group-of-screens ("scene" /
    chapter) something v0.1 should at least reserve
    in the model, or strictly a later idea?
+   A: Scenes and screens are too similar in spelling.
+   Let's call groups of screens as Sections.
 6. **Type floor:** how small is too small? Is a
    ~14–15 px floor on phones acceptable, or
    should the engine degrade to scroll sooner
    rather than shrink type that far?
+   A: 12px minimum on mobiles. Keep font size 
+   accessible to zoom in/out with +/-.
 7. **Nested lists:** in v0.1, nested bullets render
    inside their parent panel. Is that right, or
    should a nested list be its own sub-panel /
    sub-step?
+   A: Yes, render inside parent.
 8. **Demo / hosting:** should the demo be GitHub
    Pages from this repo (like nano-charts), and
    is a single-file standalone `.html` export a
    v0.1 or v0.2 goal?
+   A: Yes, GitHub pages for demo.
 9. **Scope of "framework / toolkit / spec":**
    does he want the spec to be the headline
    (others can implement Walkdown), or the
    reference renderer to be the headline (the
    spec follows the code)?
+   A: Both spec and renderer are important.
 10. **First real deck:** what deck should prove
     v0.1 — a deck about Walkdown itself, or a
     real talk of his, rebuilt in Markdown?
+    A: Yes, a deck explaining Walkdown itself 
+    will be cool.
 
 ## 16. Risks
 
