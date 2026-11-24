@@ -177,30 +177,38 @@ a single HTML comment marker. Default: all panels visible
 at once (a static screen is still a valid deck).
 
 Settled v0.1 syntax — the marker is an HTML comment with
-comma-separated `key: value` pairs:
+`key: value` pairs separated by semicolons. Commas are
+used only inside a value, for the `sequence` list:
 
 ```markdown
 # A screen that reveals itself
 
-<!-- reveal: step, effect: fade-in, duration: 1s -->
+<!-- reveal: step; effect: fade-in; duration: 1s -->
 
 - First idea
 - Second idea
 - Third idea
 ```
 
-- `<!-- reveal: step, effect: fade-in, duration: 1s -->`
+- `<!-- reveal: step; effect: fade-in; duration: 1s -->`
   at the top of a screen means: panels enter one at a
   time, in order, one step each, fading in over 1s.
 - The first pair is the mode: `step` (reveal one panel
   per step) or `all` (all panels visible on arrival;
   `<!-- reveal: all -->`, or no marker, means the same).
 - Named parameters, all optional: `sequence` (the order
-  panels reveal in; default is document order),
-  `effect` (the enter animation, e.g. `fade-in`; the
-  spec lists the v0.1 effect names), `duration` (e.g.
-  `1s`; default is the deck's standard reveal duration).
-  Unknown parameters are ignored, never an error.
+  panels reveal in, e.g. `sequence: 3, 1, 2`; default is
+  document order), `effect` (the enter animation, e.g.
+  `fade-in`; the spec lists the v0.1 effect names),
+  `duration` (e.g. `1s`; default is the deck's standard
+  reveal duration). Unknown parameters are ignored,
+  never an error.
+
+Note (2026-11-24): the original §15 answer said
+"comma-separated". Samir confirmed `sequence` is the
+reveal order and approved semicolons as the property
+separator, commas only inside values. This section is
+authoritative; §15 is kept verbatim as the record.
 - Exit animation is the reverse of entry on Previous:
   stepping back hides the last revealed panel first,
   then moves to the previous screen. No separate
@@ -448,7 +456,8 @@ go one rung down.
   in from the left).
 - **Author control in v0.1 is per-screen, via the
   reveal marker (§5.2):** mode (`step` or `all`),
-  plus optional `effect` and `duration` parameters.
+  plus optional `sequence`, `effect` and `duration`
+  parameters, separated by semicolons.
   The default effect is fade-in (§5.2); the deck
   default duration is ~250–350 ms. Timing,
   easing, and direction are otherwise deck-level
