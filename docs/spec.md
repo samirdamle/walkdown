@@ -267,21 +267,24 @@ still render as far as possible.
 ### 4.1 Form
 
 A reveal marker is an HTML comment at the top of a screen (before
-its first panel), with comma-separated `key: value` pairs:
+its first panel), with `key: value` pairs separated by semicolons.
+Commas are used only inside a property's value — for the
+`sequence` list (see §4.2). One character does one job: `;`
+separates properties, `,` separates values inside a list.
 
 ```
-<!-- reveal: step, effect: fade-in, duration: 1s -->
+<!-- reveal: step; effect: fade-in; duration: 1s -->
 ```
 
 Formally:
 
 ```
 marker    := "<!--" WS "reveal" ":" param-list WS "-->"
-param-list:= param ("," param)*
+param-list:= param (";" param)*
 param     := key ":" value | bare-value
 bare-value:= "step" | "all"
 key       := "sequence" | "effect" | "duration"
-value     := <text up to the next "," or "-->">
+value     := <text up to the next ";" or "-->">
 ```
 
 Rules:
@@ -290,16 +293,14 @@ Rules:
   it sets the mode. If no bare value is given, the mode is `step`
   when any other parameter is present, and `all` when the marker
   is absent entirely.
-- A parameter item with **no colon** after the first is a
-  continuation of the previous parameter's value, not a new
-  parameter. This is what makes `sequence: 2, 1, 3` parse:
-  `2, 1, 3` is one value. (A renderer MUST implement this rule;
-  it is the only way a list-valued parameter survives the
-  comma-separated syntax.)
-- Whitespace around keys, colons, commas, and values is ignored.
-  Keys are case-insensitive; values are case-insensitive where
-  they are names (`fade-in`), case-sensitive where they are
-  durations or numbers.
+- A `sequence` value is a comma-separated list of 1-based panel
+  indices, e.g. `sequence: 3, 1, 2`. The commas inside it are
+  part of that one value; they do not start a new parameter.
+  Every other parameter takes a single value with no commas.
+- Whitespace around keys, colons, semicolons, commas, and values
+  is ignored. Keys are case-insensitive; values are
+  case-insensitive where they are names (`fade-in`),
+  case-sensitive where they are durations or numbers.
 - A screen MUST have at most one reveal marker; if two appear,
   the first wins and the second is ignored.
 - A marker anywhere other than the top of a screen (after the
@@ -319,6 +320,8 @@ Rules:
   (missing, duplicate, or out-of-range index) is ignored in full
   and document order is used. The sequence does not change panel
   positions on the screen — only the order they appear in.
+  Example: `<!-- reveal: step; sequence: 3, 1, 2; effect: fade-in; duration: 1s -->`
+  reveals panel 3 first, then panel 1, then panel 2.
 - `effect` names the enter animation (§8). `none` means panels
   appear instantly; steps still advance.
 - `duration` is the enter animation duration for each panel.
@@ -609,12 +612,14 @@ questions in brief §15 are settled and MUST NOT be re-asked.
 4. **Progress indicator form:** dots or a thin progress bar
    in v0.1 (§6.5)? Renderer decision at Phase 3; either
    satisfies the spec.
-5. **Reveal `sequence` continuation rule:** §4.1 defines that
-   a comma-separated item with no colon continues the previous
-   parameter's value. This is the spec author's reading of
-   "comma-separated key:value pairs" applied to a list-valued
-   parameter — Samir's call to confirm or replace with a
-   different sequence syntax.
+
+Settled 2026-11-24, removed from the open list above: reveal-marker
+properties are separated by `;` and commas are used only inside
+a property's value, for the `sequence` list — e.g.
+`<!-- reveal: step; sequence: 3, 1, 2; effect: fade-in; duration: 1s -->`.
+`sequence` is the reveal order (panels appear in that order,
+positions unchanged). This replaces the first draft's
+comma-separated syntax.
 
 ---
 
