@@ -1,12 +1,12 @@
 # Walkdown — Product Brief
 
-- **Status:** Draft for review — v0.1 strategy
+- **Status:** Draft for review — v0.1 strategy; §15 answers settled 2026-11-23 and folded into the body (issues #3, #4)
 - **Date:** 2026-11-23
 - **Owner:** Samir Damle
 - **Author:** Neo (with Samir)
 - **Repo:** `samirdamle/walkdown` (public, MIT, default branch `main`)
-- **Tracking:** Issue [#1](https://github.com/samirdamle/walkdown/issues/1)
-- **Terminology in this brief:** a deck is made of **screens** (not slides, not scenes — see §2).
+- **Tracking:** Issues [#1](https://github.com/samirdamle/walkdown/issues/1) (brief), [#3](https://github.com/samirdamle/walkdown/issues/3) (fold §15 into the body), [#4](https://github.com/samirdamle/walkdown/issues/4) (Phase 1 spec)
+- **Terminology in this brief:** a deck is made of **screens** (not slides, not scenes — see §2), grouped into **Sections**.
 
 ## 1. One-line pitch
 
@@ -52,7 +52,10 @@ they do not re-lay it out. Walkdown's wedge is the opposite:
 
 For v0.1 the order is: spec first, reference renderer second,
 protocol claims only when a second renderer exists. Do not
-claim a protocol on day one.
+claim a protocol on day one. Both the spec and the renderer
+are important — neither is a second-class headline (settled,
+§15.9). The renderer is vanilla TypeScript + Web Components
+(settled, §15.1; see §11).
 
 ## 3. Principles
 
@@ -98,8 +101,8 @@ If a feature breaks one, it does not ship in v0.1.
 | Term | Meaning |
 | ---- | ------- |
 | **Deck** | One Markdown file = one presentation. |
+| **Section** | A group of screens — a chapter / act of the deck. Decided for v0.1: **Sections**, not Scenes ("scene" is too close to "screen" in spelling and speech — settled, §15.5). A deck with no explicit sections is a single unnamed Section. |
 | **Screen** | One unit of the walk — what the user used to call a slide. A screen fills the viewport (or its container). Decided for v0.1: **screens**. |
-| **Scene** | *Not* used in v0.1. Reserved as a possible later term for a group of screens (an act / chapter). Do not rename screens to scenes without a decision here. |
 | **Panel** | One tile / card inside a screen. The primary unit of layout. A bullet list item is the canonical panel; a paragraph, image, quote, or code block can also be a panel. |
 | **Step** | One atomic advance of the walk. A step either reveals the next panel on the current screen, or moves to the next screen. |
 | **Walk** | The ordered sequence of steps through a deck. |
@@ -112,7 +115,7 @@ changes. "Walk" (verb) is the deck being presented;
 
 ## 5. Input model — Markdown in
 
-### 5.1 v0.1 syntax (proposed, to be locked in the spec)
+### 5.1 v0.1 syntax (settled, §15.2, §15.7 — to be locked in the spec)
 
 Keep it boring. Use Markdown the author already knows,
 plus the smallest possible set of structural conventions.
@@ -144,9 +147,10 @@ Rules for v0.1:
 - **Deck title:** the first `#` heading, or `title` in
   frontmatter. Frontmatter wins if both exist.
 - **Screen boundary:** `---` (a thematic break) starts a
-  new screen. This is the Marp / Slidev convention, so
+  new screen. Settled (§15.2): `---` is the delimiter.
+  This is the Marp / Slidev convention, so
   authors already know it. A file with no `---` is a
-  one-screen deck.
+  one-screen deck. Headings do *not* start a new screen.
 - **Screen title:** the first `#` / `##` heading inside
   a screen, if any. A screen may have no title.
 - **Panels:** the top-level list items (`-` / `*` / `1.`)
@@ -155,8 +159,9 @@ Rules for v0.1:
 - **Panel content:** a list item may contain inline
   Markdown (bold, italic, code, links), and — in v0.1,
   at least — one paragraph, one image, or one code
-  block. Nested lists are *not* panels in v0.1; they
-  render inside their parent panel (see open questions).
+  block. Nested lists render inside their parent panel
+  (settled, §15.7); they are never panels or steps
+  of their own in v0.1.
 - **Non-list content:** a paragraph, image, quote, or
   code block at screen level (not inside a list) is a
   panel too, in document order. Mixed lists + prose
@@ -165,36 +170,44 @@ Rules for v0.1:
   v0.1. Known keys: `title`, `author`, `theme`.
   Unknown keys are ignored, never an error.
 
-### 5.2 Reveal / animation authoring (proposed)
+### 5.2 Reveal / animation authoring (settled, §15.3)
 
 The author opts in to stepwise reveal, per screen, with
-a single marker. Default: all panels visible at once
-(a static screen is still a valid deck).
+a single HTML comment marker. Default: all panels visible
+at once (a static screen is still a valid deck).
 
-Proposed v0.1 syntax — *not locked; see open questions*:
+Settled v0.1 syntax — the marker is an HTML comment with
+comma-separated `key: value` pairs:
 
 ```markdown
 # A screen that reveals itself
 
-<!-- reveal: step -->
+<!-- reveal: step, effect: fade-in, duration: 1s -->
 
 - First idea
 - Second idea
 - Third idea
 ```
 
-- `<!-- reveal: step -->` at the top of a screen means:
-  panels enter one at a time, in order, one step each.
-- `<!-- reveal: all -->` (or no marker) means: all
-  panels visible on arrival.
+- `<!-- reveal: step, effect: fade-in, duration: 1s -->`
+  at the top of a screen means: panels enter one at a
+  time, in order, one step each, fading in over 1s.
+- The first pair is the mode: `step` (reveal one panel
+  per step) or `all` (all panels visible on arrival;
+  `<!-- reveal: all -->`, or no marker, means the same).
+- Named parameters, all optional: `sequence` (the order
+  panels reveal in; default is document order),
+  `effect` (the enter animation, e.g. `fade-in`; the
+  spec lists the v0.1 effect names), `duration` (e.g.
+  `1s`; default is the deck's standard reveal duration).
+  Unknown parameters are ignored, never an error.
 - Exit animation is the reverse of entry on Previous:
   stepping back hides the last revealed panel first,
   then moves to the previous screen. No separate
   authoring for exit in v0.1.
 
-Alternatives considered and deferred: per-panel
-`<!-- step -->` markers, `reveal: fade/slide` variants
-in Markdown, frontmatter-level reveal defaults.
+Deferred: per-panel `<!-- step -->` markers, reveal
+defaults in frontmatter, per-panel effect overrides.
 They add authoring surface before the engine proves
 itself. Revisit after the first real decks are built.
 
@@ -221,13 +234,15 @@ and the renderer is a pure function of it + viewport.
 
 ```
 Deck
- └─ screens: Screen[]
+ └─ sections: Section[]           // a deck with no explicit sections is one unnamed Section
      ├─ title?: string
-     ├─ panels: Panel[]
-     │   ├─ kind: 'text' | 'image' | 'code' | 'quote' | …
-     │   ├─ content: <parsed Markdown AST / HTML>
-     │   └─ reveal: 'on-arrival' | 'step'
-     └─ reveal: 'all' | 'step'        // screen-level default
+     └─ screens: Screen[]
+         ├─ title?: string
+         ├─ panels: Panel[]
+         │   ├─ kind: 'text' | 'image' | 'code' | 'quote' | …
+         │   ├─ content: <parsed Markdown AST / HTML>
+         │   └─ reveal: 'on-arrival' | 'step'
+         └─ reveal: { mode: 'all' | 'step', sequence?: …, effect?: string, duration?: string }
 ```
 
 - **Steps are derived, not authored.** For a screen
@@ -282,9 +297,11 @@ layout itself. Layout is continuous.
 4. Choose a type scale: base size from container
    size, reduced by a factor that grows with panel
    count and content length, floored at a readable
-   minimum (~14–15 px body on phones, higher on
-   desktop — exact floor is a design decision, see
-   open questions).
+   minimum. Settled (§15.6): **12px minimum on
+   mobiles** — the engine degrades to scroll sooner
+   rather than shrink type below 12px. The reader
+   can zoom in/out with `+` / `-` at any time
+   (see §9).
 5. Lay out with CSS grid; let the browser do the
    final distribution. The engine sets variables
    (`--wd-cols`, `--wd-font`, `--wd-gap`, …), CSS
@@ -304,19 +321,25 @@ layout itself. Layout is continuous.
   chevron / scrollbar cue when a screen is
   scrollable and not yet at its bottom. A user
   must never wonder whether there is more.
-- Next / Previous and scroll interact explicitly:
-  if a screen is scrollable and not at its end,
-  **Next first scrolls to the next scroll-stop
-  (or the bottom), then advances a step.**
-  This is a decision to lock in v0.1 (see open
-  questions — the alternative is Next always
-  advances, and scroll is purely manual).
+- Next / Previous and scroll are separate inputs, by
+  design (settled, §15.4 — this replaces the earlier
+  "Next scrolls first" proposal). **Scroll wheel and
+  up/down arrows scroll within a screen. Right arrow
+  advances a step; left arrow retreats a step.**
+  Next never scrolls: if a screen is scrollable, the
+  reader scrolls it with the wheel, arrow keys, or
+  swipe, and advances with the right arrow, a click /
+  tap in the right half, or a swipe. The two jobs
+  never share one gesture, so the walk can never
+  feel like it swallowed a scroll.
 - Touch: vertical swipe scrolls within a screen;
-  horizontal swipe (or edge swipe) advances.
-  The two gestures must not fight: vertical
+  horizontal swipe advances (left) or retreats
+  (right). The two gestures must not fight: vertical
   intent wins inside a scrollable screen.
-- Keyboard: `PageDown` / `Space` scrolls within
-  a screen first, then advances — same rule as Next.
+- Keyboard: `ArrowUp` / `ArrowDown` scroll within a
+  screen; `ArrowRight` / `Space` / `PageDown` advance;
+  `ArrowLeft` / `PageUp` retreat — same split as
+  Next / scroll above.
 
 ### 7.4 Panels: the visual unit
 
@@ -365,15 +388,24 @@ go one rung down.
 ### 9.1 The walk
 
 - **Next** (`→`, `Space`, `PageDown`, swipe left,
-  click / tap right zone): advance one step.
+  click / tap in the right half of the screen):
+  advance one step.
   If the current screen has an unrevealed panel,
   reveal it. Else move to the next screen.
   If on the last step of the last screen, Next is
   a no-op (or loops, only if the author opts in —
   default: stop, show an end state).
-- **Previous** (`←`, `PageUp`, swipe right):
+- **Previous** (`←`, `PageUp`, swipe right,
+  click / tap in the left half of the screen):
   reverse one step. Hides the last revealed
   panel first, then moves back a screen.
+- **Scroll** (scroll wheel, `↑` / `↓`, vertical
+  swipe): scrolls within the current screen only.
+  Scrolling never advances or retreats a step (§7.3).
+- **Zoom** (`+` / `-`): zoom the deck's type in/out
+  (settled, §15.6). Zoom is a reader control, not
+  an author setting; it persists across screens
+  within a session.
 - **Start** (`Home`, or a ⏮ control): first step
   of the first screen.
 - **End** (`End`, or a ⏭ control): last step of
@@ -394,10 +426,13 @@ go one rung down.
   reappear on pointer move; they never auto-hide
   on touch, where there is no hover to bring
   them back.
-- The whole screen is *not* a Next button.
-  Click-to-advance is opt-in (presenter habit),
-  and must not fire when the user is selecting
-  text or scrolling.
+- The whole screen is a Next / Previous surface by
+  halves, not one big Next button (settled, §15.4):
+  click / tap in the **right half advances**,
+  click / tap in the **left half retreats**.
+  A click must not advance or retreat when the user
+  is selecting text, clicking a link or control, or
+  starting a scroll / drag.
 
 ## 10. Animation
 
@@ -411,10 +446,13 @@ go one rung down.
   screen change; the direction follows the
   walk (forward = in from the right, back =
   in from the left).
-- **Author control in v0.1 is binary:** reveal
-  step-by-step, or all at once (§5.2). Timing,
-  easing, and direction are deck-level theme
-  values, not per-panel authoring.
+- **Author control in v0.1 is per-screen, via the
+  reveal marker (§5.2):** mode (`step` or `all`),
+  plus optional `effect` and `duration` parameters.
+  The default effect is fade-in (§5.2); the deck
+  default duration is ~250–350 ms. Timing,
+  easing, and direction are otherwise deck-level
+  theme values, not per-panel authoring.
 - **Reduced motion:** `prefers-reduced-motion:
   reduce` → no enter / exit animation at all.
   Steps still advance; content simply appears.
@@ -451,7 +489,7 @@ Markdown text
   measurement in the hot path; `ResizeObserver`
   only to re-run it.
 - **Renderer:** vanilla TypeScript + Web
-  Components (proposed default), rendering the
+  Components (settled, §15.1), rendering the
   Deck model into a shadow-DOM host so a deck
   can be embedded without style leakage.
   Framework bindings (React, etc.) are adapters
@@ -459,6 +497,11 @@ Markdown text
 - **Themes:** CSS custom properties only.
   One light + one dark theme in v0.1, both
   proven against the same fixture decks.
+- **Demo:** GitHub Pages from this repo (settled,
+  §15.8), like nano-charts. `demo/` is the live
+  demo page; `examples/` holds the fixture decks
+  it walks, including the first real deck — a deck
+  explaining Walkdown itself (§15.10).
 - **Packaging (proposed):** an npm package with
   a tiny core (`@walkdown/core`: parser +
   model + layout, zero deps) and a web renderer
@@ -468,9 +511,10 @@ Markdown text
   companion — a single-file deck is the most
   shareable artifact Walkdown can produce.
 
-Stack is a *recommendation* here, not a lock:
-the brief's job is to make the choice explicit
-and reversible. See open questions.
+Stack is now locked for v0.1: vanilla TypeScript +
+Web Components (settled, §15.1). The brief's job is
+done on this question; the spec records it as a
+requirement, not a recommendation.
 
 ### Repo layout (proposed)
 
@@ -502,6 +546,9 @@ walkdown/
 - No-JS render is a readable linear document.
 - Docs: this brief, a spec, and a README with
   a 60-second "write a deck" example.
+- The first real deck is a deck explaining Walkdown
+  itself (settled, §15.10) — it is the demo deck
+  on GitHub Pages and a fixture deck for every phase.
 
 ### Explicit non-goals for v0.1
 
@@ -524,8 +571,8 @@ walkdown/
 | 1 — Spec | `docs/spec.md`: normative Markdown → model, layout rules, navigation state machine, URL scheme | Spec reviewed; fixture decks written against it |
 | 2 — Core | Parser + model + layout engine, unit-tested, zero-dep | Fixture decks parse to the expected model; layout variables correct at 3 widths |
 | 3 — Renderer | Web renderer: screens, panels, scroll, reveal, navigation, themes | Demo deck walks on phone + desktop; 60 fps reveal |
-| 4 — Polish | Degradation ladder, a11y pass, reduced motion, no-JS, docs + README + demo page | v0.1 checklist (§12) green; demo deployed |
-| 5 — Release | npm publish (core + web), launch notes | 0.1.0 live; issue list for v0.2 cut from open questions |
+| 4 — Polish | Degradation ladder, a11y pass, reduced motion, no-JS, docs + README + demo page | v0.1 checklist (§12) green; demo deployed on GitHub Pages |
+| 5 — Release | npm publish (core + web), launch notes | 0.1.0 live; issue list for v0.2 cut from deferred items |
 
 Each phase is GitHub issues first, branch second,
 code third — the standing workflow. PRs to `main`
@@ -555,12 +602,15 @@ do not invent it now.)
 Canonical claim to earn, not assert on day one:
 *"Write Markdown. Walk it anywhere."*
 
-## 15. Open questions for Samir
+## 15. Open questions for Samir — settled 2026-11-23
 
-Recorded here so they are decided in the open,
-not buried in code. Defaults in the brief are
-recommendations, not decisions — Samir's word
-settles each.
+Samir answered all 10 questions directly on `main`
+(commit `6952f28`, "Update product brief with design
+Q&A"). They are **settled, not open** — the answers
+below are preserved here as the record, and each
+decision is folded into the body sections named in
+the answer. Nothing in the body may contradict an
+answer here; if it does, the answer here wins.
 
 1. **Stack:** vanilla TS + Web Components for
    the renderer, as proposed in §11 — or React
@@ -629,10 +679,13 @@ settles each.
   grids. Mitigation: fixture decks + screenshot
   review at every phase; a human eye is the gate,
   not a test.
-- **Scroll vs. Next ambiguity (§15.4):** if the
-  rule is wrong, the walk feels broken. Mitigation:
-  prototype it early (Phase 3) and test it on a
-  phone, not in a desktop browser.
+- **Scroll vs. Next ambiguity (§15.4):** settled as a
+  clean split — wheel / up-down arrows scroll, right
+  arrow / right half advances, left arrow / left half
+  retreats. The remaining risk is gesture
+  disambiguation on touch (vertical vs. horizontal
+  swipe). Mitigation: prototype it early (Phase 3)
+  and test it on a phone, not in a desktop browser.
 - **Scope creep into a slide editor:** every
   feature that makes authoring richer makes the
   spec heavier. Mitigation: §12 non-goals, enforced
@@ -643,6 +696,6 @@ settles each.
 
 ---
 
-*Next step: Samir reviews this brief, answers §15
-(or accepts the proposed defaults), and Phase 1 —
-`docs/spec.md` — starts from the settled answers.*
+*Next step: Phase 1 — `docs/spec.md` — from the settled
+answers (issues #3, #4). The brief is settled; the spec
+is the next decision surface.*
