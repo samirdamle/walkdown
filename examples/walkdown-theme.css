@@ -1,0 +1,9 @@
+/* Walkdown itself — theme for the sample deck.
+   Loaded from frontmatter (`stylesheets:`). The inline CSS block
+   at the end of the deck loads after this file, so it wins on
+   equal specificity. */
+
+.dark {
+  background: #18181c;
+  color: #f5f5f0;
+}
