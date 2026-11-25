@@ -167,7 +167,9 @@ Rules for v0.1:
   panel too, in document order. Mixed lists + prose
   in one screen are allowed; order is document order.
 - **Frontmatter:** YAML, optional, deck-level only in
-  v0.1. Known keys: `title`, `author`, `theme`.
+  v0.1. Known keys: `title`, `author`, `theme`,
+  `defaults` (deck reveal defaults — §5.2), and
+  `stylesheets` (external stylesheet list — §5.4).
   Unknown keys are ignored, never an error.
 
 ### 5.2 Reveal / animation authoring (settled, §15.3)
@@ -209,15 +211,45 @@ Note (2026-11-24): the original §15 answer said
 reveal order and approved semicolons as the property
 separator, commas only inside values. This section is
 authoritative; §15 is kept verbatim as the record.
+
+**Defaults cascade (2026-11-24, issue #6):** reveal
+settings cascade deck → Section → screen, per property
+— deck defaults in frontmatter, Section defaults as
+parameters on the `section:` marker, screen settings
+in the reveal marker. Most local wins; a screen that
+overrides only `duration` keeps the deck's `effect`.
+
+```yaml
+---
+title: My deck
+defaults:
+  reveal: step
+  effect: fade-in
+  duration: 500ms
+---
+```
+
+```markdown
+<!-- section: Why it matters; effect: slide-in; duration: 250ms -->
+```
+
+Only `reveal`, `effect`, and `duration` are
+inheritable. `sequence` is per-screen only — a deck
+or Section cannot set it, because panel counts differ
+from screen to screen. The parser resolves the cascade
+at parse time, so each screen's reveal settings are
+fully computed in the model (spec §4.3).
 - Exit animation is the reverse of entry on Previous:
   stepping back hides the last revealed panel first,
   then moves to the previous screen. No separate
   authoring for exit in v0.1.
 
-Deferred: per-panel `<!-- step -->` markers, reveal
-defaults in frontmatter, per-panel effect overrides.
-They add authoring surface before the engine proves
-itself. Revisit after the first real decks are built.
+Deferred: per-panel `<!-- step -->` markers and
+per-panel effect overrides. They add authoring surface
+before the engine proves itself. Revisit after the
+first real decks are built. (Reveal defaults in
+frontmatter were deferred in the first draft and are
+now in v0.1 — see above, issue #6.)
 
 ### 5.3 What is deliberately *not* in v0.1 Markdown
 
@@ -226,13 +258,49 @@ itself. Revisit after the first real decks are built.
   `size: large`) — the engine decides layout; the
   author decides content and order. Directives are
   the escape hatch for v0.2, not the v0.1 model.
-- Custom CSS classes in Markdown, HTML embeds,
-  plugins. The renderer may accept them later;
-  the spec does not bless them yet.
+- HTML embeds, plugins. The renderer may accept them
+  later; the spec does not bless them yet.
+  (Custom CSS classes *are* in v0.1 now — §5.4,
+  issue #6.)
 - Tables, footnotes, math as first-class panels.
   They render as content inside a panel if the
   Markdown parser supports them, but layout does
   not special-case them in v0.1.
+
+### 5.4 Styling — external stylesheet, inline CSS, classes (2026-11-24, issue #6)
+
+Custom themes are in scope for v0.1 (scope change —
+they were a non-goal in the first draft; see §12).
+There are two cascades, kept separate: the behaviour
+cascade (§5.2, reveal) and the style cascade (this
+section). A class never changes reveal; a reveal
+setting never changes CSS.
+
+- **External stylesheet:** frontmatter `stylesheets:`
+  is a list, in load order; one stylesheet is a
+  one-item list. Relative paths resolve against the
+  deck's URL; remote URLs must be `https`. Fetching
+  is the renderer's job, never the parser's. A
+  stylesheet that cannot be fetched degrades to the
+  default theme — never a blank deck.
+- **Inline CSS:** a fenced ```css block as the *last*
+  block in the file is the deck's inline stylesheet.
+  The renderer extracts it and removes it from the
+  content; it never becomes a screen or panel. Only
+  one such block; `@import` and external `url()` are
+  ignored in v0.1. Load order: renderer defaults →
+  external stylesheet(s) → inline CSS block. The
+  most deck-specific wins.
+- **Classes:** `class:` on a section marker or a
+  reveal marker puts classes on that section or
+  screen; `panel-class:` on a reveal marker puts
+  classes on every panel of that screen. Per-panel
+  classes on a single card are deferred to v0.2.
+- **Scoping (the hard rule):** deck CSS must be scoped
+  to the deck container — Shadow DOM in the reference
+  renderer. It must not affect the renderer chrome or
+  the host page, and it must not hide panels or change
+  the step count. Deck CSS is presentation only.
 
 ## 6. The screen / panel / step model
 
@@ -242,15 +310,21 @@ and the renderer is a pure function of it + viewport.
 
 ```
 Deck
+ ├─ stylesheets: string[]        // frontmatter, §5.4
+ ├─ styles: string               // trailing ```css block, §5.4 ('' if none)
  └─ sections: Section[]           // a deck with no explicit sections is one unnamed Section
      ├─ title?: string
+     ├─ classNames: string[]      // `class:` on the section marker
      └─ screens: Screen[]
          ├─ title?: string
+         ├─ classNames: string[]  // `class:` on the reveal marker
          ├─ panels: Panel[]
          │   ├─ kind: 'text' | 'image' | 'code' | 'quote' | …
          │   ├─ content: <parsed Markdown AST / HTML>
-         │   └─ reveal: 'on-arrival' | 'step'
+         │   ├─ reveal: 'on-arrival' | 'step'
+         │   └─ classNames: string[]  // `panel-class:` on the screen marker
          └─ reveal: { mode: 'all' | 'step', sequence?: …, effect?: string, duration?: string }
+                      // fully resolved by the defaults cascade (§5.2, spec §4.3)
 ```
 
 - **Steps are derived, not authored.** For a screen
@@ -552,6 +626,10 @@ walkdown/
 - Internal scroll, stepwise reveal, Next /
   Previous / Start / End, keyboard + swipe,
   deep links, and reduced-motion all work.
+- Reveal defaults cascade (frontmatter → Section →
+  screen) and custom themes: an external stylesheet
+  via frontmatter and/or an inline CSS block, with
+  classes on sections / screens / panels (§5.4).
 - No-JS render is a readable linear document.
 - Docs: this brief, a spec, and a README with
   a 60-second "write a deck" example.
@@ -567,10 +645,16 @@ walkdown/
 - Export to PowerPoint / PDF (print-to-PDF via
   the no-JS linear render is acceptable, not a
   feature).
-- Per-panel layout directives, custom themes
-  beyond light / dark, plugins.
+- Per-panel layout directives, per-panel classes,
+  plugins.
 - Native mobile apps. The web player *is* the
   mobile experience.
+
+Scope change (2026-11-24, issue #6): custom themes
+moved into v0.1 — they were a non-goal in the first
+draft ("custom themes beyond light / dark"). Samir
+moved them in deliberately, with the scoping and
+degradation rules in spec §11.
 
 ## 13. Milestones
 
