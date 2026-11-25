@@ -1,0 +1,688 @@
+{
+  "date": "2026-11-25",
+  "enforcement_kinds": {
+    "css-var": "The token is a CSS custom property on .wd-deck; the renderer stylesheet applies it directly.",
+    "css-var-clamp": "The token is a CSS custom property; the renderer stylesheet applies it with clamp(min, preferred, max). Enforced by construction.",
+    "fixture-screenshot": "A human-eye check at 360 / 768 / 1440 px against the fixture decks (spec \u00a79). Tests prove correctness; screenshots prove the product.",
+    "layout-engine-check": "The layout engine (spec \u00a77.2) computes the value and MUST assert it before emitting variables.",
+    "validator-rule": "A static check over the parsed model and the deck's CSS."
+  },
+  "issue": 13,
+  "notes": [
+    "\u00a78 is described as 25 tokens in tracking (issues #9/#11, PRs #10/#12), but its table actually contains 26 rows. This file includes all 26; nothing was dropped to match the count. Samir's call if the count matters.",
+    "Font-family and colour tokens are SETTLED (Samir adopted Neo's palette recommendation 2026-11-25). System font stacks only \u2014 no webfont download for the default theme. All six text contrast ratios were verified by computation against the stated backgrounds and match exactly. Light muted (#5C5C57) is AA and secondary-text only.",
+    "Settled \u00a79 decisions that are not \u00a78 tokens (root font size 16px; fluid layout as the primary mechanism; centre-crop for images in v0.1) are recorded in design-policies.md \u00a79, not as tokens here. If \u00a78 gains tokens for them, this file gains matching entries.",
+    "Formulas are written in vw/vh for the full-screen case; the renderer MUST use container query units (cqw/cqh) when the deck is embedded in a page, card or iframe (design-policies \u00a70, spec \u00a77.2). Read vw as 1% of container width and vh as 1% of container height throughout.",
+    "A dash (\u2014) in \u00a78 means the bound does not apply; it is null here.",
+    "The 'title factor' and 'count factor' in the font preferred formulas are defined in design-policies \u00a72 (panel-count factors 1.00 / 0.92 / 0.84 / 0.78, gentler title factors). The layout engine applies them before clamping."
+  ],
+  "opt_in_themes": [
+    {
+      "body_font": "Inter",
+      "default": false,
+      "name": "Inter + Fraunces",
+      "notes": "Opt-in theme, NOT the default. The default theme uses the system stacks above; a deck opts into Inter/Fraunces by linking the theme stylesheet.",
+      "title_font": "Fraunces",
+      "via": "external stylesheet (frontmatter `stylesheets:`)"
+    }
+  ],
+  "schema": "walkdown.design-tokens/v1",
+  "source": "docs/design-policies.md \u00a78 (main, commit f9ca144, PR #12 merged)",
+  "status_values": {
+    "proposal": "A number this document proposes; Samir may change it in a later review.",
+    "settled": "A decision Samir has already made; the structured form MUST reproduce the settled value exactly."
+  },
+  "token_count": 35,
+  "tokens": [
+    {
+      "enforcement": [
+        "css-var-clamp",
+        "fixture-screenshot"
+      ],
+      "max": "56px",
+      "min": "24px",
+      "name": "--wd-font-title",
+      "preferred": "3.2vw + 10px \u00d7 title factor",
+      "property": "Screen title size",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp",
+        "fixture-screenshot"
+      ],
+      "max": "20px",
+      "min": "14px",
+      "name": "--wd-font-body",
+      "preferred": "1.25vw + 7px \u00d7 count factor",
+      "property": "Panel body size",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "18px",
+      "min": "13px",
+      "name": "--wd-font-code",
+      "preferred": "1.1vw + 6px",
+      "property": "Panel code size",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "14px",
+      "min": "12px",
+      "name": "--wd-font-small",
+      "preferred": "0.85vw + 7px",
+      "property": "Caption / small size",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check",
+        "validator-rule"
+      ],
+      "max": null,
+      "min": "12px",
+      "name": "--wd-font-floor",
+      "preferred": null,
+      "property": "Absolute type floor",
+      "settled_date": null,
+      "settled_source": "brief \u00a715.6 (12px type floor on mobiles)",
+      "status": "settled",
+      "units": [
+        "px"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": "1.6",
+      "min": "1.5",
+      "name": "--wd-line-height-body",
+      "preferred": "1.55",
+      "property": "Body line-height",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "unitless"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": "1.15",
+      "min": "1.05",
+      "name": "--wd-line-height-title",
+      "preferred": "1.1",
+      "property": "Title line-height",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "unitless"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check"
+      ],
+      "max": "75ch",
+      "min": "45ch",
+      "name": "--wd-line-length",
+      "preferred": "60ch",
+      "property": "Line length, hero / single column",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.9",
+      "status": "settled",
+      "units": [
+        "ch"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check"
+      ],
+      "max": null,
+      "min": "30ch",
+      "name": "--wd-line-length-panel",
+      "preferred": null,
+      "property": "Line length, multi-column panel",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.9 (enforced via min column width)",
+      "status": "settled",
+      "units": [
+        "ch"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check"
+      ],
+      "max": "\u00b14 steps",
+      "min": null,
+      "name": "--wd-zoom-step",
+      "preferred": "\u00d71.1",
+      "property": "Zoom multiplier per step",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.8 (confirms spec's '~10%')",
+      "status": "settled",
+      "units": [
+        "factor"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "16px",
+      "min": "8px",
+      "name": "--wd-space",
+      "preferred": "1vw + 4px",
+      "property": "Base spacing unit",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp",
+        "fixture-screenshot"
+      ],
+      "max": "48px",
+      "min": "16px",
+      "name": "--wd-space-screen-x",
+      "preferred": "4vw + 4px",
+      "property": "Screen padding, inline",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp",
+        "fixture-screenshot"
+      ],
+      "max": "48px",
+      "min": "16px",
+      "name": "--wd-space-screen-y",
+      "preferred": "3vh + 8px",
+      "property": "Screen padding, block",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vh"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "28px",
+      "min": "12px",
+      "name": "--wd-gap-panel",
+      "preferred": "2vw + 4px",
+      "property": "Gap between panels",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "36px",
+      "min": "16px",
+      "name": "--wd-gap-title",
+      "preferred": "2.5vw + 6px",
+      "property": "Gap, title to panels",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "32px",
+      "min": "16px",
+      "name": "--wd-pad-panel",
+      "preferred": "2vw + 8px",
+      "property": "Padding inside a panel",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "18px",
+      "min": "8px",
+      "name": "--wd-radius-panel",
+      "preferred": "0.8vw + 4px",
+      "property": "Panel corner radius",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.5 (gentle clamp as written, not fixed 12px)",
+      "status": "settled",
+      "units": [
+        "px",
+        "vw"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check"
+      ],
+      "max": null,
+      "min": "240px",
+      "name": "--wd-panel-min-width",
+      "notes": "The min-width range 240\u2013280px is settled (design-policies \u00a70); the preferred 260px is a proposal.",
+      "preferred": "260px",
+      "property": "Minimum column width",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check",
+        "fixture-screenshot"
+      ],
+      "max": "1200px",
+      "min": null,
+      "name": "--wd-content-max-width",
+      "preferred": null,
+      "property": "Maximum screen content width",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.2",
+      "status": "settled",
+      "units": [
+        "px"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check"
+      ],
+      "max": "3",
+      "min": null,
+      "name": "--wd-cols-max",
+      "preferred": "3",
+      "property": "Maximum columns",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.3 (3 for v0.1)",
+      "status": "settled",
+      "units": [
+        "count"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check"
+      ],
+      "max": "720px",
+      "min": null,
+      "name": "--wd-hero-max-width",
+      "preferred": null,
+      "property": "Hero panel max-width",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.7",
+      "status": "settled",
+      "units": [
+        "px"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var-clamp"
+      ],
+      "max": "520px",
+      "min": "240px",
+      "name": "--wd-hero-min-height",
+      "preferred": "45vh",
+      "property": "Hero panel min-height",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.7",
+      "status": "settled",
+      "units": [
+        "px",
+        "vh"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var",
+        "layout-engine-check"
+      ],
+      "max": "420px",
+      "min": null,
+      "name": "--wd-image-max-height",
+      "preferred": "min(45vh, 420px)",
+      "property": "Image max-height",
+      "settled_date": "2026-11-25",
+      "settled_source": "design-policies \u00a79.4",
+      "status": "settled",
+      "units": [
+        "px",
+        "vh"
+      ]
+    },
+    {
+      "enforcement": [
+        "layout-engine-check"
+      ],
+      "max": null,
+      "min": "200\u00d7120px",
+      "name": "--wd-image-min-size",
+      "preferred": null,
+      "property": "Image minimum useful size",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-code-max-height",
+      "preferred": "40vh",
+      "property": "Code block max-height",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "vh"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": "env(safe-area-inset-*)",
+      "name": "--wd-safe-area",
+      "preferred": "max(policy, safe-area)",
+      "property": "Safe-area padding",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-font-family-body",
+      "preferred": "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "property": "Body / UI font stack",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)",
+      "status": "settled",
+      "units": [
+        "font-stack"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-font-family-title",
+      "preferred": "Georgia, \"Iowan Old Style\", \"Palatino Linotype\", \"Times New Roman\", serif",
+      "property": "Title font stack",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)",
+      "status": "settled",
+      "units": [
+        "font-stack"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-font-family-code",
+      "preferred": "ui-monospace, \"SF Mono\", \"Cascadia Code\", Menlo, Consolas, monospace",
+      "property": "Code font stack",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)",
+      "status": "settled",
+      "units": [
+        "font-stack"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var",
+        "fixture-screenshot"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-color-bg",
+      "preferred": null,
+      "property": "Deck background",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25",
+      "status": "settled",
+      "units": [
+        "hex"
+      ],
+      "values": {
+        "dark": "#18181C",
+        "light": "#FAFAF7"
+      }
+    },
+    {
+      "enforcement": [
+        "css-var",
+        "fixture-screenshot"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-color-panel",
+      "preferred": null,
+      "property": "Panel background",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25",
+      "status": "settled",
+      "units": [
+        "hex"
+      ],
+      "values": {
+        "dark": "#202024",
+        "light": "#FFFFFF"
+      }
+    },
+    {
+      "contrast": {
+        "dark": {
+          "against": "--wd-color-bg",
+          "ratio": "16.2:1",
+          "wcag": "AAA"
+        },
+        "light": {
+          "against": "--wd-color-bg",
+          "ratio": "16.5:1",
+          "wcag": "AAA"
+        }
+      },
+      "enforcement": [
+        "css-var",
+        "fixture-screenshot"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-color-ink",
+      "preferred": null,
+      "property": "Primary text",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25",
+      "status": "settled",
+      "units": [
+        "hex"
+      ],
+      "values": {
+        "dark": "#F5F5F0",
+        "light": "#1B1B18"
+      }
+    },
+    {
+      "contrast": {
+        "dark": {
+          "against": "--wd-color-bg",
+          "ratio": "7.5:1",
+          "wcag": "AAA"
+        },
+        "light": {
+          "against": "--wd-color-bg",
+          "ratio": "6.4:1",
+          "wcag": "AA"
+        }
+      },
+      "enforcement": [
+        "css-var",
+        "fixture-screenshot",
+        "validator-rule"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-color-muted",
+      "notes": "Light muted is AA and secondary-text only; it MUST NOT be used for body text. A validator rule enforces that.",
+      "preferred": null,
+      "property": "Secondary text",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25",
+      "status": "settled",
+      "units": [
+        "hex"
+      ],
+      "values": {
+        "dark": "#A9A9A0",
+        "light": "#5C5C57"
+      }
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-color-border",
+      "notes": "Decorative only; no text-contrast requirement applies.",
+      "preferred": null,
+      "property": "Borders / hairlines",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25",
+      "status": "settled",
+      "units": [
+        "hex"
+      ],
+      "values": {
+        "dark": "#2E2E33",
+        "light": "#E5E5DF"
+      }
+    },
+    {
+      "contrast": {
+        "dark": {
+          "against": "--wd-color-bg",
+          "ratio": "12.0:1",
+          "wcag": "AAA"
+        },
+        "light": {
+          "against": "--wd-color-bg",
+          "ratio": "4.8:1",
+          "wcag": "AA"
+        }
+      },
+      "enforcement": [
+        "css-var",
+        "fixture-screenshot"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-color-accent",
+      "notes": "One accent only: amber in light mode, gold in dark mode. It is the single accent colour for both themes.",
+      "preferred": null,
+      "property": "Accent (one accent only)",
+      "settled_date": "2026-11-25",
+      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25",
+      "status": "settled",
+      "units": [
+        "hex"
+      ],
+      "values": {
+        "dark": "#F0D45D",
+        "light": "#B45309"
+      }
+    }
+  ]
+}
