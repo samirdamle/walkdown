@@ -32,8 +32,9 @@ Two labels appear throughout:
   px, and the styling rules of spec §11 (scoped CSS, external
   stylesheet first, inline CSS block last).
 - **[Proposal]** — a number or rule this document proposes. The
-  reason for it is stated next to it, and the ones that need
-  Samir's call are collected in §9 with a recommended default.
+  reason for it is stated next to it, and the ones that needed
+  Samir's call were collected in §9; he settled all ten on
+  2026-11-25 by accepting their recommended defaults.
 
 **Units.** Every size in this document is relative to the deck's
 container, not to an assumed device. The formulas are written in
@@ -180,7 +181,7 @@ gives way first (§6.3).
   the font size, so it needs no separate clamp. Titles are short
   and large, so 1.1 keeps a two-line title compact; any looser
   and a title starts to look like two separate thoughts.
-- **Line length [Proposal].** A hero or single-column screen:
+- **Line length [Settled 2026-11-25].** A hero or single-column screen:
   45–75 characters per line, ideal 60. A multi-column panel:
   at least 30 characters per line. Why: below ~30 characters,
   words break awkwardly and the eye jumps lines too often;
@@ -203,7 +204,7 @@ Zoom is a reader control, not an author setting **[Settled]**
 that comes out of the clamp — by a zoom factor, after the clamp
 has been applied:
 
-- One step is ×1.1 (multiplicative) **[Proposal]** — the spec
+- One step is ×1.1 (multiplicative) **[Settled 2026-11-25]** — the spec
   says "each step ~10%", and multiplicative steps feel even:
   four steps in is ×1.46, four steps out is ×0.68, and every
   step feels the same size to the reader. Additive 10% steps
@@ -303,13 +304,13 @@ shrink toward its floor; only then does the layout degrade
   240px. Short-label panels (a word or two) may use narrower
   columns, down to 160px, because they have no line-length
   problem to solve.
-- **Maximum content width [Proposal]: 1200px.** On a very wide
+- **Maximum content width [Settled 2026-11-25]: 1200px.** On a very wide
   screen the screen's content area is capped at 1200px and
   centred, with the extra width becoming screen padding. Why:
   a 1440px-wide row of three panels is already wide; beyond
   1200px of content, panels become slabs and lines get too
   long. Elegance is the ceiling doing its job (§1.4).
-- **Maximum columns [Proposal]: 3 in v0.1.** Eight panels lay
+- **Maximum columns [Settled 2026-11-25]: 3 in v0.1.** Eight panels lay
   out as 3 + 3 + 2, never 4 + 4. Why: four columns at the
   minimum width need over 1000px of content width, which
   leaves almost no width where four columns are both possible
@@ -327,7 +328,7 @@ shrink toward its floor; only then does the layout degrade
 - **Panel padding:** §3.2 — 16px at 360 px, 23px at 768 px,
   32px at 1440 px. Padding grows with the screen so a large
   card does not feel like a small card scaled up.
-- **Corner radius [Proposal]:**
+- **Corner radius [Settled 2026-11-25]:**
   `clamp(8px, 0.8vw + 4px, 18px)` — 8px at 360 px, 10px at
   768 px, 16px at 1440 px. Why this shape: radius grows gently
   with the screen, so a phone card does not look bubbly and a
@@ -378,13 +379,13 @@ no reason, and the reader would notice before they knew why.
 A screen with one panel is a hero **[Settled]** (spec §7.4):
 larger type, centred, more breathing room. The policies:
 
-- The panel's max-width is `min(720px, 100%)` **[Proposal]**.
+- The panel's max-width is `min(720px, 100%)` **[Settled 2026-11-25]**.
   Why 720px: at the 20px body ceiling it holds about 60
   characters per line — the ideal line length (§2.3) — and at
   the 56px title ceiling it holds a short title without
   wrapping into a tower. Wider than that, a hero stops feeling
   like a title card and starts feeling like a lost paragraph.
-- Minimum height `clamp(240px, 45vh, 520px)` **[Proposal]** —
+- Minimum height `clamp(240px, 45vh, 520px)` **[Settled 2026-11-25]** —
   288px at 640px height, 405px at 900px, 461px at 1024px. Why:
   a hero needs presence, and presence is vertical room; but
   the cap stops a hero on a tall monitor becoming a void with
@@ -435,7 +436,7 @@ scroll affordance (§6.2) must say so.
   spirit, policy in number].** An image never exceeds the
   width of the panel it sits in. There is no exception: an
   image wider than its panel is a layout bug, not a feature.
-- **Max-height [Proposal]: `min(45vh, 420px)`.** At 640px
+- **Max-height [Settled 2026-11-25]: `min(45vh, 420px)`.** At 640px
   viewport height that is 288px; at 900px, 405px; at 1024px
   and above, the 420px cap binds. Why 45vh: an image should
   never eat more than about half the screen's height, or the
@@ -696,22 +697,22 @@ needs rewriting, not a row to skip.
 | `--wd-font-floor` | Absolute type floor | 12px | — | — | px | **Settled** | Layout-engine check; validator rule |
 | `--wd-line-height-body` | Body line-height | 1.5 | 1.55 | 1.6 | unitless | Proposal | CSS var |
 | `--wd-line-height-title` | Title line-height | 1.05 | 1.1 | 1.15 | unitless | Proposal | CSS var |
-| `--wd-line-length` | Line length, hero / single column | 45ch | 60ch | 75ch | ch | Proposal | Layout-engine check |
-| `--wd-line-length-panel` | Line length, multi-column panel | 30ch | — | — | ch | Proposal | Layout-engine check (via min column width) |
-| `--wd-zoom-step` | Zoom multiplier per step | — | ×1.1 | ±4 steps | factor | Proposal | Layout-engine check |
+| `--wd-line-length` | Line length, hero / single column | 45ch | 60ch | 75ch | ch | Settled 2026-11-25 | Layout-engine check |
+| `--wd-line-length-panel` | Line length, multi-column panel | 30ch | — | — | ch | Settled 2026-11-25 | Layout-engine check (via min column width) |
+| `--wd-zoom-step` | Zoom multiplier per step | — | ×1.1 | ±4 steps | factor | Settled 2026-11-25 | Layout-engine check |
 | `--wd-space` | Base spacing unit | 8px | `1vw + 4px` | 16px | px / vw | Proposal | CSS var + clamp |
 | `--wd-space-screen-x` | Screen padding, inline | 16px | `4vw + 4px` | 48px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
 | `--wd-space-screen-y` | Screen padding, block | 16px | `3vh + 8px` | 48px | px / vh | Proposal | CSS var + clamp; fixture screenshot |
 | `--wd-gap-panel` | Gap between panels | 12px | `2vw + 4px` | 28px | px / vw | Proposal | CSS var + clamp |
 | `--wd-gap-title` | Gap, title to panels | 16px | `2.5vw + 6px` | 36px | px / vw | Proposal | CSS var + clamp |
 | `--wd-pad-panel` | Padding inside a panel | 16px | `2vw + 8px` | 32px | px / vw | Proposal | CSS var + clamp |
-| `--wd-radius-panel` | Panel corner radius | 8px | `0.8vw + 4px` | 18px | px / vw | Proposal | CSS var + clamp |
+| `--wd-radius-panel` | Panel corner radius | 8px | `0.8vw + 4px` | 18px | px / vw | Settled 2026-11-25 | CSS var + clamp |
 | `--wd-panel-min-width` | Minimum column width | 240px | 260px | — | px | Proposal (range Settled) | Layout-engine check |
-| `--wd-content-max-width` | Maximum screen content width | — | — | 1200px | px | Proposal | Layout-engine check; fixture screenshot |
-| `--wd-cols-max` | Maximum columns | — | 3 | 3 | count | Proposal | Layout-engine check |
-| `--wd-hero-max-width` | Hero panel max-width | — | — | 720px | px | Proposal | Layout-engine check |
-| `--wd-hero-min-height` | Hero panel min-height | 240px | `45vh` | 520px | px / vh | Proposal | CSS var + clamp |
-| `--wd-image-max-height` | Image max-height | — | `min(45vh, 420px)` | 420px | px / vh | Proposal | CSS var; layout-engine check |
+| `--wd-content-max-width` | Maximum screen content width | — | — | 1200px | px | Settled 2026-11-25 | Layout-engine check; fixture screenshot |
+| `--wd-cols-max` | Maximum columns | — | 3 | 3 | count | Settled 2026-11-25 | Layout-engine check |
+| `--wd-hero-max-width` | Hero panel max-width | — | — | 720px | px | Settled 2026-11-25 | Layout-engine check |
+| `--wd-hero-min-height` | Hero panel min-height | 240px | `45vh` | 520px | px / vh | Settled 2026-11-25 | CSS var + clamp |
+| `--wd-image-max-height` | Image max-height | — | `min(45vh, 420px)` | 420px | px / vh | Settled 2026-11-25 | CSS var; layout-engine check |
 | `--wd-image-min-size` | Image minimum useful size | 200×120px | — | — | px | Proposal | Layout-engine check |
 | `--wd-code-max-height` | Code block max-height | — | `40vh` | — | vh | Proposal | CSS var |
 | `--wd-safe-area` | Safe-area padding | `env(safe-area-inset-*)` | `max(policy, safe-area)` | — | px | Proposal | CSS var |
@@ -723,66 +724,67 @@ minimum). Where a row's Status is **Settled**, the structured
 form MUST reproduce the settled value exactly — the conversion
 step is not allowed to "improve" it. Where it is Proposal, the
 conversion step takes the value from here unless Samir changes
-it in review (§9).
+it in a later review. The §9 items are settled (2026-11-25) and
+their values are final.
 
-## 9. Open questions for Samir
+## 9. Settled 2026-11-25 — Samir accepted all recommended defaults
 
-Each question has a recommended default. A one-word answer
-("defaults") accepts all of them; anything else, say which
-number to change.
+Samir settled all ten questions on 2026-11-25 with a one-word
+reply ("Defaults"), accepting every recommended default as
+written. No recommended value was changed. Each item below
+records the settled value.
 
 1. **Root font size.** The formulas above assume a 16px root
    (`html { font-size: 16px }`), with `rem` used wherever a
    size is relative to the root rather than the container.
-   *Recommended default: 16px.* If the root were 14px or 18px,
+   *Settled value: 16px.* If the root were 14px or 18px,
    every `rem`-based value in a theme would shift with it.
 2. **Maximum content width: 1200px (§4.1).** Beyond this, extra
-   width becomes screen padding. *Recommended default: 1200px.*
+   width becomes screen padding. *Settled value: 1200px.*
    A smaller cap (1000px) would feel more editorial; a larger
    one (1400px) would let wide decks breathe less.
 3. **Maximum columns: 3 (§4.2).** Eight panels lay out as
-   3 + 3 + 2. *Recommended default: 3 for v0.1.* Four columns
+   3 + 3 + 2. *Settled value: 3 for v0.1.* Four columns
    would need a content width over 1000px to stay readable,
    which leaves almost no width where four columns help.
-4. **Image max-height: `min(45vh, 420px)` (§5).** *Recommended
-   default: as written.* A taller cap (60vh) would let images
+4. **Image max-height: `min(45vh, 420px)` (§5).** *Settled value: as written.* A taller cap (60vh) would let images
    dominate; a shorter one (35vh) would make image panels
    feel cramped.
 5. **Corner radius scaling with the container (§4.1).**
-   *Recommended default: the gentle clamp as written*
+   *Settled value: the gentle clamp as written*
    (`8px` to `18px`). The alternative is a fixed 12px radius
    everywhere — simpler, but a phone card and a desktop card
    would share a radius that suits neither quite as well.
 6. **Breakpoints vs pure fluid layout (§6, spec §7.1).**
-   *Recommended default: fluid as the primary mechanism,*
+   *Settled value: fluid as the primary mechanism,*
    with coarse tiers (phone / tablet / desktop) only for
    behaviour that genuinely differs, such as swipe vs
    keyboard hints. The column table in §4.2 is an outcome
    of the min-width rule, not a breakpoint rule.
 7. **Hero max-width 720px and min-height `45vh` (§4.3).**
-   *Recommended default: as written.* A wider hero would
+   *Settled value: as written.* A wider hero would
    push hero lines past the 75ch maximum; a taller one
    would leave too much empty space on tall monitors.
 8. **Zoom step: ×1.1 multiplicative, ±4 steps (§2.4).**
-   *Recommended default: as written, confirming the spec's
+   *Settled value: as written, confirming the spec's
    "~10%".* The alternative is additive 10% steps, which
    feel progressively smaller as you zoom in.
 9. **Line length: 45–75ch for hero / single-column text,
    30ch minimum for multi-column panels (§2.3).**
-   *Recommended default: as written.* The panel minimum is
+   *Settled value: as written.* The panel minimum is
    the one that constrains the grid — raising it would force
    wider minimum columns.
 10. **Image focal point.** `object-fit: cover` crops from the
     centre in v0.1 (§5). Should v0.1 let an author set a
     focal point (e.g. `object-position` via a class), or is
-    centre-crop acceptable until v0.2? *Recommended default:
+    centre-crop acceptable until v0.2? *Settled value:
     centre-crop for v0.1; focal point in v0.2.* It is a real
     limitation for portrait photos, and worth naming now
     rather than discovering later.
 
 ---
 
-*Next: after Samir's review, turn §8 into structured policies
+*Next: §9 is settled (2026-11-25). Turn §8 into structured policies
 that can be implemented in code and enforced — one row at a
 time, with the token names above as the stable identifiers.
 Nothing in this document changes the spec on its own; the spec
