@@ -612,24 +612,30 @@ lengths, container size) → CSS variables + column count. It MUST:
    generalise from them): 3 panels → 3 columns on wide,
    1 column on narrow. 6 panels → 3×2 on wide, 2×3 on medium,
    1×6 on narrow.
-4. Choose a type scale: base size from container size, reduced
-   by a factor that grows with panel count and content length,
-   floored at the minimum in §7.3.
+4. Choose a type scale: the largest body size that fits the
+   *visible* content in the container (content-fit — the fit
+   runs on the panels visible at the current step, between the
+   12px floor in §7.3 and the 32px ceiling), then measure real
+   overflow after rendering and shrink further if the estimate
+   was optimistic. The renderer MUST NOT grow type past the
+   fit; growing is the fit's job, on the next layout pass.
 5. Emit layout as CSS variables (`--wd-cols`, `--wd-font`,
    `--wd-gap`, …); CSS does the distribution. No JS measuring
    per frame.
 6. Re-run on resize / orientation change / container change
-   (`ResizeObserver`), debounced. No layout shift after the
-   first paint if the first measurement happens before paint.
+   (`ResizeObserver`), debounced, and on every step change —
+   a step that reveals another panel can shrink the type.
+   No layout shift after the first paint if the first measurement happens before paint.
 
 ### 7.3 Type floor and zoom
 
 - **Type floor (settled, brief §15.6): 12px minimum on mobiles.**
   Body text MUST NOT render below 12px on a phone-width
   container. The engine degrades to scroll (§7.4) sooner rather
-  than shrink type below the floor. On larger containers the
-  floor is higher; the exact desktop floor is a renderer tuning
-  constant, and MUST NOT be below 12px anywhere.
+  than shrink type below the floor. The floor is 12px on every
+  container; what grows on larger containers is the *fit* — a
+  sparse screen grows toward the 32px ceiling instead of
+  sitting at a formula floor.
 - **Zoom:** `+` zooms type in, `-` zooms type out. Zoom is a
   reader control, not an author setting. It MUST persist across
   screens within a session, apply on top of the fluid type
@@ -647,8 +653,15 @@ lengths, container size) → CSS variables + column count. It MUST:
 - Scroll affordance MUST be visible: a fade / chevron /
   scrollbar cue when a screen is scrollable and not yet at its
   bottom. A reader MUST never wonder whether there is more.
-- Panel content is vertically centred by default when there is
-  spare height; top-aligned when the screen scrolls.
+- Panel content is top- and left-aligned, always: panels
+  start at the top of the screen and the first column starts
+  at the left edge, so revealing another panel never moves the
+  panels already visible. (This reverses the first draft,
+  which centred content when there was spare height — that
+  made the whole screen jump on every reveal, which is
+  distracting while reading.) The one exception is the hero
+  (§7.4, below): a single panel is centred, because nothing
+  is ever revealed into it.
 - Images in panels: `object-fit: cover` within the panel,
   aspect preserved, never stretched. Code in panels: monospace,
   own scroll if long, never breaking the panel.

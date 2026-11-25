@@ -19,7 +19,16 @@ export {
   swipeThreshold,
   SWIPE_THRESHOLD_PX,
 } from './model.js';
-export { computeLayout, columnCount, countFactor, titleFactor, clampPx } from './layout.js';
+export {
+  computeLayout,
+  columnCount,
+  countFactor,
+  titleFactor,
+  clampPx,
+  fitFontSize,
+  estimateScreenHeight,
+  FONT_BODY_MAX_PX,
+} from './layout.js';
 export { renderInline, renderBlocks, plainText } from './markdown.js';
 export { themeVars, COLORS, FONT_FLOOR_PX, ZOOM_STEP, ZOOM_MIN_STEPS, ZOOM_MAX_STEPS } from './tokens.js';
 export type {

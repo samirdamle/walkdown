@@ -57,10 +57,10 @@
         "css-var-clamp",
         "fixture-screenshot"
       ],
-      "max": "20px",
-      "min": "14px",
+      "max": "32px",
+      "min": "12px",
       "name": "--wd-font-body",
-      "preferred": "1.25vw + 7px \u00d7 count factor",
+      "preferred": "largest size that fits visible content (content-fit; see design-policies \u00a72.2)",
       "property": "Panel body size",
       "settled_date": null,
       "settled_source": null,

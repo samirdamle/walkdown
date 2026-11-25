@@ -87,9 +87,9 @@ export interface LayoutInput {
   containerWidth: number;
   /** Container height in CSS px. */
   containerHeight: number;
-  /** Number of panels on the screen. */
+  /** Number of panels on the screen (total, not just visible — the column count comes from this, so the grid stays put across steps). */
   panelCount: number;
-  /** Plain-text length (characters) of each panel, in document order. */
+  /** Plain-text length (characters) of each *visible* panel, in document order. The content-fit (§2.2) runs on these, so a step that reveals more panels can shrink the type. */
   contentLengths: number[];
   /** Zoom steps from default (default 0). */
   zoom?: number;
@@ -102,6 +102,8 @@ export interface LayoutResult {
   rows: number;
   /** Computed type sizes in px, after clamp and zoom. */
   fontBodyPx: number;
+  /** The content-fit result before the zoom multiplier (§2.2). */
+  fitFontBodyPx: number;
   fontTitlePx: number;
   fontCodePx: number;
   fontSmallPx: number;

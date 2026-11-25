@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../src/index.js';
+import { DEFAULT_CSS } from '../src/styles.js';
 import type { WalkdownDeckElement } from '../src/element.js';
 
 /** Read a repo fixture. Under the jsdom environment import.meta.url is not a file: URL, so fall back to cwd. */
@@ -308,5 +309,74 @@ describe('empty deck and scroll cue', () => {
     Object.defineProperty(screen, 'scrollTop', { value: 1100, configurable: true });
     screen.dispatchEvent(new window.Event('scroll'));
     expect((el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement).classList.contains('wd-scroll-cue--visible')).toBe(false);
+  });
+});
+
+describe('top-left alignment and content-fit (design-policies §2.2)', () => {
+  it('panels, title and section label are top- and left-aligned', () => {
+    const el = createDeck('# Title\n\n- One.\n- Two.\n');
+    // jsdom does not apply Shadow DOM stylesheets to computed
+    // style, so the rules are asserted on the text of the
+    // <style> the element actually renders with — the shipped
+    // CSS, not a copy of it.
+    const styleEl = el.shadowRoot?.querySelector('#wd-default') as HTMLStyleElement;
+    const css = styleEl.textContent ?? '';
+    expect(css).toContain('.wd-panels {');
+    expect(css).toContain('margin: 0;\n  align-content: start;');
+    expect(css).toContain('.wd-title {');
+    expect(css).not.toContain('margin: 0 auto var(--wd-gap-title);');
+    expect(css).not.toContain('align-content: center;');
+    expect(css).not.toContain('.wd-screen--scrolling .wd-panels');
+    expect(DEFAULT_CSS).toContain('align-content: start;');
+  });
+
+  it('the hero keeps its centred title treatment', () => {
+    const el = createDeck('# Hero\n\n- Only panel.\n');
+    expect(screenEl(el).classList.contains('wd-screen--hero')).toBe(true);
+    expect(DEFAULT_CSS).toContain('.wd-screen--hero .wd-title');
+    expect(DEFAULT_CSS).toContain('.wd-screen--hero .wd-panel');
+  });
+
+  it('the measurement pass shrinks overflowing content to the floor and shows the scroll cue', () => {
+    const long = 'word '.repeat(400);
+    const el = createDeck(`# Long\n\n- ${long}\n`);
+    const screen = screenEl(el);
+    // jsdom reports no layout: pretend the screen overflows at any size.
+    Object.defineProperty(screen, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(screen, 'clientHeight', { value: 600, configurable: true });
+    Object.defineProperty(screen, 'scrollTop', { value: 0, configurable: true });
+    el.setContainerSize(1440, 900);
+    expect(varOf(el, '--wd-font-body')).toBe('12px');
+    expect(screen.classList.contains('wd-screen--scrolling')).toBe(true);
+    expect((el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement).classList.contains('wd-scroll-cue--visible')).toBe(true);
+  });
+
+  it('the measurement pass leaves a fitting screen at its fitted size', () => {
+    const el = createDeck('# Short\n\n- One short bullet.\n');
+    const screen = screenEl(el);
+    Object.defineProperty(screen, 'scrollHeight', { value: 400, configurable: true });
+    Object.defineProperty(screen, 'clientHeight', { value: 600, configurable: true });
+    el.setContainerSize(1440, 900);
+    // One short panel fits at the 32px ceiling.
+    expect(varOf(el, '--wd-font-body')).toBe('32px');
+  });
+
+  it('revealing another panel refits the type smaller, and the first panel stays visible', () => {
+    const long = 'word '.repeat(120);
+    // The reveal marker goes at the top of the screen, before
+    // the title (spec §4.1: top-of-screen markers only).
+    const el = createDeck(`<!-- reveal: step -->\n\n# Mixed\n\n- Short.\n\n- ${long}\n`);
+    // Step 0: only the short panel is visible — the ceiling.
+    expect(varOf(el, '--wd-font-body')).toBe('32px');
+    expect(panelVisible(el, 0)).toBe(true);
+    expect(panelVisible(el, 1)).toBe(false);
+    // Step 1: the long panel appears, so the fit shrinks — but
+    // the first panel is still there, in place.
+    el.next();
+    const after = parseFloat(varOf(el, '--wd-font-body'));
+    expect(after).toBeLessThan(32);
+    expect(after).toBeGreaterThan(12);
+    expect(panelVisible(el, 0)).toBe(true);
+    expect(panelVisible(el, 1)).toBe(true);
   });
 });
