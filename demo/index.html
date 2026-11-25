@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Walkdown — demo</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    walkdown-deck { display: block; height: 100dvh; }
+  </style>
+  <!--
+    Walkdown demo (Phase 3). The first real deck:
+    examples/walkdown-itself.md — a deck explaining Walkdown itself.
+
+    The renderer and core are ES modules built from packages/*.
+    Run `npm run build` from the repo root first (dist/ is
+    gitignored), then serve this folder over HTTP — `fetch()`
+    cannot load the deck from file://. For GitHub Pages the
+    build must run in CI (a Pages workflow is a Phase 4 item);
+    serving this folder from the repo root is the local
+    equivalent: e.g. `npx serve .` then open /demo/.
+  -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@walkdown/core": "../packages/core/dist/index.js",
+        "@walkdown/renderer": "../packages/renderer/dist/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <walkdown-deck src="../examples/walkdown-itself.md"></walkdown-deck>
+  <script type="module">
+    import '@walkdown/renderer';
+  </script>
+</body>
+</html>
