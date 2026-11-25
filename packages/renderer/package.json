@@ -1,0 +1,36 @@
+{
+  "dependencies": {
+    "@walkdown/core": "^0.1.0"
+  },
+  "description": "Walkdown renderer: a Web Components deck element (Shadow DOM) that renders a parsed deck with stepwise reveal, navigation, themes, and fluid layout.",
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "name": "@walkdown/renderer",
+  "scripts": {
+    "build": "tsc",
+    "prebuild": "npm --workspace=@walkdown/core run build",
+    "pretest": "npm --workspace=@walkdown/core run build",
+    "pretypecheck": "npm --workspace=@walkdown/core run build",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=basic",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.0"
+}

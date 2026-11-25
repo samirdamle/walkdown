@@ -1,0 +1,312 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '../src/index.js';
+import type { WalkdownDeckElement } from '../src/element.js';
+
+/** Read a repo fixture. Under the jsdom environment import.meta.url is not a file: URL, so fall back to cwd. */
+function fixture(name: string): string {
+  try {
+    return readFileSync(fileURLToPath(new URL(`../../../examples/${name}`, import.meta.url)), 'utf8');
+  } catch {
+    return readFileSync(resolve(process.cwd(), '../../examples', name), 'utf8');
+  }
+}
+
+const SAMPLE_DECK = fixture('walkdown-itself.md');
+const THEME_CSS = fixture('walkdown-theme.css');
+
+function screenEl(el: WalkdownDeckElement): HTMLElement {
+  return el.shadowRoot?.querySelector('.wd-screen') as HTMLElement;
+}
+function deckEl(el: WalkdownDeckElement): HTMLElement {
+  return el.shadowRoot?.querySelector('.wd-deck') as HTMLElement;
+}
+function panels(el: WalkdownDeckElement): HTMLElement[] {
+  return [...(el.shadowRoot?.querySelectorAll('.wd-panel') as NodeListOf<HTMLElement>)];
+}
+function panelVisible(el: WalkdownDeckElement, i: number): boolean {
+  const p = panels(el)[i];
+  return p !== undefined && !p.hidden;
+}
+function varOf(el: WalkdownDeckElement, name: string): string {
+  return deckEl(el).style.getPropertyValue(name).trim();
+}
+function progressText(el: WalkdownDeckElement): string {
+  return (el.shadowRoot?.querySelector('.wd-progress-text') as HTMLElement).textContent ?? '';
+}
+
+function stubScreenRect(el: WalkdownDeckElement): void {
+  const screen = screenEl(el);
+  screen.getBoundingClientRect = () =>
+    ({ left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+}
+
+function pointer(el: WalkdownDeckElement, type: string, x: number, y = 300): void {
+  screenEl(el).dispatchEvent(new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: y }));
+}
+
+function key(el: WalkdownDeckElement, keyName: string): void {
+  el.dispatchEvent(new window.KeyboardEvent('keydown', { key: keyName, bubbles: true, cancelable: true }));
+}
+
+function createDeck(markdown: string): WalkdownDeckElement {
+  const el = document.createElement('walkdown-deck') as WalkdownDeckElement;
+  el.setContainerSize(1440, 900);
+  el.markdown = markdown;
+  document.body.appendChild(el);
+  stubScreenRect(el);
+  return el;
+}
+
+beforeEach(() => {
+  window.location.hash = '';
+  // The sample deck lists ./walkdown-theme.css; serve its real content so the
+  // external-stylesheet path is exercised. Anything else 404s (degradation).
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (String(url).includes('walkdown-theme.css')) {
+        return new Response(THEME_CSS, { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    }),
+  );
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  document.body.innerHTML = '';
+  window.location.hash = '';
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe('<walkdown-deck> with the sample deck', () => {
+  it('renders 12 screens / 42 steps, starting at the hero', () => {
+    const el = createDeck(SAMPLE_DECK);
+    expect(el.screens).toHaveLength(12);
+    expect(el.stepsTotal).toBe(42);
+    expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
+    expect(screenEl(el).querySelector('.wd-title')?.textContent).toBe('Walkdown');
+    expect(screenEl(el).classList.contains('wd-screen--hero')).toBe(true);
+    expect(progressText(el)).toBe('1 / 42');
+  });
+
+  it('reveals panels in sequence order on the sequence screen', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const seqIndex = el.screens.findIndex((s) => s.title === 'The punchline first');
+    expect(seqIndex).toBeGreaterThanOrEqual(0);
+    el.jumpTo(seqIndex);
+    // sequence: 3, 1, 2 — step 0 shows panel 3 (index 2) only.
+    expect(panelVisible(el, 2)).toBe(true);
+    expect(panelVisible(el, 0)).toBe(false);
+    expect(panelVisible(el, 1)).toBe(false);
+    el.next();
+    expect(panelVisible(el, 0)).toBe(true);
+    expect(panelVisible(el, 1)).toBe(false);
+    el.next();
+    expect(panelVisible(el, 1)).toBe(true);
+  });
+
+  it('walks Next / Previous / Start / End and clamps at both ends', () => {
+    const el = createDeck(SAMPLE_DECK);
+    el.prev();
+    expect(el.state.screenIndex).toBe(0);
+    expect(el.state.stepIndex).toBe(0);
+    for (let i = 0; i < 42; i++) el.next();
+    expect(el.state.screenIndex).toBe(11);
+    expect(el.state.stepIndex).toBe(2); // last screen has 3 panels, all stepped
+    el.next();
+    expect(el.state.screenIndex).toBe(11);
+    el.goToStart();
+    expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
+    el.goToEnd();
+    expect(el.state.screenIndex).toBe(11);
+    expect(el.state.stepIndex).toBe(2);
+    expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(false);
+  });
+
+  it('navigates by keyboard and zooms with + / -', () => {
+    const el = createDeck(SAMPLE_DECK);
+    // Screen 0 is a hero (reveal: all, one step): Next moves to screen 1.
+    key(el, 'ArrowRight');
+    expect(el.state.screenIndex).toBe(1);
+    expect(el.state.stepIndex).toBe(0);
+    key(el, 'ArrowLeft');
+    expect(el.state.screenIndex).toBe(0);
+    key(el, ' ');
+    expect(el.state.screenIndex).toBe(1);
+    key(el, 'End');
+    expect(el.state.screenIndex).toBe(11);
+    key(el, 'Home');
+    expect(el.state.screenIndex).toBe(0);
+    key(el, '+');
+    expect(el.state.zoom).toBe(1);
+    key(el, '-');
+    expect(el.state.zoom).toBe(0);
+  });
+
+  it('restores a deep link on load and updates the hash on navigation', () => {
+    window.location.hash = '#/3/2';
+    const el = createDeck(SAMPLE_DECK);
+    expect(el.state.screenIndex).toBe(2);
+    expect(el.state.stepIndex).toBe(1);
+    el.next();
+    expect(window.location.hash).toBe('#/3/3');
+  });
+
+  it('clamps an out-of-range deep link to the last step', () => {
+    window.location.hash = '#/99/99';
+    const el = createDeck(SAMPLE_DECK);
+    expect(el.state.screenIndex).toBe(11);
+    expect(el.state.stepIndex).toBe(2);
+  });
+
+  it('navigates by click halves and ignores drags', () => {
+    const el = createDeck(SAMPLE_DECK);
+    pointer(el, 'pointerdown', 700);
+    pointer(el, 'pointerup', 700);
+    expect(el.state.screenIndex).toBe(1);
+    pointer(el, 'pointerdown', 100);
+    pointer(el, 'pointerup', 100);
+    expect(el.state.screenIndex).toBe(0);
+    // A drag (movement > 8px) is not a tap.
+    pointer(el, 'pointerdown', 400);
+    pointer(el, 'pointerup', 450);
+    expect(el.state.screenIndex).toBe(0);
+  });
+
+  it('swipes left to advance and right to retreat', () => {
+    const el = createDeck(SAMPLE_DECK);
+    pointer(el, 'pointerdown', 400);
+    pointer(el, 'pointermove', 300); // dx -100, past the 48px threshold
+    pointer(el, 'pointerup', 300);
+    expect(el.state.screenIndex).toBe(1);
+    pointer(el, 'pointerdown', 300);
+    pointer(el, 'pointermove', 400);
+    pointer(el, 'pointerup', 400);
+    expect(el.state.screenIndex).toBe(0);
+  });
+
+  it('does not navigate when the tap starts on a link', () => {
+    const el = createDeck('# Links\n\n- See [the docs](https://example.com) for more.\n');
+    const link = screenEl(el).querySelector('a') as HTMLElement;
+    expect(link).not.toBeNull();
+    link.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, clientX: 700, clientY: 300 }));
+    link.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true, clientX: 700, clientY: 300 }));
+    expect(el.state.stepIndex).toBe(0);
+  });
+});
+
+describe('zoom and layout', () => {
+  it('never renders body type below the 12px floor, even zoomed fully out on a phone', () => {
+    const el = createDeck(SAMPLE_DECK);
+    el.setContainerSize(360, 640);
+    for (let i = 0; i < 4; i++) el.zoomOutStep();
+    expect(el.state.zoom).toBe(-4);
+    const bodyPx = parseFloat(varOf(el, '--wd-font-body'));
+    expect(bodyPx).toBeGreaterThanOrEqual(12);
+  });
+
+  it('zooms in and out within ±4 steps', () => {
+    const el = createDeck(SAMPLE_DECK);
+    for (let i = 0; i < 6; i++) el.zoomInStep();
+    expect(el.state.zoom).toBe(4);
+    for (let i = 0; i < 9; i++) el.zoomOutStep();
+    expect(el.state.zoom).toBe(-4);
+  });
+
+  it('applies the layout columns for the current screen', () => {
+    const el = createDeck(SAMPLE_DECK);
+    el.setContainerSize(1440, 900);
+    el.jumpTo(3); // 6-panel screen
+    expect(varOf(el, '--wd-cols')).toBe('3');
+    el.setContainerSize(360, 640);
+    expect(varOf(el, '--wd-cols')).toBe('1');
+  });
+});
+
+describe('themes and stylesheets', () => {
+  it('applies the settled light palette by default', () => {
+    const el = createDeck(SAMPLE_DECK);
+    expect(varOf(el, '--wd-color-bg')).toBe('#FAFAF7');
+    expect(varOf(el, '--wd-color-ink')).toBe('#1B1B18');
+    expect(varOf(el, '--wd-color-accent')).toBe('#B45309');
+    expect(varOf(el, '--wd-font-family-title')).toContain('Georgia');
+  });
+
+  it('switches to the dark palette from frontmatter theme:', () => {
+    const el = createDeck('---\ntheme: dark\n---\n\n# Dark deck\n\n- One panel.\n');
+    expect(varOf(el, '--wd-color-bg')).toBe('#18181C');
+    expect(varOf(el, '--wd-color-ink')).toBe('#F5F5F0');
+    expect(varOf(el, '--wd-color-accent')).toBe('#F0D45D');
+  });
+
+  it('lets the theme attribute override the deck theme', () => {
+    const el = createDeck(SAMPLE_DECK);
+    el.setAttribute('theme', 'dark');
+    expect(varOf(el, '--wd-color-bg')).toBe('#18181C');
+  });
+
+  it('loads the external stylesheet into the Shadow DOM, in order', async () => {
+    const el = createDeck(SAMPLE_DECK);
+    await vi.waitFor(() => {
+      const ext = el.shadowRoot?.querySelector('#wd-external') as HTMLStyleElement;
+      expect(ext.textContent).toContain('.dark');
+    });
+    // Nothing leaks to the document: no <style> outside the shadow root.
+    expect(document.querySelector('style')).toBeNull();
+  });
+
+  it('degrades gracefully when a stylesheet cannot be fetched', async () => {
+    const el = createDeck('---\nstylesheets:\n  - https://example.com/missing.css\n---\n\n# Still here\n\n- One panel.\n');
+    await vi.waitFor(() => {
+      expect(screenEl(el).querySelector('.wd-title')?.textContent).toBe('Still here');
+    });
+    expect(panelVisible(el, 0)).toBe(true);
+    expect(varOf(el, '--wd-color-bg')).toBe('#FAFAF7');
+  });
+
+  it('ignores an http: stylesheet and still renders', async () => {
+    const el = createDeck('---\nstylesheets:\n  - http://example.com/theme.css\n---\n\n# Still here\n\n- One panel.\n');
+    await vi.waitFor(() => {
+      expect(screenEl(el).querySelector('.wd-title')?.textContent).toBe('Still here');
+    });
+    expect(panelVisible(el, 0)).toBe(true);
+  });
+
+  it('scopes the inline CSS block to the deck and sanitises it', async () => {
+    const el = createDeck('# Styled\n\n- Panel.\n\n```css\n@import url("evil.css");\n.hero { color: red; }\n.wd-panel { display: none; }\n```\n');
+    const inline = el.shadowRoot?.querySelector('#wd-inline') as HTMLStyleElement;
+    expect(inline.textContent).toContain('.hero');
+    expect(inline.textContent).not.toContain('@import');
+    expect(inline.textContent).not.toContain('display: none');
+    // The panel still renders: the hiding rule was dropped.
+    expect(panelVisible(el, 0)).toBe(true);
+    // And nothing leaked to the host document.
+    expect(document.querySelector('style')).toBeNull();
+  });
+});
+
+describe('empty deck and scroll cue', () => {
+  it('surfaces an empty deck as a state, not a blank page', () => {
+    const el = createDeck('');
+    expect((el.shadowRoot?.querySelector('.wd-empty') as HTMLElement).hidden).toBe(false);
+    expect(screenEl(el).style.display).toBe('none');
+  });
+
+  it('shows the scroll cue only when the screen is scrollable and not at the bottom', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const screen = screenEl(el);
+    Object.defineProperty(screen, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(screen, 'clientHeight', { value: 900, configurable: true });
+    Object.defineProperty(screen, 'scrollTop', { value: 0, configurable: true });
+    screen.dispatchEvent(new window.Event('scroll'));
+    expect((el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement).classList.contains('wd-scroll-cue--visible')).toBe(true);
+    Object.defineProperty(screen, 'scrollTop', { value: 1100, configurable: true });
+    screen.dispatchEvent(new window.Event('scroll'));
+    expect((el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement).classList.contains('wd-scroll-cue--visible')).toBe(false);
+  });
+});
