@@ -1,0 +1,67 @@
+name: Deploy demo to GitHub Pages
+
+# The demo (demo/index.html) loads the built packages from
+# ../packages/core/dist/ and ../packages/renderer/dist/, and dist/ is
+# gitignored — so the build must run here, in CI, and only the staged
+# _site/ tree is deployed. No application code changes in this file.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'demo/**'
+      - 'packages/**'
+      - 'examples/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Stage the site
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -r demo examples _site/
+          mkdir -p _site/packages/core _site/packages/renderer
+          cp -r packages/core/dist _site/packages/core/dist
+          cp -r packages/renderer/dist _site/packages/renderer/dist
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
