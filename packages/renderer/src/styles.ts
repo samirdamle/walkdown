@@ -62,7 +62,11 @@ export const DEFAULT_CSS = `
   font-size: var(--wd-font-title);
   line-height: var(--wd-line-height-title);
   font-weight: 700;
-  margin: 0 auto var(--wd-gap-title);
+  /* Top-left: the title block starts at the left edge, never
+     centred — a centred title is what used to make the whole
+     screen jump when a panel was revealed. The hero keeps its
+     centred title (see .wd-screen--hero below). */
+  margin: 0 0 var(--wd-gap-title);
   max-width: var(--wd-content-max-width);
   width: 100%;
   text-wrap: balance;
@@ -74,25 +78,28 @@ export const DEFAULT_CSS = `
   color: var(--wd-color-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin: 0 auto var(--wd-space);
+  margin: 0 0 var(--wd-space);
   max-width: var(--wd-content-max-width);
   width: 100%;
 }
 
 /* --- Panels: the grid (§7.2). CSS does the distribution; JS only sets --wd-cols. --- */
+/* Top-left, always: the grid starts at the top of the screen
+   and the first column starts at the left edge. It used to be
+   margin auto with align-content center, which centred the
+   grid — so every newly revealed panel re-centred the ones
+   already on screen, and the whole screen visibly jumped while
+   reading. With align-content start a reveal only adds a
+   panel; nothing already visible moves. */
 .wd-panels {
   display: grid;
   grid-template-columns: repeat(var(--wd-cols, 1), minmax(0, 1fr));
   gap: var(--wd-gap-panel);
   width: 100%;
   max-width: var(--wd-content-max-width);
-  margin: auto;
-  align-content: center;
-  flex: 1 1 auto;
-}
-
-.wd-screen--scrolling .wd-panels {
+  margin: 0;
   align-content: start;
+  flex: 0 0 auto;
 }
 
 .wd-panel {
@@ -158,6 +165,15 @@ export const DEFAULT_CSS = `
 .wd-panel[hidden] { display: none; }
 
 /* --- Single-panel screens become a hero (§7.4). --- */
+/* The hero is the one deliberate exception to top-left: its
+   single panel is centred, and its title and section label
+   are centred too. A hero has reveal all, so nothing is
+   ever revealed into it — nothing can shift — and a centred
+   title slide is the point of a hero. */
+.wd-screen--hero .wd-title,
+.wd-screen--hero .wd-section-label {
+  text-align: center;
+}
 .wd-screen--hero .wd-panel {
   max-width: var(--wd-hero-max-width);
   min-height: var(--wd-hero-min-height);

@@ -94,7 +94,7 @@ container or the panel count changes.
 | Role | Formula (preferred) | Min | Max |
 | ---- | ------------------- | --- | --- |
 | Screen title | `clamp(24px, 3.2vw + 10px, 56px)` × title factor | 24px | 56px |
-| Panel body | `clamp(14px, 1.25vw + 7px, 20px)` × count factor | 14px **[Proposal]** | 20px |
+| Panel body | content-fit: largest size that fits the visible content (§2.2) | 12px **[Proposal]** | 32px **[Proposal]** |
 | Panel code | `clamp(13px, 1.1vw + 6px, 18px)` | 13px | 18px |
 | Caption / small text | `clamp(12px, 0.85vw + 7px, 14px)` | 12px | 14px |
 
@@ -107,17 +107,23 @@ continuous — the reader never sees type jump.
 
 **The 12px floor [Settled].** No text anywhere renders below
 12px — that is the settled absolute floor (brief §15.6, spec
-§7.3). The floors in the table above are stricter than that for
-body text (14px) and code (13px), because 12px body text is
-legible but tiring; 12px is reserved for captions and small
-labels, where a word or two at small size is fine but a paragraph
-is not. A policy floor may be stricter than the settled floor,
+§7.3). The floor in the table above is stricter than that for
+code (13px), because 12px code is legible but tiring. Body
+text may reach the 12px floor when the content is dense — the
+fit only goes there when nothing bigger fits, and a dense
+screen then scrolls at 12px rather than shrinking further.
+A policy floor may be stricter than the settled floor,
 never looser.
 
 **Panel-count factor [Proposal].** A screen with more panels has
-less room per panel, so its type is smaller. The layout engine
-(spec §7.2) emits the factor as a CSS variable; the factor scales
-both the preferred term and the ceiling, never the floor:
+less room per panel, so its type is smaller. For the title the
+layout engine (spec §7.2) still scales the preferred term and
+the ceiling by the title factor, never the floor. For the body
+the count factor is subsumed by the content-fit (§2.2): more
+panels means more content to fit, so the fit shrinks the type
+by itself, and the old `1.25vw + 7px` body formula is gone —
+a sparse screen now grows to the 32px ceiling at any width,
+and only a dense screen shrinks.
 
 | Panels | Count factor | Title factor |
 | ------ | ------------ | ------------ |
@@ -132,17 +138,18 @@ it as fast as body text would make the screen feel empty at the
 top and cramped at the bottom. The title factor is gentler for
 exactly that reason.
 
-When the scaled ceiling falls below the floor — which happens for
-dense screens on narrow containers — the floor wins and the
-screen scrolls sooner. That is correct behaviour, not a bug:
+When even the floor does not fit — which happens for dense
+screens on narrow containers — the floor wins and the screen
+scrolls sooner. That is correct behaviour, not a bug:
 the engine degrades to scroll rather than shrinking type below
 the floor (spec §7.3).
 
 ### 2.2 Computed values — judge these by eye
 
 Computed from the formulas above at the three widths the spec
-tests at (360 / 768 / 1440 px). If a number in this table looks
-wrong, the formula is wrong — say so in review.
+tests at (360 / 768 / 1440 px) — except panel body, which is
+content-fit, not a viewport formula. If a number in this table
+looks wrong, the formula is wrong — say so in review.
 
 **Screen title** (px):
 
@@ -153,20 +160,32 @@ wrong, the formula is wrong — say so in review.
 | 4–6 | 24 | 30.4 | 49.3 |
 | 7–8 | 24 | 29.4 | 47.6 |
 
-**Panel body** (px):
+**Panel body** (px) — content-fit **[Proposal]**. The engine
+chooses the largest size, 12px floor to 32px ceiling, whose
+estimated screen height fits the container (line-height 1.55,
+average glyph 0.5em wide, 60ch line-length cap, column count
+from the panel total). The renderer then measures the real
+overflow and shrinks further if the estimate was optimistic.
+The fit runs on the panels *visible* at the current step, so
+revealing another panel can shrink the type — the grid, and
+every visible panel's position in it, stays put; only the
+type size changes. Examples, 120 characters per panel:
 
 | Panels | 360 px | 768 px | 1440 px |
 | ------ | ------ | ------ | ------- |
-| 1 | 14 | 16.6 | 20 |
-| 2–3 | 14 | 15.3 | 18.4 |
-| 4–6 | 14 | 14 | 16.8 |
-| 7–8 | 14 | 14 | 15.6 |
+| 1 | 32 | 32 | 32 |
+| 2–3 | 24.6 | 30.1 | 32 |
+| 4–6 | 15.8 | 22.6 | 31.7 |
+| 7–8 | 12 | 17.4 | 25.4 |
 
-Read the 360 px column as a warning, not a failure: on a phone,
-body text sits at its 14px floor at every panel count. That is
-why a 6-panel phone screen stacks and scrolls instead of
-shrinking — the type has nowhere smaller to go, so the layout
-gives way first (§6.3).
+And by amount of content, at 1440×900: one panel of 30
+characters → 32px (the ceiling); four panels of 200 characters
+each → 26.2px; eight panels of 900 characters at 360×640 →
+12px, scrolling. Read the 360 px column as the fit doing its
+job: on a phone a sparse screen grows to the ceiling, and only
+a dense screen reaches the floor — the old 14px body floor is
+gone, because a sparse phone screen has no reason to sit at
+14px when 32px fits.
 
 **Panel code** (px): 13 at 360 px, 14.4 at 768 px, 18 at 1440 px.
 **Caption / small text** (px): 12 at 360 px, 13.5 at 768 px,
@@ -380,9 +399,9 @@ A screen with one panel is a hero **[Settled]** (spec §7.4):
 larger type, centred, more breathing room. The policies:
 
 - The panel's max-width is `min(720px, 100%)` **[Settled 2026-11-25]**.
-  Why 720px: at the 20px body ceiling it holds about 60
-  characters per line — the ideal line length (§2.3) — and at
-  the 56px title ceiling it holds a short title without
+  Why 720px: at the 32px body ceiling it holds about 45
+  characters per line — the short end of the line-length range
+  (§2.3) — and at the 56px title ceiling it holds a short title without
   wrapping into a tower. Wider than that, a hero stops feeling
   like a title card and starts feeling like a lost paragraph.
 - Minimum height `clamp(240px, 45vh, 520px)` **[Settled 2026-11-25]** —
@@ -691,7 +710,7 @@ needs rewriting, not a row to skip.
 | Token | Property | Min | Preferred | Max | Units | Status | Enforcement |
 | ----- | -------- | --- | --------- | --- | ----- | ------ | ----------- |
 | `--wd-font-title` | Screen title size | 24px | `3.2vw + 10px` × title factor | 56px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
-| `--wd-font-body` | Panel body size | 14px | `1.25vw + 7px` × count factor | 20px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
+| `--wd-font-body` | Panel body size | 12px | largest size that fits visible content (content-fit, §2.2) | 32px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
 | `--wd-font-code` | Panel code size | 13px | `1.1vw + 6px` | 18px | px / vw | Proposal | CSS var + clamp |
 | `--wd-font-small` | Caption / small size | 12px | `0.85vw + 7px` | 14px | px / vw | Proposal | CSS var + clamp |
 | `--wd-font-floor` | Absolute type floor | 12px | — | — | px | **Settled** | Layout-engine check; validator rule |

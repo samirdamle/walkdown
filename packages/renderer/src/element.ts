@@ -40,6 +40,7 @@ import {
   computeLayout,
   endState,
   flatScreens,
+  FONT_FLOOR_PX,
   hashFor,
   isEmptyDeck,
   jumpToScreen,
@@ -95,6 +96,8 @@ export class WalkdownDeckElement extends HTMLElement {
   private _deckUrl: string | undefined;
   private _themeOverride: Theme | null = null;
   private _containerSize: { width: number; height: number } | null = null;
+  /** Body size the last layout pass fitted (§2.2) — the measurement pass shrinks from here, never grows. */
+  private _fittedBodyPx = 0;
   private _resizeObserver: ResizeObserver | null = null;
   private _idleTimer: ReturnType<typeof setTimeout> | null = null;
   private _pointerStart: { x: number; y: number; interactive: boolean } | null = null;
@@ -398,15 +401,48 @@ export class WalkdownDeckElement extends HTMLElement {
     const screen = this.screens[this._state.screenIndex];
     if (screen === undefined) return;
     const { width, height } = this._measureContainer();
+    // The fit runs on the *visible* panels only: a step that
+    // reveals another panel can shrink the type. The column
+    // count comes from the total panel count (inside
+    // computeLayout), so the grid — and every visible panel's
+    // position in it — stays put across steps; only the type
+    // size changes, never a position.
+    const visible = visiblePanelIndexes(screen, this._state.stepIndex);
     const result = computeLayout({
       containerWidth: width,
       containerHeight: height,
       panelCount: screen.panels.length,
-      contentLengths: screen.panels.map((p) => p.text.length),
+      contentLengths: visible.map((i) => screen.panels[i]?.text.length ?? 0),
       zoom: this._state.zoom,
       theme: this.theme,
     });
     for (const [k, v] of Object.entries(result.vars)) this.deckEl.style.setProperty(k, v);
+    this._fittedBodyPx = result.fontBodyPx;
+    this._fitMeasuredFont();
+    this._updateScrollCue();
+  }
+
+  /**
+   * Measurement is the authority (§7.4): the fit is an
+   * estimate (average glyph ≈ 0.5em, uniform line-height), so
+   * after layout, shrink the body size 1px at a time while the
+   * screen still overflows, down to the 12px floor. At the
+   * floor the screen scrolls internally and the scroll cue
+   * shows. This pass only ever shrinks — growing is the fit's
+   * job, on the next layout pass (resize, zoom, step change).
+   * Skipped when there is no layout yet (jsdom, or not yet
+   * painted: clientHeight is 0 and there is nothing to measure).
+   */
+  private _fitMeasuredFont(): void {
+    const el = this.screenEl;
+    if (el.clientHeight === 0 || this._fittedBodyPx <= 0) return;
+    let size = this._fittedBodyPx;
+    let guard = 0;
+    while (size > FONT_FLOOR_PX && el.scrollHeight > el.clientHeight + 4 && guard < 24) {
+      size = Math.max(FONT_FLOOR_PX, size - 1);
+      this.deckEl.style.setProperty('--wd-font-body', `${size}px`);
+      guard++;
+    }
     this._updateScrollCue();
   }
 
