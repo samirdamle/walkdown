@@ -5,7 +5,9 @@
 - **Owner:** Samir Damle
 - **Author:** Neo (with Samir)
 - **Repo:** `samirdamle/walkdown` (public, MIT, default branch `main`)
-- **Tracking:** Issue [#4](https://github.com/samirdamle/walkdown/issues/4); builds on
+- **Tracking:** Issue [#4](https://github.com/samirdamle/walkdown/issues/4) and
+  [#6](https://github.com/samirdamle/walkdown/issues/6) (defaults cascade, inline
+  CSS + classes, external stylesheet); builds on
   [docs/product-brief.md](product-brief.md) (issue #1, settled §15 answers
   folded into the brief body, issue #3)
 - **Normative language:** the key words **MUST**, **MUST NOT**, **SHOULD**,
@@ -22,8 +24,14 @@ headline alongside it, not underneath it (brief §15.9).
 
 Out of scope for v0.1: presenter mode, speaker notes, timers, live
 collaboration, a visual editor, export to PowerPoint / PDF, per-panel
-layout directives, custom themes beyond light / dark, plugins, native
+layout directives, per-panel classes, plugins, native
 mobile apps. See brief §12.
+
+Scope change (2026-11-24, issue #6): custom themes are IN scope for
+v0.1 — an external stylesheet via frontmatter (§2.1, §11.4) and an
+inline CSS block with classes (§2.8, §11). They were out of scope in
+the first draft; Samir moved them in deliberately, with the scoping
+and degradation rules in §11.
 
 ## 1. Model
 
@@ -37,23 +45,31 @@ Deck
  ├─ title?: string
  ├─ author?: string
  ├─ theme: 'light' | 'dark'            // default 'light'
+ ├─ stylesheets: string[]             // frontmatter §2.1, loaded §11.4
+ ├─ styles: string                    // inline CSS block §2.8 ('' if none)
  └─ sections: Section[]                // one or more; a deck with no
                                         // section markers is one unnamed Section
      ├─ title?: string
+     ├─ classNames: string[]           // `class:` on the section marker (§2.4)
      └─ screens: Screen[]              // one or more
          ├─ title?: string
+         ├─ classNames: string[]       // `class:` on the reveal marker (§4.2)
          ├─ panels: Panel[]            // one or more
          │   ├─ kind: 'text' | 'image' | 'code' | 'quote'
          │   ├─ content: <parsed Markdown AST>
-         │   └─ reveal: 'on-arrival' | 'step'
-         └─ reveal: Reveal             // screen-level reveal settings (§4)
+         │   ├─ reveal: 'on-arrival' | 'step'
+         │   └─ classNames: string[]   // `panel-class:` on the screen marker (§4.2)
+         └─ reveal: Reveal             // screen-level reveal settings (§4),
+                                        // fully resolved by the defaults cascade (§4.3)
 ```
 
 - A **deck** is one Markdown file.
 - A **Section** is a group of screens — a chapter or act. Sections
   are a grouping only: they do not change navigation, steps, or
   layout. They exist so a long deck can be named in parts and so a
-  progress indicator can show them. A Section MUST contain at least
+  progress indicator can show them. A Section MAY carry reveal
+  defaults for its screens (§4.3) and a `class:` (§2.4); neither
+  changes the step count. A Section MUST contain at least
   one screen.
 - A **screen** is one unit of the walk. A screen MUST contain at
   least one panel. A screen with no panels (e.g. an empty stretch
@@ -124,9 +140,32 @@ only in v0.1. Known keys:
 | `title` | string | first `#` heading, or unset |
 | `author` | string | unset |
 | `theme` | `light` \| `dark` | `light` |
+| `defaults` | map: `reveal` (`step` \| `all`), `effect`, `duration` | no deck defaults (spec §4.3) |
+| `stylesheets` | list of strings (URLs / paths) | empty (no external stylesheet) |
 
-Unknown keys MUST be ignored, never an error. If both frontmatter
-`title` and a first `#` heading exist, frontmatter wins.
+```yaml
+---
+title: My deck
+defaults:
+  reveal: step
+  effect: fade-in
+  duration: 500ms
+stylesheets:
+  - ./theme.css
+---
+```
+
+- `defaults` is the deck-level reveal default (§4.3). It holds
+  only `reveal`, `effect`, and `duration` — `sequence` is never a
+  deck default, because it is per-screen (§4.2). An unknown key
+  inside `defaults` MUST be ignored.
+- `stylesheets` is the canonical key for an external stylesheet
+  (§11.4). There is no singular `stylesheet` key: one stylesheet
+  is a one-item list. Relative paths resolve against the deck's
+  URL; remote URLs MUST be `https`. Stylesheets are listed in
+  load order; the first listed loads first.
+- Unknown keys MUST be ignored, never an error. If both frontmatter
+  `title` and a first `#` heading exist, frontmatter wins.
 
 Note: a frontmatter block is not a screen boundary. The `---` that
 closes frontmatter does not start a new screen.
@@ -163,6 +202,19 @@ first screen of the Section:
 - `<!-- section: <title> -->` starts a new Section with the given
   title. The marker MUST appear before any content of the screen
   it opens (at the top of a screen, or at the top of the file).
+- The marker MAY carry semicolon-separated parameters, in the same
+  grammar as reveal markers (§4.1): `reveal`, `effect`, `duration`,
+  and `class`. These are the Section's reveal defaults (§4.3) and
+  its class (§11.3):
+
+  ```markdown
+  <!-- section: Why it matters; reveal: step; effect: slide-in; duration: 250ms; class: dark -->
+  ```
+
+  The first value is always the Section title; there is no bare
+  mode value in a section marker, so the mode is set with the
+  `reveal:` key. `sequence` is NOT a section parameter — it is
+  per-screen only (§4.2).
 - A Section title MUST be non-empty plain text; Markdown
   formatting inside a Section title is not supported.
 - A deck with no `section:` marker is a single unnamed Section
@@ -209,14 +261,42 @@ as a sub-list, with the renderer's standard nested-list styling.
 - Per-panel layout directives (`layout: 2-col`, `size: large`):
   not supported. The engine decides layout; the author decides
   content and order.
-- Custom CSS classes in Markdown, HTML embeds (other than the
-  `section:` and `reveal:` comment markers defined here), plugins:
-  not supported by the spec. A renderer MAY pass through raw HTML
-  at its own risk; the spec does not bless it and a second renderer
-  is not required to match it.
+- HTML embeds (other than the `section:` and `reveal:` comment
+  markers defined here), plugins: not supported by the spec. A
+  renderer MAY pass through raw HTML at its own risk; the spec
+  does not bless it and a second renderer is not required to
+  match it. Custom CSS classes ARE supported — via `class:` /
+  `panel-class:` (§2.4, §4.2) and the inline CSS block (§2.8).
+  Per-panel classes on a single card are deferred to v0.2 (§11.3).
 - Tables, footnotes, and math: if the Markdown parser supports
   them, they render as content *inside* a panel. Layout does not
   special-case them in v0.1.
+
+### 2.8 Inline CSS block
+
+A fenced ```css block as the LAST block in the file is the deck's
+inline stylesheet:
+
+````markdown
+```css
+.hero { background: #111; color: #fff; }
+```
+````
+
+- The renderer MUST extract the block's text into `Deck.styles`
+  (§1.1) and remove the block from the content: it never becomes
+  a screen or a panel, and it MUST NOT count as content for
+  layout (§7).
+- Only one such block is recognised. If a ```css block is not
+  the last block in the file, it is ignored as a stylesheet and
+  renders as an ordinary code block (error-tolerant, §3.3). A
+  deck with no trailing ```css block has `styles` = `''`.
+- Inside the block, `@import` rules and `url()` references to
+  external resources MUST be ignored by the renderer in v0.1 —
+  not an error, the deck still renders. The external stylesheet
+  (§11.4) is the way to load outside CSS.
+- The block is presentation only (§11.2): it MUST NOT hide
+  panels or change the step count.
 
 ## 3. Parsing
 
@@ -225,16 +305,20 @@ as a sub-list, with the renderer's standard nested-list styling.
 ```
 Markdown text
   → frontmatter extraction (§2.1)
+  → inline CSS block extraction (§2.8)
   → screen splitting on `---` (§2.2)
   → per-screen: section marker, title, reveal marker, blocks
   → blocks → panels (§2.5, §2.6)
+  → defaults resolution (§4.3) — each Screen.reveal fully computed
   → steps derived (§1.3)
   → Deck model (§1.1)
 ```
 
 The parser MUST be a pure function of the Markdown text: no DOM,
 no viewport, no network. The same text MUST always produce the
-same model.
+same model. Stylesheet *fetching* is not parsing: the parser
+records the `stylesheets` list from frontmatter, and the renderer
+fetches those URLs (§11.4). The parser never fetches anything.
 
 ### 3.2 Markdown parser choice
 
@@ -255,7 +339,13 @@ still render as far as possible.
   a marker.
 - A malformed `reveal:` or `section:` marker (bad syntax, unknown
   values) is ignored for that marker only, with the defaults of
-  §4.3 applying. The rest of the deck parses normally.
+  §4.3 applying. The rest of the deck parses normally. A malformed
+  `defaults:` map in frontmatter is ignored for the bad key only.
+- A ```css block that is not the last block in the file is
+  ignored as a stylesheet (§2.8). `@import` and external `url()`
+  inside the inline block are ignored (§2.8). A stylesheet that
+  cannot be fetched is a renderer degradation (§11.4), not a
+  parser error — the deck still renders.
 - Unknown frontmatter keys are ignored (§2.1). Unknown reveal
   parameters are ignored (§4.2).
 - A deck that parses to zero screens (empty file, frontmatter
@@ -283,7 +373,7 @@ marker    := "<!--" WS "reveal" ":" param-list WS "-->"
 param-list:= param (";" param)*
 param     := key ":" value | bare-value
 bare-value:= "step" | "all"
-key       := "sequence" | "effect" | "duration"
+key       := "sequence" | "effect" | "duration" | "class" | "panel-class"
 value     := <text up to the next ";" or "-->">
 ```
 
@@ -314,6 +404,8 @@ Rules:
 | `sequence` | list of 1-based panel indices, e.g. `2, 1, 3` | document order (`1, 2, 3, …`) |
 | `effect` | `fade-in` \| `slide-in` \| `none` | `fade-in` |
 | `duration` | CSS time, e.g. `1s`, `250ms` | `300ms` |
+| `class` | space-separated class names, e.g. `hero dark` | none |
+| `panel-class` | space-separated class names, applied to every panel on this screen | none |
 
 - `sequence` lists the order panels reveal in. It MUST contain
   each panel index exactly once to be valid; an invalid sequence
@@ -327,14 +419,58 @@ Rules:
 - `duration` is the enter animation duration for each panel.
   Values outside 0–2000ms MUST be clamped into that range.
   A malformed duration is ignored and the default used.
+- `class` puts class names on the screen element; `panel-class`
+  puts class names on every panel of this screen (§11.3). They
+  are styling, not reveal settings: they do not participate in
+  the defaults cascade (§4.3), and a screen's `class` does not
+  inherit to its panels (use `panel-class:` for that). Class
+  names are space-separated; a token that is not a valid CSS
+  class name MUST be ignored. `sequence` takes commas inside
+  its value; `class` and `panel-class` take spaces, never commas.
 - Unknown keys MUST be ignored, never an error — this is how
   the grammar extends without breaking old decks.
 
-### 4.3 Defaults
+### 4.3 Defaults — the behaviour cascade
 
-No marker, or `<!-- reveal: all -->`: all panels visible on
-arrival, one step for the screen. `<!-- reveal: step -->`:
-one panel per step, `fade-in`, `300ms`, document order.
+Reveal settings cascade from the deck down to the screen. The
+two cascades in this spec are separate: this is the *behaviour*
+cascade (which panels reveal, how, how fast). The *style*
+cascade (which CSS applies) is §11.2. Do not conflate them.
+
+Precedence, most local wins, **per property** (not whole-object
+replace):
+
+| Level | Source | Sets |
+| ----- | ------ | ---- |
+| 1 (lowest) | Spec base defaults | mode `all`, effect `fade-in`, duration `300ms`, sequence = document order |
+| 2 | Frontmatter `defaults:` (§2.1) | `reveal`, `effect`, `duration` |
+| 3 | Section marker (§2.4) | `reveal`, `effect`, `duration` |
+| 4 (highest) | Screen reveal marker (§4.1) | mode, `sequence`, `effect`, `duration` |
+
+Rules:
+
+- A level that sets only one property overrides only that
+  property. Example: deck defaults say `effect: fade-in;
+  duration: 500ms`, a Section says `duration: 250ms`, a
+  screen says nothing — that screen reveals with `fade-in`
+  at `250ms`. A screen that says `duration: 1s` keeps the
+  deck's `fade-in`.
+- `sequence` is NOT inheritable: only the screen's own reveal
+  marker sets it, and it is validated per §4.2. A `sequence`
+  key in frontmatter `defaults:` or in a section marker MUST
+  be ignored.
+- `class` and `panel-class` do not participate in this cascade
+  (§4.2).
+- The parser MUST resolve the cascade at parse time (§3.1):
+  `Screen.reveal` in the model (§1.1) is fully computed, and
+  the renderer MUST NOT re-resolve defaults. A fixture deck
+  MUST parse to the expected resolved reveal settings (§9).
+
+Base case, with no frontmatter defaults, no section parameters,
+and no screen marker (or `<!-- reveal: all -->`): all panels
+visible on arrival, one step for the screen. `<!-- reveal:
+step -->`: one panel per step, `fade-in`, `300ms`, document
+order.
 
 ## 5. Steps and reveal (runtime)
 
@@ -566,7 +702,10 @@ cannot be met, go one rung down.
 A renderer conforms to this spec when, for every fixture deck:
 
 - the parsed model matches the expected model exactly
-  (screens, Sections, panels, reveal settings, steps);
+  (screens, Sections, panels, reveal settings, steps) —
+  including resolved reveal settings from the defaults
+  cascade (§4.3), class names (§11.3), the `stylesheets`
+  list, and the inline `styles` text (§2.8);
 - the walk state machine (§6.2) produces the expected
   `(screenIndex, stepIndex)` for a scripted input sequence;
 - at 360 px, 768 px, and 1440 px widths, 1–8 panels per screen
@@ -575,6 +714,10 @@ A renderer conforms to this spec when, for every fixture deck:
 - internal scroll, stepwise reveal, Next / Previous / Start /
   End, keyboard + swipe, deep links, and reduced-motion all
   work;
+- a stylesheet that cannot be fetched degrades to the default
+  theme and never produces a blank deck (§11.4), and deck CSS
+  stays scoped to the deck container and never hides a panel
+  (§11.2);
 - the no-JS render is a readable linear document.
 
 Fixture decks (to be written in Phase 2, against this spec):
@@ -586,6 +729,10 @@ Fixture decks (to be written in Phase 2, against this spec):
   stepped-reveal deck (with `effect` / `duration` / `sequence`),
   a long-content deck that must scroll internally, and a
   multi-Section deck.
+- A defaults-cascade deck (frontmatter defaults overridden by
+  a Section and by a screen, with the resolved settings
+  asserted per §4.3), and a styled deck (external stylesheet
+  + trailing ```css block + `class:` / `panel-class:`).
 
 Screenshot review at every phase: a human eye is the gate for
 "beautiful", not a test. Tests prove correctness; screenshots
@@ -612,6 +759,10 @@ questions in brief §15 are settled and MUST NOT be re-asked.
 4. **Progress indicator form:** dots or a thin progress bar
    in v0.1 (§6.5)? Renderer decision at Phase 3; either
    satisfies the spec.
+5. **Per-panel classes:** deferred to v0.2 (§11.3). v0.1 has
+   no syntax for a class on a single card; `panel-class:`
+   applies to every panel on a screen. The v0.2 syntax is
+   undecided and MUST NOT be invented in v0.1.
 
 Settled 2026-11-24, removed from the open list above: reveal-marker
 properties are separated by `;` and commas are used only inside
@@ -620,6 +771,79 @@ a property's value, for the `sequence` list — e.g.
 `sequence` is the reveal order (panels appear in that order,
 positions unchanged). This replaces the first draft's
 comma-separated syntax.
+
+## 11. Styling
+
+### 11.1 Two cascades, kept separate
+
+- The *behaviour* cascade (§4.3) decides reveal: mode,
+  sequence, effect, duration. It is resolved by the parser.
+- The *style* cascade (this section) decides CSS: which
+  stylesheets load, in what order, and which classes the
+  deck's elements carry. It is applied by the renderer.
+
+A `class:` never changes reveal, and a reveal setting never
+changes CSS. The two cascades share the marker grammar
+(§4.1) and nothing else.
+
+### 11.2 The style cascade
+
+In load / application order, most deck-specific last:
+
+1. **Renderer defaults** — the built-in light / dark theme
+   (§2.1 `theme`). Always present.
+2. **External stylesheet(s)** — frontmatter `stylesheets:`
+   (§2.1, §11.4), in listed order.
+3. **Inline CSS block** — the trailing ```css block (§2.8).
+   It is the most deck-specific source, so it wins over
+   the external stylesheet on equal specificity.
+
+Classes are hooks, not a layer: a `class:` or `panel-class:`
+(§11.3) names classes that the stylesheets above define.
+An element carrying a class no stylesheet defines renders
+with the renderer defaults — a missing class is never an
+error.
+
+### 11.3 Classes and scoping
+
+- A Section element carries its `class:` (§2.4), a screen
+  element carries its `class:` (§4.2), and every panel on a
+  screen carries that screen's `panel-class:` (§4.2).
+- Deck CSS MUST be scoped to the deck container. The
+  reference renderer MUST use Shadow DOM for the deck
+  (it is Web Components — settled, brief §15.1); a renderer
+  without Shadow DOM MUST rewrite deck selectors under the
+  deck container instead. Deck CSS MUST NOT affect the
+  renderer chrome or the host page, and host-page CSS MUST
+  NOT leak into the deck except through the deck's own
+  stylesheets.
+- Deck CSS is presentation only. It MUST NOT hide panels
+  (`display: none`, `visibility: hidden`, zero size) or
+  change the step count. A class that hides a panel breaks
+  navigation (§6) and is an author error the renderer
+  SHOULD guard against where it can, and the spec does not
+  bless it anywhere.
+- Per-panel classes (a class on one specific card) are
+  deferred to v0.2 (§10.5). v0.1 has no syntax for them.
+
+### 11.4 External stylesheet — loading
+
+- Fetching is the renderer's job, not the parser's (§3.1).
+  The parser records the `stylesheets` list; the renderer
+  fetches each URL, in listed order, after parsing.
+- Relative paths resolve against the deck's URL. Remote
+  URLs MUST be `https`; an `http:` URL MUST be ignored
+  (and the deck still renders).
+- Failure degrades, never fails the deck: a stylesheet
+  that cannot be fetched (404, offline, blocked) MUST be
+  skipped, the deck MUST render with the default theme
+  plus whatever stylesheets did load, and the renderer
+  SHOULD log a console warning. A missing stylesheet
+  MUST NOT produce a blank deck or an error screen.
+- A stylesheet load MUST NOT block the first paint of the
+  deck's content beyond what the renderer's normal
+  loading state already does; the deck content is
+  readable with the default theme while stylesheets load.
 
 ---
 
