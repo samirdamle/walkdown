@@ -65,6 +65,17 @@ import { DEFAULT_CSS } from './styles.js';
 const TAP_MAX_MOVE_PX = 8;
 const IDLE_HIDE_MS = 2500;
 const SCROLL_STEP_FRACTION = 0.4;
+/**
+ * Bottom-controls reserve (§7.2): the controls are 40px buttons
+ * with `--wd-space` padding top and bottom, so their height is
+ * 40px + 2× space (8–16px) = 56–72px. When the element has no
+ * layout yet (jsdom, or not yet painted) the height measures 0 —
+ * fall back to the smallest real height, 56px. The clearance
+ * keeps the lowest panel a small margin clear of the controls
+ * even when the fit is exact.
+ */
+const CONTROLS_HEIGHT_FALLBACK_PX = 56;
+const CONTROLS_CLEARANCE_PX = 8;
 
 /** A tap that starts a scroll/drag, or on an interactive element, is not navigation (§6.3). */
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -86,6 +97,7 @@ export class WalkdownDeckElement extends HTMLElement {
   private prevBtn!: HTMLButtonElement;
   private nextBtn!: HTMLButtonElement;
   private scrollCueEl!: HTMLDivElement;
+  private controlsEl!: HTMLDivElement;
   private endNoteEl!: HTMLDivElement;
   private emptyEl!: HTMLDivElement;
   private externalStyleEl!: HTMLStyleElement;
@@ -138,6 +150,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.prevBtn = this.shadow.querySelector('.wd-prev') as HTMLButtonElement;
     this.nextBtn = this.shadow.querySelector('.wd-next') as HTMLButtonElement;
     this.scrollCueEl = this.shadow.querySelector('.wd-scroll-cue') as HTMLDivElement;
+    this.controlsEl = this.shadow.querySelector('.wd-controls') as HTMLDivElement;
     this.endNoteEl = this.shadow.querySelector('.wd-end-note') as HTMLDivElement;
     this.emptyEl = this.shadow.querySelector('.wd-empty') as HTMLDivElement;
     this.externalStyleEl = this.shadow.querySelector('#wd-external') as HTMLStyleElement;
@@ -395,24 +408,43 @@ export class WalkdownDeckElement extends HTMLElement {
     return { width: w > 0 ? w : 1440, height: h > 0 ? h : 900 };
   }
 
+  /**
+   * Bottom reserve (§7.2): the height the bottom controls
+   * occupy, plus a small clearance, so panels never sit
+   * underneath them. Measured for real when the element has
+   * layout; the fallback covers jsdom / not-yet-painted.
+   * Auto-hide only changes the controls' opacity, never their
+   * height, so the reserve is the same whether they are
+   * currently visible or idle-hidden — they can reappear at
+   * any moment, and the layout must already clear them.
+   */
+  private _controlsReservePx(): number {
+    const measured = this.controlsEl?.offsetHeight ?? 0;
+    const height = measured > 0 ? measured : CONTROLS_HEIGHT_FALLBACK_PX;
+    return height + CONTROLS_CLEARANCE_PX;
+  }
+
   /** Re-run the layout engine for the current screen (spec §7.2). Debounced by ResizeObserver's own cadence. */
   private _applyLayout(): void {
     if (this._deck === null || this.screens.length === 0) return;
     const screen = this.screens[this._state.screenIndex];
     if (screen === undefined) return;
     const { width, height } = this._measureContainer();
-    // The fit runs on the *visible* panels only: a step that
-    // reveals another panel can shrink the type. The column
-    // count comes from the total panel count (inside
-    // computeLayout), so the grid — and every visible panel's
-    // position in it — stays put across steps; only the type
-    // size changes, never a position.
-    const visible = visiblePanelIndexes(screen, this._state.stepIndex);
+    // The fit runs on ALL panels' content — the whole screen,
+    // visible or not yet revealed — so the fitted size is fixed
+    // for the screen: a step that reveals another panel never
+    // changes the type. The column count comes from the total
+    // panel count (inside computeLayout), so the grid — and
+    // every visible panel's position in it — stays put across
+    // steps; only the type size changes, never a position.
+    // The fit also reserves the bottom controls' height plus
+    // clearance, so panels never run underneath them.
     const result = computeLayout({
       containerWidth: width,
       containerHeight: height,
       panelCount: screen.panels.length,
-      contentLengths: visible.map((i) => screen.panels[i]?.text.length ?? 0),
+      contentLengths: screen.panels.map((p) => p.text.length),
+      reservedBottomPx: this._controlsReservePx(),
       zoom: this._state.zoom,
       theme: this.theme,
     });
@@ -429,19 +461,35 @@ export class WalkdownDeckElement extends HTMLElement {
    * screen still overflows, down to the 12px floor. At the
    * floor the screen scrolls internally and the scroll cue
    * shows. This pass only ever shrinks — growing is the fit's
-   * job, on the next layout pass (resize, zoom, step change).
+   * job, on the next layout pass (resize, screen change, zoom
+   * change — never a step change).
+   *
+   * The measurement sees the FULL screen, not just the visible
+   * panels: hidden panels take no space (§5), so they are
+   * revealed synchronously for the measurement (the
+   * `wd-screen--measuring` class makes them take layout space
+   * while staying invisible). The class is added and removed
+   * in this same task, before any paint, so nothing flickers.
+   * The screen's bottom padding already includes the controls
+   * reserve (`--wd-reserve-bottom`), so the overflow check
+   * measures against the height available above the controls.
    * Skipped when there is no layout yet (jsdom, or not yet
    * painted: clientHeight is 0 and there is nothing to measure).
    */
   private _fitMeasuredFont(): void {
     const el = this.screenEl;
     if (el.clientHeight === 0 || this._fittedBodyPx <= 0) return;
-    let size = this._fittedBodyPx;
-    let guard = 0;
-    while (size > FONT_FLOOR_PX && el.scrollHeight > el.clientHeight + 4 && guard < 24) {
-      size = Math.max(FONT_FLOOR_PX, size - 1);
-      this.deckEl.style.setProperty('--wd-font-body', `${size}px`);
-      guard++;
+    this.screenEl.classList.add('wd-screen--measuring');
+    try {
+      let size = this._fittedBodyPx;
+      let guard = 0;
+      while (size > FONT_FLOOR_PX && el.scrollHeight > el.clientHeight + 4 && guard < 24) {
+        size = Math.max(FONT_FLOOR_PX, size - 1);
+        this.deckEl.style.setProperty('--wd-font-body', `${size}px`);
+        guard++;
+      }
+    } finally {
+      this.screenEl.classList.remove('wd-screen--measuring');
     }
     this._updateScrollCue();
   }
@@ -460,7 +508,14 @@ export class WalkdownDeckElement extends HTMLElement {
       }
     }
     this._render({ animate: opts.animate, jump: opts.jump ?? false, prev });
-    this._applyLayout();
+    // The fit is fixed per screen from its total content (§7.2):
+    // re-layout only when the screen itself changes. A step that
+    // reveals another panel must not change the type size — that
+    // size was already computed from the whole screen. The scroll
+    // cue still needs updating on a step change: a newly revealed
+    // panel can make the screen scrollable.
+    if (clamped.screenIndex !== prev.screenIndex) this._applyLayout();
+    else this._updateScrollCue();
   }
 
   private _setZoom(zoom: number): void {
@@ -669,7 +724,14 @@ export class WalkdownDeckElement extends HTMLElement {
   /** Controls auto-hide on idle on desktop (§6.5); never on touch. */
   private _armIdleTimer(): void {
     if (this._idleTimer !== null) clearTimeout(this._idleTimer);
+    // Showing the controls again re-checks the fit (§7.2) — but
+    // only on the actual transition, not on every pointer move:
+    // auto-hide only changes opacity, never height, so the
+    // reserve is the same either way; the re-check keeps the
+    // guarantee if that ever changes.
+    const wasIdle = this.deckEl.classList.contains('wd-deck--idle');
     this.deckEl.classList.remove('wd-deck--idle');
+    if (wasIdle) this._applyLayout();
     let coarse = false;
     try {
       coarse = window.matchMedia('(pointer: coarse)').matches;
@@ -677,7 +739,11 @@ export class WalkdownDeckElement extends HTMLElement {
       coarse = false;
     }
     if (coarse) return;
-    this._idleTimer = setTimeout(() => this.deckEl.classList.add('wd-deck--idle'), IDLE_HIDE_MS);
+    this._idleTimer = setTimeout(() => {
+      this.deckEl.classList.add('wd-deck--idle');
+      // Hiding the controls re-checks the fit too (§7.2).
+      this._applyLayout();
+    }, IDLE_HIDE_MS);
   }
 
   private _onPointerDown = (e: PointerEvent): void => {

@@ -89,8 +89,23 @@ export interface LayoutInput {
   containerHeight: number;
   /** Number of panels on the screen (total, not just visible — the column count comes from this, so the grid stays put across steps). */
   panelCount: number;
-  /** Plain-text length (characters) of each *visible* panel, in document order. The content-fit (§2.2) runs on these, so a step that reveals more panels can shrink the type. */
+  /**
+   * Plain-text length (characters) of each panel on the screen — ALL
+   * panels, in document order, not just the visible ones. The
+   * content-fit (§2.2) runs on the total content, so the fitted
+   * size is fixed for the screen across steps: revealing another
+   * panel must never change the type size.
+   */
   contentLengths: number[];
+  /**
+   * Height (CSS px) reserved at the bottom of the screen for the
+   * navigation controls plus a small clearance (§7.2). Subtracted
+   * from the container height before fitting, so panels never sit
+   * underneath the bottom controls. The renderer measures the
+   * controls for real (and falls back to their built-in size when
+   * it cannot measure yet). Default 0 — no controls to clear.
+   */
+  reservedBottomPx?: number;
   /** Zoom steps from default (default 0). */
   zoom?: number;
   theme?: Theme;
