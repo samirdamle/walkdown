@@ -154,21 +154,6 @@ export function fitFontSize(input: FitFontSizeInput): number {
   return Math.floor(lo * 10) / 10;
 }
 
-/**
- * Panel-count factor (design-policies §2.1): more panels, less
- * room per panel, smaller type. It used to scale the body size
- * directly; the content-fit (§2.2) now subsumes that — more
- * panels means more content to fit, so the fit shrinks the
- * type by itself. Retained as a public helper (and covered by
- * tests); the title keeps its own, gentler factor below.
- */
-export function countFactor(panelCount: number): number {
-  if (panelCount <= 1) return 1.0;
-  if (panelCount <= 3) return 0.92;
-  if (panelCount <= 6) return 0.84;
-  return 0.78;
-}
-
 /** Title factor (§2.1): the title shrinks less than body text — it is one line shared by all panels. */
 export function titleFactor(panelCount: number): number {
   if (panelCount <= 1) return 1.0;
@@ -238,7 +223,6 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   // (§2.4), then the absolute 12px floor applies — zooming out
   // can never take text below 12px.
   const reserved = Math.max(0, input.reservedBottomPx ?? 0);
-  const availHeight = Math.max(1, height - reserved);
   const applyZoom = (size: number): number => Math.max(FONT_FLOOR_PX, size * zoomFactor(zoom));
   const titleBasePx = clampPx(24, (3.2 * vw + 10) * tf, 56 * tf);
   const fontTitlePx = round1(applyZoom(titleBasePx));
@@ -246,7 +230,6 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   const fontSmallPx = round1(applyZoom(clampPx(12, 0.85 * vw + 7, 14)));
 
   const columns = columnCount(width, panelCount);
-  const rows = Math.ceil(panelCount / columns);
 
   const gapPanelPx = round1(clampPx(12, 2 * vw + 4, 28));
   const padPanelPx = round1(clampPx(16, 2 * vw + 8, 32));
@@ -279,23 +262,6 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   });
   const fontBodyPx = floor1(applyZoom(fitBodyPx));
 
-  // Scroll estimation (§7.4): the same estimate, at the final
-  // (zoomed) body size, against the height available above the
-  // bottom controls. True when even the floor does not fit —
-  // the screen then scrolls internally instead of shrinking.
-  const scroll =
-    estimateScreenHeight({
-      fontBodyPx,
-      contentLengths: input.contentLengths,
-      columns,
-      columnWidth,
-      screenPadYPx,
-      titlePx: fontTitlePx,
-      gapTitlePx,
-      padPanelPx,
-      gapPanelPx,
-    }) > availHeight;
-
   const vars: Record<string, string> = {
     ...themeVars(theme),
     '--wd-cols': String(columns),
@@ -322,16 +288,7 @@ export function computeLayout(input: LayoutInput): LayoutResult {
 
   return {
     columns,
-    rows,
     fontBodyPx,
-    /** Pre-zoom fit result (§2.2) — what the fit chose before the reader's zoom multiplier. */
-    fitFontBodyPx: fitBodyPx,
-    fontTitlePx,
-    fontCodePx,
-    fontSmallPx,
-    gapPanelPx,
-    padPanelPx,
-    scroll,
     vars,
   };
 }

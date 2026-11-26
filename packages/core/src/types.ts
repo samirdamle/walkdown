@@ -122,18 +122,13 @@ export interface LayoutInput {
 /** Output of the layout engine: CSS variables + column count (§7.2). */
 export interface LayoutResult {
   columns: number;
-  rows: number;
-  /** Computed type sizes in px, after clamp and zoom. */
+  /**
+   * Computed body type size in px, after clamp and zoom — the
+   * measurement pass's starting size (§7.4). The renderer
+   * applies it as `--wd-font-body` and shrinks from it if the
+   * real measurement overflows.
+   */
   fontBodyPx: number;
-  /** The content-fit result before the zoom multiplier (§2.2). */
-  fitFontBodyPx: number;
-  fontTitlePx: number;
-  fontCodePx: number;
-  fontSmallPx: number;
-  gapPanelPx: number;
-  padPanelPx: number;
-  /** True when the screen's content at minimum readable size exceeds the container height — the screen scrolls internally (§7.4). */
-  scroll: boolean;
   /** CSS variables to set on `.wd-deck` (incl. `--wd-cols` and the settled theme tokens). */
   vars: Record<string, string>;
 }
