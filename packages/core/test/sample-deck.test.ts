@@ -97,12 +97,14 @@ describe('examples/walkdown-itself.md', () => {
   it('the last Section overrides to slide-in at 250ms with the dark class', () => {
     expect(deck.sections[3]?.classNames).toEqual(['dark']);
     expect(screens[9]?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'slide-in', durationMs: 250 });
-    // Screen 11 inherits the Section override (no screen marker of its own for effect/duration)…
+    // Screen 11 inherits the Section override (its own marker sets
+    // only the step reveal, no effect/duration)…
     expect(screens[10]?.reveal.effect).toBe('slide-in');
     expect(screens[10]?.reveal.durationMs).toBe(250);
-    // …and carries the accent class, with big on every panel.
-    expect(screens[10]?.classNames).toEqual(['accent']);
-    expect(screens[10]?.panels.every((p) => p.classNames.includes('big'))).toBe(true);
+    // …and carries no classes of its own: the accent/big demo was
+    // removed in #61, so the screen looks like every other screen.
+    expect(screens[10]?.classNames).toEqual([]);
+    expect(screens[10]?.panels.every((p) => p.classNames.length === 0)).toBe(true);
   });
 
   it('the effects screen gives each panel its own effect', () => {
@@ -147,9 +149,12 @@ describe('examples/walkdown-itself.md', () => {
 
   it('extracts the trailing CSS block as the deck stylesheet', () => {
     expect(deck.styles).toContain('.hero');
-    expect(deck.styles).toContain('.accent');
-    expect(deck.styles).toContain('.big');
-    expect(deck.styles).toContain('#2E7D6B');
+    // The accent/big demo was removed in #61: no border rule, no
+    // bigger-type rule — and the green in the old accent rule was the
+    // deck's own copy of the theme accent, not the theme itself.
+    expect(deck.styles).not.toContain('.accent');
+    expect(deck.styles).not.toContain('.big');
+    expect(deck.styles).not.toContain('#2E7D6B');
   });
 
   it('the deck stylesheet left-aligns the hero and sets Open Sans on .wd-deck', () => {

@@ -115,13 +115,13 @@ Simple, magical presentation from Markdown
 
 ---
 
-<!-- reveal: step; class: accent; panel-class: big -->
+<!-- reveal: step -->
 
 # Make it look like yours
 
 - A deck can link to an external stylesheet in frontmatter, under `stylesheets`. This deck links to one.
 - A CSS block at the end of the file styles this deck only. It is the last block in the file, and the renderer takes it out of the content.
-- Classes tie the two together. This screen carries the `accent` class, and every panel on it carries the `big` class.
+- Classes tie the two together: the first screen carries `hero`, this section carries `dark`, and the stylesheet says what each one looks like.
 
 ---
 
@@ -176,13 +176,5 @@ Simple, magical presentation from Markdown
 
 .hero {
   text-align: left;
-}
-
-.accent {
-  border-left: 4px solid #2E7D6B;
-}
-
-.big {
-  font-size: 1.125em;
 }
 ```
