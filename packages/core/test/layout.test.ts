@@ -246,28 +246,22 @@ describe('LayoutResult shape (§7.2)', () => {
 });
 
 describe('CSS variables', () => {
-  it('emits the settled theme tokens and the layout tokens', () => {
+  it('emits only layout tokens — no theme vars (issue #75)', () => {
     const light = layout(1440, 900, 3);
     expect(light.vars['--wd-cols']).toBe('3');
-    expect(light.vars['--wd-color-bg']).toBe('#FAFAF7');
-    expect(light.vars['--wd-color-ink']).toBe('#1B1B18');
-    expect(light.vars['--wd-color-accent']).toBe('#2E7D6B');
-    expect(light.vars['--wd-font-family-body']).toContain('system-ui');
-    expect(light.vars['--wd-font-family-title']).toContain('Georgia');
     expect(light.vars['--wd-content-max-width']).toBe('1200px');
     expect(light.vars['--wd-image-max-height']).toBe('min(45vh, 420px)');
     expect(light.vars['--wd-font-floor']).toBe('14px');
-
-    const dark = computeLayout({
-      containerWidth: 1440,
-      containerHeight: 900,
-      panelCount: 3,
-      contentLengths: [60, 60, 60],
-      theme: 'dark',
-    });
-    expect(dark.vars['--wd-color-bg']).toBe('#18181C');
-    expect(dark.vars['--wd-color-ink']).toBe('#F5F5F0');
-    expect(dark.vars['--wd-color-accent']).toBe('#7FC8B8');
+    // Theme vars live in the renderer's #wd-theme stylesheet
+    // layer now (spec §11.2): computeLayout must not emit them,
+    // or the layout pass would set them inline on .wd-deck and
+    // a deck stylesheet could only override with !important.
+    // The values themselves are still pinned — by themeVars()
+    // in the renderer (styles.test.ts), not here.
+    for (const name of Object.keys(light.vars)) {
+      expect(name.startsWith('--wd-color-')).toBe(false);
+      expect(name.startsWith('--wd-font-family-')).toBe(false);
+    }
   });
 });
 

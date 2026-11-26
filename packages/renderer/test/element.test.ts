@@ -34,6 +34,30 @@ function panelVisible(el: WalkdownDeckElement, i: number): boolean {
 function varOf(el: WalkdownDeckElement, name: string): string {
   return deckEl(el).style.getPropertyValue(name).trim();
 }
+/** The nine theme vars (core themeVars) — the ones that must never be inline style (§11.2). */
+const THEME_VAR_NAMES = [
+  '--wd-font-family-body',
+  '--wd-font-family-title',
+  '--wd-font-family-code',
+  '--wd-color-bg',
+  '--wd-color-panel',
+  '--wd-color-ink',
+  '--wd-color-muted',
+  '--wd-color-border',
+  '--wd-color-accent',
+];
+/**
+ * The theme default for a theme var: the fallback in the
+ * `#wd-theme` stylesheet layer's private alias. (jsdom does not
+ * compute shadow-DOM stylesheet rules, so the layer's text —
+ * not computed style — is what a test can see.)
+ */
+function themeVarOf(el: WalkdownDeckElement, name: string): string {
+  const css = (el.shadowRoot?.querySelector('#wd-theme') as HTMLStyleElement)?.textContent ?? '';
+  const prefix = `--_${name.slice(2)}: var(${name}, `;
+  const line = css.split('\n').find((l) => l.trim().startsWith(prefix));
+  return line === undefined ? '' : line.trim().slice(prefix.length, -2).trim();
+}
 function progressText(el: WalkdownDeckElement): string {
   return (el.shadowRoot?.querySelector('.wd-progress-text') as HTMLElement).textContent ?? '';
 }
@@ -326,7 +350,7 @@ describe('Start over button and zoom-in effect', () => {
     expect(note).toContain('left: 50%;');
     expect(note).toContain('transform: translateX(-50%);');
     const button = rule('\\.wd-end-note button');
-    expect(button).toContain('border: 1px solid var(--wd-color-border);');
+    expect(button).toContain('border: 1px solid var(--_wd-color-border);');
     expect(button).toContain('border-radius: 999px;');
     expect(button).not.toContain('margin-left');
     // And the button is still centred and clickable at the end.
@@ -403,10 +427,10 @@ describe('zoom and layout', () => {
 describe('themes and stylesheets', () => {
   it('applies the settled light palette by default', () => {
     const el = createDeck(SAMPLE_DECK);
-    expect(varOf(el, '--wd-color-bg')).toBe('#FAFAF7');
-    expect(varOf(el, '--wd-color-ink')).toBe('#1B1B18');
-    expect(varOf(el, '--wd-color-accent')).toBe('#2E7D6B');
-    expect(varOf(el, '--wd-font-family-title')).toContain('Georgia');
+    expect(themeVarOf(el, '--wd-color-bg')).toBe('#FAFAF7');
+    expect(themeVarOf(el, '--wd-color-ink')).toBe('#1B1B18');
+    expect(themeVarOf(el, '--wd-color-accent')).toBe('#2E7D6B');
+    expect(themeVarOf(el, '--wd-font-family-title')).toContain('Georgia');
   });
 
   it('the sample deck overrides its fonts to Open Sans via its inline CSS', async () => {
@@ -425,21 +449,81 @@ describe('themes and stylesheets', () => {
     expect(inline.textContent).toContain('text-align: left;');
     expect(inline.textContent).not.toContain('text-align: center;');
     // The deck still renders with the default theme underneath.
-    expect(varOf(el, '--wd-font-family-title')).toContain('Georgia');
+    // (The !important in the deck file is now removable — the
+    // theme layer no longer sets inline style — but the deck
+    // file itself is left as-is here; removal is a follow-up.)
+    expect(themeVarOf(el, '--wd-font-family-title')).toContain('Georgia');
+    expect(panelVisible(el, 0)).toBe(true);
+  });
+
+  it('sets no theme var as inline style — the theme lives in the #wd-theme layer (§11.2)', () => {
+    const el = createDeck(SAMPLE_DECK);
+    for (const name of THEME_VAR_NAMES) expect(varOf(el, name)).toBe('');
+    // …and not after a layout pass, a step, or a theme change either.
+    el.setContainerSize(800, 600);
+    el.next();
+    el.setAttribute('theme', 'dark');
+    for (const name of THEME_VAR_NAMES) expect(varOf(el, name)).toBe('');
+    // Layout vars still go inline on every pass — that half is unchanged.
+    expect(varOf(el, '--wd-font-body')).not.toBe('');
+    expect(varOf(el, '--wd-reserve-bottom')).not.toBe('');
+  });
+
+  it('the theme layer is present from construction and follows the theme', () => {
+    const el = document.createElement('walkdown-deck') as WalkdownDeckElement;
+    document.body.appendChild(el);
+    const theme = el.shadowRoot?.querySelector('#wd-theme') as HTMLStyleElement;
+    expect(theme.textContent).toContain('--_wd-color-bg: var(--wd-color-bg, #FAFAF7);');
+    expect(theme.textContent).toContain('--_wd-color-accent: var(--wd-color-accent, #2E7D6B);');
+    el.setAttribute('theme', 'dark');
+    expect(theme.textContent).toContain('--_wd-color-bg: var(--wd-color-bg, #18181C);');
+    expect(theme.textContent).toContain('--_wd-color-accent: var(--wd-color-accent, #7FC8B8);');
+    el.setAttribute('theme', 'light');
+    expect(theme.textContent).toContain('--_wd-color-bg: var(--wd-color-bg, #FAFAF7);');
+  });
+
+  it('a deck stylesheet can override a theme var without !important (§11.2)', () => {
+    const el = createDeck('# Tinted\n\n- Panel.\n\n```css\n.wd-deck { --wd-color-accent: #B00020; }\n```\n');
+    const inline = el.shadowRoot?.querySelector('#wd-inline') as HTMLStyleElement;
+    expect(inline.textContent).toContain('--wd-color-accent: #B00020');
+    expect(inline.textContent).not.toContain('!important');
+    // The theme layer's alias reads the public var, so the
+    // deck's value is what the chrome resolves — and nothing
+    // inline (which would beat any stylesheet rule) sets it
+    // instead. jsdom does not compute shadow-DOM stylesheet
+    // rules, so the rendered win itself wants a live-demo
+    // check; what a test can pin is the mechanism.
+    const theme = el.shadowRoot?.querySelector('#wd-theme') as HTMLStyleElement;
+    expect(theme.textContent).toContain('--_wd-color-accent: var(--wd-color-accent, #2E7D6B);');
+    expect(varOf(el, '--wd-color-accent')).toBe('');
+    expect(panelVisible(el, 0)).toBe(true);
+  });
+
+  it('a deck stylesheet can re-theme one screen without !important (§11.2)', () => {
+    const el = createDeck('# Tinted\n\n- Panel.\n\n```css\n.wd-screen { --wd-color-muted: #B00020; }\n```\n');
+    const inline = el.shadowRoot?.querySelector('#wd-inline') as HTMLStyleElement;
+    expect(inline.textContent).toContain('.wd-screen');
+    expect(inline.textContent).toContain('--wd-color-muted: #B00020');
+    expect(inline.textContent).not.toContain('!important');
+    // The alias is defined on every element inside .wd-deck, so
+    // it re-resolves on the screen from the screen's own public
+    // var — the per-screen override reaches the chrome.
+    const theme = el.shadowRoot?.querySelector('#wd-theme') as HTMLStyleElement;
+    expect(theme.textContent).toContain('.wd-deck, .wd-deck * {');
     expect(panelVisible(el, 0)).toBe(true);
   });
 
   it('switches to the dark palette from frontmatter theme:', () => {
     const el = createDeck('---\ntheme: dark\n---\n\n# Dark deck\n\n- One panel.\n');
-    expect(varOf(el, '--wd-color-bg')).toBe('#18181C');
-    expect(varOf(el, '--wd-color-ink')).toBe('#F5F5F0');
-    expect(varOf(el, '--wd-color-accent')).toBe('#7FC8B8');
+    expect(themeVarOf(el, '--wd-color-bg')).toBe('#18181C');
+    expect(themeVarOf(el, '--wd-color-ink')).toBe('#F5F5F0');
+    expect(themeVarOf(el, '--wd-color-accent')).toBe('#7FC8B8');
   });
 
   it('lets the theme attribute override the deck theme', () => {
     const el = createDeck(SAMPLE_DECK);
     el.setAttribute('theme', 'dark');
-    expect(varOf(el, '--wd-color-bg')).toBe('#18181C');
+    expect(themeVarOf(el, '--wd-color-bg')).toBe('#18181C');
   });
 
   it('loads the external stylesheet into the Shadow DOM, in order', async () => {
@@ -458,7 +542,7 @@ describe('themes and stylesheets', () => {
       expect(screenEl(el).querySelector('.wd-title')?.textContent).toBe('Still here');
     });
     expect(panelVisible(el, 0)).toBe(true);
-    expect(varOf(el, '--wd-color-bg')).toBe('#FAFAF7');
+    expect(themeVarOf(el, '--wd-color-bg')).toBe('#FAFAF7');
   });
 
   it('ignores an http: stylesheet and still renders', async () => {
@@ -866,13 +950,13 @@ describe('navigation menu (§6.6)', () => {
     // The current item keeps its bold, but the old treatment —
     // amber left border, rounded corners, peach background —
     // is gone; only the ocean-green tint remains. The tint now
-    // derives from the accent var: when the whole theme went
+    // derives from the accent alias: when the whole theme went
     // ocean green, the accent BECAME the tint's green, so the
     // hardcoded value is gone and the tint follows the theme.
     // (The two negative assertions that used to sit here kept
     // the amber accent out of the tint; they are retired now
     // the accent IS the ocean green.)
-    expect(DEFAULT_CSS).toContain('background: color-mix(in srgb, var(--wd-color-accent) 20%, var(--wd-color-panel));');
+    expect(DEFAULT_CSS).toContain('background: color-mix(in srgb, var(--_wd-color-accent) 20%, var(--_wd-color-panel));');
     expect(DEFAULT_CSS).not.toContain('#2E7D6B');
     // No border or radius in the item rules themselves (a global
     // assertion cannot be used: border-radius appears on other

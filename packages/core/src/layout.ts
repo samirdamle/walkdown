@@ -77,7 +77,6 @@ import {
   SPACE_SCREEN_Y_PX,
   SPACE_SCREEN_Y_VH,
   SPACE_VW,
-  themeVars,
 } from './tokens.js';
 import { zoomFactor } from './model.js';
 import type { LayoutInput, LayoutResult } from './types.js';
@@ -237,7 +236,6 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   const height = Math.max(1, input.containerHeight);
   const panelCount = Math.max(1, input.panelCount);
   const zoom = input.zoom ?? 0;
-  const theme = input.theme ?? 'light';
   const vw = width / 100;
   const vh = height / 100;
 
@@ -296,7 +294,6 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   const fontBodyPx = floor1(applyZoom(fitBodyPx));
 
   const vars: Record<string, string> = {
-    ...themeVars(theme),
     '--wd-cols': String(columns),
     '--wd-font-body': px(fontBodyPx),
     '--wd-font-title': px(fontTitlePx),
