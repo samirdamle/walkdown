@@ -181,6 +181,139 @@ const x = 1;
   });
 });
 
+describe('heading + paragraph grouping (§2.5)', () => {
+  it('a heading immediately followed by a paragraph is one panel with both blocks', () => {
+    const deck = parseDeck(`# Lead
+
+## Subhead
+
+Body text here.
+`);
+    const panels = flatScreens(deck)[0]?.panels ?? [];
+    expect(panels).toHaveLength(1);
+    expect(panels[0]?.kind).toBe('text');
+    expect(panels[0]?.blocks).toHaveLength(2);
+    expect(panels[0]?.blocks[0]?.type).toBe('heading');
+    expect(panels[0]?.blocks[0]?.html).toBe('<h2>Subhead</h2>');
+    expect(panels[0]?.blocks[1]?.type).toBe('paragraph');
+    expect(panels[0]?.blocks[1]?.html).toBe('<p>Body text here.</p>');
+    // The panel's text combines both blocks, so the font fit counts both.
+    expect(panels[0]?.text).toBe('Subhead\nBody text here.');
+  });
+
+  it('groups with no blank line between heading and paragraph', () => {
+    const deck = parseDeck(`# Lead
+
+## Subhead
+Body text here.
+`);
+    const panels = flatScreens(deck)[0]?.panels ?? [];
+    expect(panels).toHaveLength(1);
+    expect(panels[0]?.blocks).toHaveLength(2);
+  });
+
+  it('a heading followed by bullets does not group', () => {
+    const deck = parseDeck(`# Lead
+
+## Subhead
+
+- One.
+- Two.
+`);
+    const panels = flatScreens(deck)[0]?.panels ?? [];
+    expect(panels).toHaveLength(3);
+    expect(panels[0]?.blocks[0]?.type).toBe('heading');
+    expect(panels[0]?.blocks).toHaveLength(1);
+    expect(panels[1]?.blocks[0]?.type).toBe('list');
+    expect(panels[2]?.blocks[0]?.type).toBe('list');
+  });
+
+  it('a heading alone is still one panel, and a heading + code fence does not group', () => {
+    const deck = parseDeck(`# Lead
+
+## Alone
+
+---
+
+# Second
+
+## With code
+
+\`\`\`js
+const x = 1;
+\`\`\`
+`);
+    const screens = flatScreens(deck);
+    expect(screens[0]?.panels).toHaveLength(1);
+    expect(screens[0]?.panels[0]?.blocks[0]?.type).toBe('heading');
+    expect(screens[1]?.panels).toHaveLength(2);
+    expect(screens[1]?.panels[0]?.blocks[0]?.type).toBe('heading');
+    expect(screens[1]?.panels[1]?.kind).toBe('code');
+  });
+
+  it('heading + paragraph + paragraph is two panels', () => {
+    const deck = parseDeck(`# Lead
+
+## Subhead
+
+First paragraph.
+
+Second paragraph.
+`);
+    const panels = flatScreens(deck)[0]?.panels ?? [];
+    expect(panels).toHaveLength(2);
+    expect(panels[0]?.blocks).toHaveLength(2);
+    expect(panels[1]?.blocks).toHaveLength(1);
+    expect(panels[1]?.blocks[0]?.type).toBe('paragraph');
+  });
+
+  it('a comment between heading and paragraph breaks the grouping', () => {
+    const deck = parseDeck(`# Lead
+
+## Subhead
+
+<!-- reveal: effect: zoom-in -->
+Body text here.
+`);
+    const panels = flatScreens(deck)[0]?.panels ?? [];
+    expect(panels).toHaveLength(2);
+    expect(panels[0]?.blocks).toHaveLength(1);
+    // The marker still addresses the paragraph's own panel.
+    expect(panels[1]?.effect).toBe('zoom-in');
+  });
+
+  it('a per-panel marker before the heading applies to the grouped panel', () => {
+    const deck = parseDeck(`# Lead
+
+<!-- reveal: effect: slide-in -->
+## Subhead
+
+Body text here.
+`);
+    const panels = flatScreens(deck)[0]?.panels ?? [];
+    expect(panels).toHaveLength(1);
+    expect(panels[0]?.blocks).toHaveLength(2);
+    expect(panels[0]?.effect).toBe('slide-in');
+  });
+
+  it('two headings in a row: only the second groups with the paragraph', () => {
+    const deck = parseDeck(`# Lead
+
+## First
+
+## Second
+
+Body text here.
+`);
+    const panels = flatScreens(deck)[0]?.panels ?? [];
+    expect(panels).toHaveLength(2);
+    expect(panels[0]?.blocks).toHaveLength(1);
+    expect(panels[0]?.blocks[0]?.html).toBe('<h2>First</h2>');
+    expect(panels[1]?.blocks).toHaveLength(2);
+    expect(panels[1]?.blocks[0]?.html).toBe('<h2>Second</h2>');
+  });
+});
+
 describe('reveal markers', () => {
   it('semicolons separate properties; commas only inside sequence', () => {
     const deck = parseDeck(`<!-- reveal: step; sequence: 3, 1, 2; effect: fade-in; duration: 1s -->

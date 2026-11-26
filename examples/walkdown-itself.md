@@ -7,6 +7,7 @@ defaults:
   effect: fade-in
   duration: 500ms
 stylesheets:
+  - "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap"
   - ./walkdown-theme.css
 ---
 
@@ -15,6 +16,8 @@ stylesheets:
 <!-- reveal: all; class: hero -->
 
 # Walkdown
+
+## Walkdown
 
 Simple, magical presentation from Markdown
 
@@ -143,8 +146,22 @@ Simple, magical presentation from Markdown
 - That is Walkdown. Markdown in, a presentation that walks.
 
 ```css
+/* Open Sans is this deck's default font — deck-scoped, not the
+   renderer default (the renderer stays on its system stack).
+   The font itself loads from the Google Fonts URL in
+   frontmatter; if it cannot load, the stack below falls back
+   to the system stack and the deck still renders.
+   The theme vars live as inline style on .wd-deck (the
+   renderer sets them there on every layout pass), so only an
+   !important rule on .wd-deck itself beats them — a :host
+   rule would lose to the inline style. */
+.wd-deck {
+  --wd-font-family-body: 'Open Sans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  --wd-font-family-title: 'Open Sans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
 .hero {
-  text-align: center;
+  text-align: left;
 }
 
 .accent {

@@ -235,6 +235,13 @@ Panels are the top-level blocks of a screen, in document order.
   (not inside a list) is a panel too, in document order. Mixed
   lists and prose in one screen are allowed; order is document
   order.
+- A heading immediately followed by a paragraph — blank lines
+  allowed, no other block between — is one panel, not two: the
+  heading is the panel's lead-in and the paragraph its body.
+  The panel's text is the two blocks' text together, so the
+  font fit counts both. A comment between them breaks the
+  grouping, so a per-panel reveal marker there still addresses
+  the paragraph's own panel.
 - A list item's **kind** is determined by its dominant content:
   an item containing only an image is an `image` panel; an item
   containing a fenced code block is a `code` panel; an item
