@@ -32,7 +32,7 @@
     "proposal": "A number this document proposes; Samir may change it in a later review.",
     "settled": "A decision Samir has already made; the structured form MUST reproduce the settled value exactly."
   },
-  "token_count": 35,
+  "token_count": 36,
   "tokens": [
     {
       "enforcement": [
@@ -452,6 +452,23 @@
       "settled_source": null,
       "status": "proposal",
       "units": [
+        "vh"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": "420px",
+      "min": null,
+      "name": "--wd-nav-menu-max-height",
+      "preferred": "min(50vh, 420px)",
+      "property": "Navigation menu max-height",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px",
         "vh"
       ]
     },

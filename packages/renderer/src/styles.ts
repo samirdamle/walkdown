@@ -43,6 +43,9 @@ export const DEFAULT_CSS = `
      (the end note below). 44px is the minimum touch target on
      phones, ~51px on a 1440px desktop, capped at 56px. */
   --wd-control-size: clamp(44px, 3vw + 8px, 56px);
+  /* Nav menu cap (§6.6, token --wd-nav-menu-max-height):
+     half the viewport, at most 420px like the image cap. */
+  --wd-nav-menu-max-height: min(50vh, 420px);
 }
 
 .wd-deck *,
@@ -341,11 +344,77 @@ export const DEFAULT_CSS = `
   padding: calc(var(--wd-space) * 0.25) var(--wd-space);
   pointer-events: auto;
 }
+/* The step count is a button (§6.6), not a chevron: undo the
+   round-button sizing above — a pill that fits its text, at the
+   small size (the chevron rule is more specific, so the size
+   must be reset here too, not just in .wd-progress-text). */
+.wd-controls button.wd-progress-text {
+  width: auto;
+  height: auto;
+  border-radius: 999px;
+  font-size: var(--wd-font-small);
+  cursor: pointer;
+}
+.wd-progress-text[aria-expanded="true"] { border-color: var(--wd-color-accent); }
 
 /* Controls auto-hide on idle on desktop (§6.5); never on touch, where there is no hover to bring them back. */
 .wd-deck--idle .wd-controls { opacity: 0; }
 @media (pointer: coarse) {
   .wd-deck--idle .wd-controls { opacity: 1; }
+}
+/* While the menu is open the controls stay visible (§6.6): the
+   menu is anchored to them, and hiding them would strand it. */
+.wd-deck--nav-open .wd-controls { opacity: 1; }
+
+/* --- Navigation menu (§6.6): First screen, Sections, Last screen.
+   Bottom-anchored above the controls band: the bottom edge sits
+   one space unit above the top edge of the controls bar. The
+   reserve is the controls' height plus half-space clearance, so
+   reserve + half-space = controls height + one full space.
+   The height is capped (token above) and the menu scrolls
+   within itself, so many Sections never push it past the
+   screen. The width is in em of the fitted body size, so it
+   scales with the type like the rest of the chrome. --- */
+.wd-nav-menu {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)) + var(--wd-space, 8px) / 2);
+  width: min(84vw, 24em);
+  max-height: var(--wd-nav-menu-max-height, min(50vh, 420px));
+  overflow-y: auto;
+  background: var(--wd-color-panel);
+  border: 1px solid var(--wd-color-border);
+  border-radius: var(--wd-radius-panel);
+  box-shadow: 0 0 clamp(8px, 1vw + 4px, 16px) rgb(0 0 0 / 0.06);
+  padding: calc(var(--wd-space) * 0.5);
+  z-index: 4;
+}
+.wd-nav-menu[hidden] { display: none; }
+.wd-nav-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--wd-font-family-body);
+  font-size: var(--wd-font-small);
+  line-height: 1.4;
+  color: var(--wd-color-ink);
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: calc(var(--wd-radius-panel) / 2);
+  padding: calc(var(--wd-space) * 0.5) var(--wd-space);
+  cursor: pointer;
+}
+.wd-nav-menu-item:hover { background: color-mix(in srgb, var(--wd-color-ink) 5%, transparent); }
+.wd-nav-menu-item:focus-visible {
+  outline: 2px solid var(--wd-color-accent);
+  outline-offset: -2px;
+}
+.wd-nav-menu-item--current {
+  border-left-color: var(--wd-color-accent);
+  background: color-mix(in srgb, var(--wd-color-accent) 12%, transparent);
+  font-weight: 700;
 }
 
 /* --- End state (§6.2): a subtle indication, not a dead end.
@@ -410,6 +479,7 @@ export const DEFAULT_CSS = `
 /* Empty deck: no progress bar, no controls — just the state. */
 .wd-deck--empty .wd-progress,
 .wd-deck--empty .wd-controls,
+.wd-deck--empty .wd-nav-menu,
 .wd-deck--empty .wd-scroll-cue,
 .wd-deck--empty .wd-end-note {
   display: none;

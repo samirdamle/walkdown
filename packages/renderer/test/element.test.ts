@@ -85,14 +85,14 @@ afterEach(() => {
 });
 
 describe('<walkdown-deck> with the sample deck', () => {
-  it('renders 13 screens / 46 steps, starting at the hero', () => {
+  it('renders 13 screens / 47 steps, starting at the hero', () => {
     const el = createDeck(SAMPLE_DECK);
     expect(el.screens).toHaveLength(13);
-    expect(el.stepsTotal).toBe(46);
+    expect(el.stepsTotal).toBe(47);
     expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
     expect(screenEl(el).querySelector('.wd-title')?.textContent).toBe('Walkdown');
     expect(screenEl(el).classList.contains('wd-screen--hero')).toBe(true);
-    expect(progressText(el)).toBe('1 / 46');
+    expect(progressText(el)).toBe('1 / 47');
   });
 
   it('reveals panels in sequence order on the sequence screen', () => {
@@ -215,7 +215,7 @@ describe('Restart button and zoom-in effect', () => {
     restart.click();
     expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
     expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(true);
-    expect(progressText(el)).toBe('1 / 46');
+    expect(progressText(el)).toBe('1 / 47');
   });
 
   it('the Restart button is a native keyboard-operable button', () => {
@@ -586,5 +586,155 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
       expect(bottom).toBeGreaterThan(controls);
       expect(bottom - controls).toBeCloseTo(0.5 * space, 5);
     }
+  });
+});
+
+describe('navigation menu (§6.6)', () => {
+  function indicator(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-progress-text') as HTMLButtonElement;
+  }
+  function menu(el: WalkdownDeckElement): HTMLElement {
+    return el.shadowRoot?.querySelector('.wd-nav-menu') as HTMLElement;
+  }
+  function menuItems(el: WalkdownDeckElement): HTMLButtonElement[] {
+    return [...(el.shadowRoot?.querySelectorAll('.wd-nav-menu-item') as NodeListOf<HTMLButtonElement>)];
+  }
+  function menuLabels(el: WalkdownDeckElement): string[] {
+    return menuItems(el).map((b) => b.textContent ?? '');
+  }
+  function shadowActive(el: WalkdownDeckElement): Element | null {
+    return el.shadowRoot?.activeElement ?? null;
+  }
+
+  it('the step count is a button with menu semantics; the menu is hidden by default', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const btn = indicator(el);
+    expect(btn.tagName).toBe('BUTTON');
+    expect(btn.type).toBe('button');
+    expect(btn.getAttribute('aria-haspopup')).toBe('menu');
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    expect(btn.getAttribute('aria-controls')).toBe('wd-nav-menu');
+    expect(menu(el).hidden).toBe(true);
+    expect(menu(el).getAttribute('role')).toBe('menu');
+  });
+
+  it('clicking the indicator opens the menu with First, every Section by name, Last — and focuses the current Section', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(false);
+    expect(indicator(el).getAttribute('aria-expanded')).toBe('true');
+    expect(menuLabels(el)).toEqual([
+      'First screen',
+      'Walkdown',
+      'How it works',
+      'Walking',
+      'Make it yours',
+      'Last screen',
+    ]);
+    for (const item of menuItems(el)) {
+      expect(item.tagName).toBe('BUTTON');
+      expect(item.getAttribute('role')).toBe('menuitem');
+    }
+    // At the start the current Section is "Walkdown", and focus moved to it.
+    expect(shadowActive(el)?.textContent).toBe('Walkdown');
+  });
+
+  it('clicking a Section jumps to its first screen at step 0 and closes the menu', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    const walking = menuItems(el).find((b) => b.textContent === 'Walking');
+    expect(walking).toBeDefined();
+    walking?.click();
+    // "Walking" starts at the "Next and Previous" screen (flat index 7).
+    const firstOfSection = el.screens.findIndex((s) => s.title === 'Next and Previous');
+    expect(firstOfSection).toBe(7);
+    expect(el.state).toEqual({ screenIndex: 7, stepIndex: 0, zoom: 0 });
+    expect(menu(el).hidden).toBe(true);
+    expect(indicator(el).getAttribute('aria-expanded')).toBe('false');
+    expect(shadowActive(el)).toBe(indicator(el));
+  });
+
+  it('First screen and Last screen go to the deck ends', () => {
+    const el = createDeck(SAMPLE_DECK);
+    el.goToEnd();
+    indicator(el).click();
+    menuItems(el).find((b) => b.textContent === 'First screen')?.click();
+    expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
+    expect(menu(el).hidden).toBe(true);
+    indicator(el).click();
+    menuItems(el).find((b) => b.textContent === 'Last screen')?.click();
+    expect(el.state.screenIndex).toBe(12);
+    expect(el.state.stepIndex).toBe(2);
+    expect(menu(el).hidden).toBe(true);
+  });
+
+  it('clicking the indicator again closes the menu', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(false);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(true);
+    expect(indicator(el).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('Escape closes the menu and returns focus to the indicator', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(false);
+    key(el, 'Escape');
+    expect(menu(el).hidden).toBe(true);
+    expect(shadowActive(el)).toBe(indicator(el));
+  });
+
+  it('clicking outside the deck closes the menu', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(false);
+    document.body.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true }));
+    expect(menu(el).hidden).toBe(true);
+    expect(shadowActive(el)).toBe(indicator(el));
+  });
+
+  it('a tap on the screen while the menu is open only closes it — it does not navigate', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(false);
+    pointer(el, 'pointerdown', 600);
+    pointer(el, 'pointerup', 600);
+    expect(menu(el).hidden).toBe(true);
+    expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
+  });
+
+  it('the current Section is marked aria-current, and only it', () => {
+    const el = createDeck(SAMPLE_DECK);
+    el.jumpTo(7); // "Next and Previous", in the "Walking" Section
+    indicator(el).click();
+    const current = menuItems(el).filter((b) => b.getAttribute('aria-current') === 'true');
+    expect(current.map((b) => b.textContent)).toEqual(['Walking']);
+    expect(menuItems(el).find((b) => b.textContent === 'Walking')?.classList.contains('wd-nav-menu-item--current')).toBe(true);
+  });
+
+  it('a Section with no title is labelled Section N', () => {
+    const el = createDeck(`# One\n\n- A\n\n---\n\n# Two\n\n- B\n`);
+    indicator(el).click();
+    expect(menuLabels(el)).toEqual(['First screen', 'Section 1', 'Last screen']);
+  });
+
+  it('the menu is capped in height and scrolls within itself, anchored one space above the controls', () => {
+    expect(DEFAULT_CSS).toContain('--wd-nav-menu-max-height: min(50vh, 420px)');
+    expect(DEFAULT_CSS).toContain('max-height: var(--wd-nav-menu-max-height, min(50vh, 420px))');
+    expect(DEFAULT_CSS).toContain('overflow-y: auto');
+    expect(DEFAULT_CSS).toContain(
+      'bottom: calc(var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)) + var(--wd-space, 8px) / 2)',
+    );
+  });
+
+  it('the menu keeps the controls visible while it is open', () => {
+    expect(DEFAULT_CSS).toContain('.wd-deck--nav-open .wd-controls { opacity: 1; }');
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    expect(deckEl(el).classList.contains('wd-deck--nav-open')).toBe(true);
+    key(el, 'Escape');
+    expect(deckEl(el).classList.contains('wd-deck--nav-open')).toBe(false);
   });
 });

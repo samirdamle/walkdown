@@ -98,9 +98,13 @@ export class WalkdownDeckElement extends HTMLElement {
   private titleEl!: HTMLHeadingElement;
   private sectionEl!: HTMLDivElement;
   private progressBarEl!: HTMLDivElement;
-  private progressTextEl!: HTMLSpanElement;
+  private progressTextEl!: HTMLButtonElement;
   private prevBtn!: HTMLButtonElement;
   private nextBtn!: HTMLButtonElement;
+  private navMenuEl!: HTMLDivElement;
+  private _navMenuOpen = false;
+  /** The deck the menu items were built from; sections never change mid-walk, so the menu is rebuilt only for a new deck. */
+  private _navMenuDeck: Deck | null = null;
   private scrollCueEl!: HTMLDivElement;
   private controlsEl!: HTMLDivElement;
   private endNoteEl!: HTMLDivElement;
@@ -139,9 +143,10 @@ export class WalkdownDeckElement extends HTMLElement {
         </div>
         <div class="wd-scroll-cue" aria-hidden="true"><span>Scroll for more ↓</span></div>
         <div class="wd-end-note" hidden>End of deck <button class="wd-restart" type="button">Restart</button></div>
+        <div class="wd-nav-menu" id="wd-nav-menu" role="menu" aria-label="Jump to" hidden></div>
         <div class="wd-controls">
           <button class="wd-prev" type="button" aria-label="Previous step">‹</button>
-          <span class="wd-progress-text" aria-live="polite"></span>
+          <button class="wd-progress-text" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="wd-nav-menu" aria-live="polite"></button>
           <button class="wd-next" type="button" aria-label="Next step">›</button>
         </div>
         <div class="wd-empty" hidden><p>This deck is empty.</p></div>
@@ -152,9 +157,10 @@ export class WalkdownDeckElement extends HTMLElement {
     this.titleEl = this.shadow.querySelector('.wd-title') as HTMLHeadingElement;
     this.panelsEl = this.shadow.querySelector('.wd-panels') as HTMLDivElement;
     this.progressBarEl = this.shadow.querySelector('.wd-progress-bar') as HTMLDivElement;
-    this.progressTextEl = this.shadow.querySelector('.wd-progress-text') as HTMLSpanElement;
+    this.progressTextEl = this.shadow.querySelector('.wd-progress-text') as HTMLButtonElement;
     this.prevBtn = this.shadow.querySelector('.wd-prev') as HTMLButtonElement;
     this.nextBtn = this.shadow.querySelector('.wd-next') as HTMLButtonElement;
+    this.navMenuEl = this.shadow.querySelector('.wd-nav-menu') as HTMLDivElement;
     this.scrollCueEl = this.shadow.querySelector('.wd-scroll-cue') as HTMLDivElement;
     this.controlsEl = this.shadow.querySelector('.wd-controls') as HTMLDivElement;
     this.endNoteEl = this.shadow.querySelector('.wd-end-note') as HTMLDivElement;
@@ -301,7 +307,10 @@ export class WalkdownDeckElement extends HTMLElement {
     this.addEventListener('pointermove', this._onHostPointerMove);
     this.prevBtn.addEventListener('click', this._onPrevClick);
     this.nextBtn.addEventListener('click', this._onNextClick);
+    this.progressTextEl.addEventListener('click', this._onProgressClick);
+    this.navMenuEl.addEventListener('click', this._onNavMenuClick);
     this.restartBtn.addEventListener('click', this._onRestartClick);
+    document.addEventListener('pointerdown', this._onDocumentPointerDown);
     window.addEventListener('hashchange', this._onHashChange);
     if (typeof ResizeObserver !== 'undefined') {
       this._resizeObserver = new ResizeObserver(() => this._applyLayout());
@@ -326,7 +335,10 @@ export class WalkdownDeckElement extends HTMLElement {
     this.removeEventListener('pointermove', this._onHostPointerMove);
     this.prevBtn.removeEventListener('click', this._onPrevClick);
     this.nextBtn.removeEventListener('click', this._onNextClick);
+    this.progressTextEl.removeEventListener('click', this._onProgressClick);
+    this.navMenuEl.removeEventListener('click', this._onNavMenuClick);
     this.restartBtn.removeEventListener('click', this._onRestartClick);
+    document.removeEventListener('pointerdown', this._onDocumentPointerDown);
     window.removeEventListener('hashchange', this._onHashChange);
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
@@ -519,6 +531,9 @@ export class WalkdownDeckElement extends HTMLElement {
       } catch {
         // Non-browser or restricted context: the walk still works.
       }
+      // Any navigation dismisses the menu (§6.6) — it is a
+      // transient overlay, and the walk has moved on.
+      if (this._navMenuOpen) this._closeNavMenu(true);
     }
     this._render({ animate: opts.animate, jump: opts.jump ?? false, prev });
     // The fit is fixed per screen from its total content (§7.2):
@@ -571,7 +586,10 @@ export class WalkdownDeckElement extends HTMLElement {
       this.screenEl.style.display = 'none';
       this.progressBarEl.style.width = '0%';
       this.progressTextEl.textContent = '';
+      this.progressTextEl.removeAttribute('aria-label');
       this.endNoteEl.hidden = true;
+      this._navMenuOpen = false;
+      this._updateNavMenu();
       this.scrollCueEl.classList.remove('wd-scroll-cue--visible');
       return;
     }
@@ -651,6 +669,7 @@ export class WalkdownDeckElement extends HTMLElement {
     const total = totalSteps(deck);
     this.progressBarEl.style.width = total > 0 ? `${(current / total) * 100}%` : '0%';
     this.progressTextEl.textContent = `${current} / ${total}`;
+    this.progressTextEl.setAttribute('aria-label', `Step ${current} of ${total}. Activate to jump to a screen.`);
     const atStart = this._state.screenIndex === 0 && this._state.stepIndex === 0;
     const lastScreen = screens[screens.length - 1];
     const atEnd =
@@ -660,6 +679,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.prevBtn.disabled = atStart;
     this.nextBtn.disabled = atEnd;
     this.endNoteEl.hidden = !atEnd;
+    this._updateNavMenu();
     this._updateScrollCue();
   }
 
@@ -672,6 +692,116 @@ export class WalkdownDeckElement extends HTMLElement {
     const notAtBottom = el.scrollTop + el.clientHeight < el.scrollHeight - 4;
     this.scrollCueEl.classList.toggle('wd-scroll-cue--visible', scrollable && notAtBottom);
   }
+
+  // --- Navigation menu (§6.6) -------------------------------------------
+
+  /**
+   * The menu's targets, in order: First screen, one item per
+   * Section (the Section's name, in deck order), Last screen.
+   * A Section jumps to the first step of its first screen; a
+   * Section with no title is labelled `Section N` (§6.6).
+   */
+  private _navMenuTargets(): { label: string; kind: 'first' | 'section' | 'last'; screenIndex: number; sectionIndex?: number }[] {
+    if (this._deck === null) return [];
+    const flat = flatScreens(this._deck);
+    const items: { label: string; kind: 'first' | 'section' | 'last'; screenIndex: number; sectionIndex?: number }[] = [
+      { label: 'First screen', kind: 'first', screenIndex: 0 },
+    ];
+    this._deck.sections.forEach((section, i) => {
+      const first = section.screens[0];
+      if (first === undefined) return;
+      const screenIndex = flat.indexOf(first);
+      if (screenIndex < 0) return;
+      items.push({ label: section.title ?? `Section ${i + 1}`, kind: 'section', screenIndex, sectionIndex: i });
+    });
+    items.push({ label: 'Last screen', kind: 'last', screenIndex: flat.length - 1 });
+    return items;
+  }
+
+  /** Build the menu items for a new deck (built with the DOM API, so Section titles need no escaping). */
+  private _buildNavMenu(): void {
+    const deck = this._deck;
+    if (deck === null || deck === this._navMenuDeck) return;
+    this._navMenuDeck = deck;
+    this.navMenuEl.replaceChildren();
+    for (const target of this._navMenuTargets()) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('role', 'menuitem');
+      btn.className = 'wd-nav-menu-item';
+      btn.dataset.nav = target.kind;
+      btn.dataset.screen = String(target.screenIndex);
+      if (target.sectionIndex !== undefined) btn.dataset.section = String(target.sectionIndex);
+      btn.textContent = target.label;
+      this.navMenuEl.appendChild(btn);
+    }
+  }
+
+  /** Sync the menu's visibility, the trigger's expanded state, and the current Section's marking (§6.6). */
+  private _updateNavMenu(): void {
+    this._buildNavMenu();
+    const deck = this._deck;
+    const screen = deck === null ? undefined : this.screens[this._state.screenIndex];
+    const currentSection =
+      deck === undefined || deck === null || screen === undefined
+        ? -1
+        : deck.sections.findIndex((s) => s.screens.includes(screen));
+    for (const btn of Array.from(this.navMenuEl.querySelectorAll('.wd-nav-menu-item'))) {
+      const sectionIndex = btn.getAttribute('data-section');
+      const isCurrent = sectionIndex !== null && Number(sectionIndex) === currentSection;
+      btn.classList.toggle('wd-nav-menu-item--current', isCurrent);
+      if (isCurrent) btn.setAttribute('aria-current', 'true');
+      else btn.removeAttribute('aria-current');
+    }
+    this.navMenuEl.hidden = !this._navMenuOpen;
+    this.progressTextEl.setAttribute('aria-expanded', String(this._navMenuOpen));
+    this.deckEl.classList.toggle('wd-deck--nav-open', this._navMenuOpen);
+  }
+
+  /** Open the menu and move focus into it — the current Section's item, or the first item (§6.6). */
+  private _openNavMenu(): void {
+    this._navMenuOpen = true;
+    this._updateNavMenu();
+    const current = this.navMenuEl.querySelector('.wd-nav-menu-item--current') as HTMLElement | null;
+    const first = this.navMenuEl.querySelector('.wd-nav-menu-item') as HTMLElement | null;
+    (current ?? first)?.focus();
+    this._armIdleTimer();
+  }
+
+  /** Close the menu; focus returns to the indicator (§6.6). */
+  private _closeNavMenu(focusIndicator = true): void {
+    if (!this._navMenuOpen) return;
+    this._navMenuOpen = false;
+    this._updateNavMenu();
+    if (focusIndicator) this.progressTextEl.focus();
+  }
+
+  private _toggleNavMenu(): void {
+    if (this._navMenuOpen) this._closeNavMenu();
+    else this._openNavMenu();
+  }
+
+  private _onProgressClick = (): void => {
+    this._toggleNavMenu();
+  };
+
+  /** A menu item navigates and closes the menu (§6.6). The menu is closed first so a no-op jump (already on the first screen) still dismisses it. */
+  private _onNavMenuClick = (e: MouseEvent): void => {
+    const btn = (e.target as Element | null)?.closest?.('.wd-nav-menu-item') as HTMLElement | null;
+    if (btn === null || btn === undefined) return;
+    const kind = btn.getAttribute('data-nav');
+    const screenIndex = Number(btn.getAttribute('data-screen') ?? 0);
+    this._closeNavMenu(true);
+    if (kind === 'first') this.goToStart();
+    else if (kind === 'last') this.goToEnd();
+    else this.jumpTo(screenIndex, 'forward');
+  };
+
+  /** A click/tap outside the deck closes the menu (§6.6). Clicks inside the Shadow DOM retarget to the host, so contains() is true for anything inside the deck. */
+  private _onDocumentPointerDown = (e: PointerEvent): void => {
+    if (!this._navMenuOpen) return;
+    if (!this.contains(e.target as Node)) this._closeNavMenu();
+  };
 
   // --- Input ------------------------------------------------------------
 
@@ -709,6 +839,14 @@ export class WalkdownDeckElement extends HTMLElement {
       case 'End':
         e.preventDefault();
         this.goToEnd();
+        break;
+      case 'Escape':
+        // Escape closes the navigation menu (§6.6) and returns
+        // focus to the indicator; otherwise it is not a walk key.
+        if (this._navMenuOpen) {
+          e.preventDefault();
+          this._closeNavMenu();
+        }
         break;
       case '+':
       case '=':
@@ -802,6 +940,12 @@ export class WalkdownDeckElement extends HTMLElement {
     const start = this._pointerStart;
     this._pointerStart = null;
     if (start === null) return;
+    // A tap on the screen while the menu is open only dismisses
+    // the menu (§6.6) — it must not also navigate.
+    if (this._navMenuOpen) {
+      this._closeNavMenu();
+      return;
+    }
     if (this._gesture === 'handled' || this._gesture === 'vertical') {
       this._gesture = 'undecided';
       return;

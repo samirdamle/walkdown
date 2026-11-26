@@ -19,14 +19,14 @@ describe('examples/walkdown-itself.md', () => {
     expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 4]);
   });
 
-  it('parses to 46 panels and 46 steps', () => {
+  it('parses to 47 panels and 47 steps', () => {
     const panelCount = screens.reduce((sum, s) => sum + s.panels.length, 0);
-    expect(panelCount).toBe(46);
-    expect(totalSteps(deck)).toBe(46);
+    expect(panelCount).toBe(47);
+    expect(totalSteps(deck)).toBe(47);
   });
 
   it('has the right panel counts per screen', () => {
-    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 4, 3, 3, 4, 3]);
+    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 5, 3, 3, 4, 3]);
   });
 
   it('has the right screen titles', () => {

@@ -98,6 +98,7 @@ Markdown in. A presentation that walks.
 - The right arrow advances. So does a tap on the right half of the screen.
 - The left arrow goes back. So does a tap on the left half. One input, one job.
 - Plus zooms the type in, minus zooms it out, and the zoom stays with you for the whole deck.
+- Tap the screen number to jump — first screen, any Section, or last screen, in a menu just above the controls.
 
 ---
 
