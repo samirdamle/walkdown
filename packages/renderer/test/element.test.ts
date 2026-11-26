@@ -738,3 +738,152 @@ describe('navigation menu (§6.6)', () => {
     expect(deckEl(el).classList.contains('wd-deck--nav-open')).toBe(false);
   });
 });
+
+describe('reveal auto-scroll (§7.4)', () => {
+  /**
+   * jsdom has no layout, so the scroll geometry is mocked:
+   * the screen reports a 600px viewport over 2000px of content,
+   * panels sit at fixed content positions, and scrollTo is a stub
+   * that actually moves the mocked scrollTop — so the scroll
+   * arithmetic is exercised end to end, with real pixels only
+   * in a browser.
+   */
+  function mockScrollingScreen(
+    el: WalkdownDeckElement,
+    panelTops: number[],
+    opts: { clientHeight?: number; scrollHeight?: number; scrollTop?: number; panelHeight?: number } = {},
+  ): { scrollTo: ReturnType<typeof vi.fn> } {
+    const screen = screenEl(el);
+    const clientHeight = opts.clientHeight ?? 600;
+    const scrollHeight = opts.scrollHeight ?? 2000;
+    const panelHeight = opts.panelHeight ?? 200;
+    let top = opts.scrollTop ?? 0;
+    Object.defineProperty(screen, 'clientHeight', { value: clientHeight, configurable: true });
+    Object.defineProperty(screen, 'scrollHeight', { value: scrollHeight, configurable: true });
+    Object.defineProperty(screen, 'scrollTop', {
+      get: () => top,
+      set: (v: number) => {
+        top = v;
+      },
+      configurable: true,
+    });
+    const scrollTo = vi.fn((o: ScrollToOptions) => {
+      top = o.top ?? top;
+    });
+    screen.scrollTo = scrollTo as unknown as typeof screen.scrollTo;
+    // Panels are re-rendered on every step, so the rect mock
+    // lives on the prototype and reads the panel's data-panel
+    // index — viewport top is the content top minus the live
+    // scroll, exactly as a browser reports it.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const idx = Number((this as HTMLElement).dataset?.panel ?? -1);
+      const cTop = panelTops[idx];
+      if (cTop === undefined) {
+        return { top: 0, left: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+      }
+      const vTop = cTop - top;
+      return {
+        top: vTop,
+        left: 0,
+        width: 800,
+        height: panelHeight,
+        right: 800,
+        bottom: vTop + panelHeight,
+        x: 0,
+        y: vTop,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+    return { scrollTo };
+  }
+
+  const LONG_DECK = `<!-- reveal: step -->\n\n# Long\n\n- One\n\n- Two\n\n- Three\n\n- Four\n`;
+  // Panel content tops (200px panels): 100 / 320 / 540 / 760.
+  // The reserve is 64px in jsdom (56px fallback + space/2 at
+  // 1440px), so the visible window ends at scrollTop + 536.
+  const PANEL_TOPS = [100, 320, 540, 760];
+
+  it('scrolls just enough to bring a newly revealed panel below the fold into view', () => {
+    const el = createDeck(LONG_DECK);
+    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
+    el.next(); // panel 1: bottom 520, inside the window — no scroll
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screenEl(el).scrollTop).toBe(0);
+    el.next(); // panel 2: bottom 740 — scrolls so its bottom clears the controls
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 204, behavior: 'smooth' });
+    expect(screenEl(el).scrollTop).toBe(204);
+    el.next(); // panel 3: bottom 960 — scrolls again, from the new position
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 424, behavior: 'smooth' });
+    expect(screenEl(el).scrollTop).toBe(424);
+  });
+
+  it('does not move the scroll when the newly revealed panel is already fully visible', () => {
+    const el = createDeck(LONG_DECK);
+    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
+    el.next(); // panel 1: bottom 520 ≤ 536 — fully visible
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screenEl(el).scrollTop).toBe(0);
+  });
+
+  it('does not scroll during the font-fit measurement pass', () => {
+    const el = createDeck(LONG_DECK);
+    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
+    screenEl(el).classList.add('wd-screen--measuring');
+    el.next();
+    el.next(); // panel 2 is below the fold — but measuring, so no scroll
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screenEl(el).scrollTop).toBe(0);
+    screenEl(el).classList.remove('wd-screen--measuring');
+    el.next(); // panel 3, measuring over — scrolls normally
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 424, behavior: 'smooth' });
+  });
+
+  it('scrolls instantly under prefers-reduced-motion', () => {
+    const el = createDeck(LONG_DECK);
+    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === '(prefers-reduced-motion: reduce)',
+          media: query,
+          onchange: null,
+          addListener: () => {},
+          removeListener: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+    el.next();
+    el.next(); // panel 2 below the fold — instant, not smooth
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screenEl(el).scrollTop).toBe(204);
+  });
+
+  it('scrolls up to a newly revealed panel above the fold on a sequence screen', () => {
+    const el = createDeck(`<!-- reveal: step; sequence: 3, 1, 2 -->\n\n# Seq\n\n- One\n\n- Two\n\n- Three\n`);
+    // sequence: 3, 1, 2 — step 0 shows panel 2 only; the reader
+    // has scrolled down to it (scrollTop 500).
+    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS, { scrollTop: 500 });
+    expect(panelVisible(el, 2)).toBe(true);
+    el.next(); // reveals panel 0, above the fold — scrolls up to its top
+    expect(panelVisible(el, 0)).toBe(true);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 100, behavior: 'smooth' });
+  });
+
+  it('does not scroll for the first panel of a newly entered screen', () => {
+    const el = createDeck(`# One\n\n- Only.\n\n---\n\n<!-- reveal: step -->\n\n# Long\n\n- One\n\n- Two\n\n- Three\n\n- Four\n`);
+    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
+    el.next(); // enters screen 2 at step 0 — first panel is at the top
+    expect(el.state.screenIndex).toBe(1);
+    expect(scrollTo).not.toHaveBeenCalled();
+    el.next(); // panel 1: bottom 520 — fully visible
+    expect(scrollTo).not.toHaveBeenCalled();
+    el.next(); // panel 2: below the fold — scrolls
+    expect(scrollTo).toHaveBeenCalledWith({ top: 204, behavior: 'smooth' });
+  });
+});

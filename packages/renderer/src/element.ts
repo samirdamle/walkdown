@@ -645,8 +645,15 @@ export class WalkdownDeckElement extends HTMLElement {
       if (newly !== undefined) {
         const el = this.panelsEl.querySelector(`[data-panel="${newly}"]`);
         if (el instanceof HTMLElement) {
+          // Measure before the enter animation starts: the
+          // animation moves the panel with a transform, which
+          // would skew the rect. The scroll then follows the
+          // minimal-scroll rule of scrollIntoView({
+          // block: 'nearest' }) (§7.4).
+          const rect = this._panelContentRect(el);
           const forward = this._state.stepIndex > (prev?.stepIndex ?? -1);
           this._animatePanelIn(el, screen.panels[newly] as Panel, screen, forward);
+          this._scrollPanelIntoView(rect);
         }
       }
     } else if (opts.animate && !opts.jump && screenChanged) {
@@ -684,6 +691,77 @@ export class WalkdownDeckElement extends HTMLElement {
   }
 
   private _lastScreenClasses: string[] = [];
+
+  /**
+   * Geometry of a panel relative to the screen's scroll content
+   * (§7.4): the panel's rect minus the screen's rect, plus the
+   * current scroll, so the numbers are in content coordinates.
+   * getBoundingClientRect is used (not offsetTop) because the
+   * panels' offsetParent is the deck, not the screen. Null when
+   * there is no layout yet (jsdom, or not yet painted) — the
+   * caller then does nothing.
+   */
+  private _panelContentRect(el: HTMLElement): { top: number; bottom: number } | null {
+    const container = this.screenEl;
+    if (container.clientHeight === 0) return null;
+    const c = container.getBoundingClientRect();
+    const p = el.getBoundingClientRect();
+    const top = p.top - c.top + container.scrollTop;
+    return { top, bottom: top + p.height };
+  }
+
+  /**
+   * Reveal auto-scroll (§7.4): when a step reveals a panel
+   * that is not fully visible in the screen's scroll viewport,
+   * scroll the screen just far enough to bring it into view —
+   * the minimal-scroll semantics of scrollIntoView({
+   * block: 'nearest' }): no scroll at all when the panel is
+   * already fully visible, only as far as needed otherwise.
+   * The panel must end up clear of the bottom controls, so
+   * the visible window ends at the bottom reserve, not at the
+   * viewport edge. A panel taller than the visible window
+   * cannot fit whole: it is shown from its top. Smooth unless
+   * prefers-reduced-motion (§7.5 rung 4, §8), in which case
+   * instant. Never runs during the font-fit measurement pass —
+   * that pass reveals all panels synchronously and must not
+   * fight a scroll.
+   */
+  private _scrollPanelIntoView(rect: { top: number; bottom: number } | null): void {
+    if (rect === null) return;
+    if (this.screenEl.classList.contains('wd-screen--measuring')) return;
+    const container = this.screenEl;
+    const reserve = this._controlsReservePx(this._measureContainer().width);
+    const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+    const visibleTop = container.scrollTop;
+    const visibleBottom = container.scrollTop + container.clientHeight - reserve;
+    let target: number | null = null;
+    if (rect.bottom > visibleBottom) {
+      // Below the fold: bring the bottom up just clear of the controls.
+      target = rect.bottom - container.clientHeight + reserve;
+      if (rect.bottom - rect.top > container.clientHeight - reserve) target = rect.top;
+    } else if (rect.top < visibleTop) {
+      // Above the fold (a `sequence` reveal can surface an
+      // earlier panel): bring the top down into view.
+      target = rect.top;
+    }
+    if (target === null) return; // already fully visible — do not move at all
+    target = Math.min(Math.max(0, target), maxScroll);
+    if (target === container.scrollTop) return;
+    if (this._prefersReducedMotion()) {
+      container.scrollTop = target;
+    } else {
+      container.scrollTo({ top: target, behavior: 'smooth' });
+    }
+  }
+
+  /** prefers-reduced-motion (§7.5 rung 4, §8) — same guarded matchMedia as the idle timer. */
+  private _prefersReducedMotion(): boolean {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return false;
+    }
+  }
 
   private _updateScrollCue(): void {
     const el = this.screenEl;
