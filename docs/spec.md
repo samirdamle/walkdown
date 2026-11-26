@@ -535,8 +535,8 @@ Let the current state be `(s, k)` — screen *s*, step *k* — with
 - **Next:** if `k + 1 < steps(s)`, go to `(s, k + 1)` (reveal
   the next panel). Else if `s + 1 < screenCount`, go to
   `(s + 1, 0)`. Else (last step of the last screen): no-op,
-  and the renderer SHOULD show an end state (e.g. a subtle
-  "end of deck" indication). Looping is NOT the default; an
+  and the renderer SHOULD show an end state (e.g. a "Start over"
+  button that returns to the first step). Looping is NOT the default; an
   author opt-in for looping is deferred to v0.2.
 - **Previous:** if `k > 0`, go to `(s, k − 1)` (hide the last
   revealed panel). Else if `s > 0`, go to `(s − 1,

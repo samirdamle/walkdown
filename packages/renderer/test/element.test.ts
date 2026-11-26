@@ -201,13 +201,15 @@ describe('<walkdown-deck> with the sample deck', () => {
   });
 });
 
-describe('Restart button and zoom-in effect', () => {
-  it('shows a Restart button only at the end, and it returns to the start', () => {
+describe('Start over button and zoom-in effect', () => {
+  it('shows a Start over button only at the end, and it returns to the start', () => {
     const el = createDeck(SAMPLE_DECK);
     const restart = el.shadowRoot?.querySelector('.wd-restart') as HTMLButtonElement;
     expect(restart.tagName).toBe('BUTTON');
     expect(restart.type).toBe('button');
-    expect(restart.textContent).toBe('Restart');
+    expect(restart.textContent).toBe('Start over');
+    // No label text: the end note holds only the button.
+    expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).textContent).toBe('Start over');
     // Hidden mid-deck: the end note is hidden until the last step.
     expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(true);
     el.goToEnd();
@@ -218,7 +220,7 @@ describe('Restart button and zoom-in effect', () => {
     expect(progressText(el)).toBe('1 / 47');
   });
 
-  it('the Restart button is a native keyboard-operable button', () => {
+  it('the Start over button is a native keyboard-operable button', () => {
     const el = createDeck(SAMPLE_DECK);
     const restart = el.shadowRoot?.querySelector('.wd-restart') as HTMLButtonElement;
     // A native <button> is focusable and fires click on Enter/Space

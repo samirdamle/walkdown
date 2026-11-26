@@ -142,7 +142,7 @@ export class WalkdownDeckElement extends HTMLElement {
           <div class="wd-panels"></div>
         </div>
         <div class="wd-scroll-cue" aria-hidden="true"><span>Scroll for more ↓</span></div>
-        <div class="wd-end-note" hidden>End of deck <button class="wd-restart" type="button">Restart</button></div>
+        <div class="wd-end-note" hidden><button class="wd-restart" type="button">Start over</button></div>
         <div class="wd-nav-menu" id="wd-nav-menu" role="menu" aria-label="Jump to" hidden></div>
         <div class="wd-controls">
           <button class="wd-prev" type="button" aria-label="Previous step">‹</button>
@@ -956,7 +956,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.next();
   };
 
-  /** Restart: back to the first step of the first screen, same as Start (§6.2). */
+  /** Start over: back to the first step of the first screen, same as Start (§6.2). */
   private _onRestartClick = (): void => {
     this.goToStart();
   };

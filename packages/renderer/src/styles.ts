@@ -441,7 +441,7 @@ export const DEFAULT_CSS = `
   z-index: 3;
   pointer-events: none;
 }
-/* The Restart button reuses the controls' button styling, as a
+/* The Start over button reuses the controls' button styling, as a
    text pill rather than a round chevron. The note itself ignores
    pointer events, so the button re-enables them. */
 .wd-end-note button {
