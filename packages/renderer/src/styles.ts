@@ -20,7 +20,10 @@ export const DEFAULT_CSS = `
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 240px;
+  /* Collapse guard that never exceeds the container: a short
+     landscape window or a small embedded card must not be
+     forced taller than the space it was given. */
+  min-height: min(240px, 100%);
   box-sizing: border-box;
 }
 
@@ -35,6 +38,11 @@ export const DEFAULT_CSS = `
   font-size: var(--wd-font-body);
   line-height: var(--wd-line-height-body);
   box-sizing: border-box;
+  /* Control-button size (§6.5): one source of truth, used by the
+     buttons themselves and by anything that must clear them
+     (the end note below). 44px is the minimum touch target on
+     phones, ~51px on a 1440px desktop, capped at 56px. */
+  --wd-control-size: clamp(44px, 3vw + 8px, 56px);
 }
 
 .wd-deck *,
@@ -117,7 +125,9 @@ export const DEFAULT_CSS = `
   padding: var(--wd-pad-panel);
   font-size: var(--wd-font-body);
   line-height: var(--wd-line-height-body);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  /* Shadow blur follows design-policies §4.1, so it scales
+     with the screen like every other panel dimension. */
+  box-shadow: 0 0 clamp(8px, 1vw + 4px, 16px) rgb(0 0 0 / 0.06);
   min-width: 0;
   overflow-wrap: break-word;
 }
@@ -138,7 +148,7 @@ export const DEFAULT_CSS = `
   font-family: var(--wd-font-family-code);
   font-size: var(--wd-font-code);
   background: color-mix(in srgb, var(--wd-color-ink) 7%, transparent);
-  border-radius: 4px;
+  border-radius: 0.25em;
   padding: 0.1em 0.3em;
 }
 .wd-panel pre {
@@ -198,25 +208,28 @@ export const DEFAULT_CSS = `
   font-size: calc(var(--wd-font-body) * 1.15);
 }
 
-/* --- Enter animations (§8): transform + opacity only. --- */
+/* --- Enter animations (§8): transform + opacity only.
+   Travel is in em of the fitted body size, so a slide covers
+   the same proportion of the screen on a phone and a desktop
+   instead of feeling large on one and negligible on the other. --- */
 @keyframes wd-fade-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(0.5em); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes wd-slide-in-forward {
-  from { opacity: 0; transform: translateX(24px); }
+  from { opacity: 0; transform: translateX(1em); }
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes wd-slide-in-backward {
-  from { opacity: 0; transform: translateX(-24px); }
+  from { opacity: 0; transform: translateX(-1em); }
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes wd-screen-in-forward {
-  from { opacity: 0; transform: translateX(16px); }
+  from { opacity: 0; transform: translateX(0.75em); }
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes wd-screen-in-backward {
-  from { opacity: 0; transform: translateX(-16px); }
+  from { opacity: 0; transform: translateX(-0.75em); }
   to { opacity: 1; transform: translateX(0); }
 }
 
@@ -258,11 +271,13 @@ export const DEFAULT_CSS = `
   left: 0;
   right: 0;
   bottom: 0;
-  height: 48px;
+  /* Tall enough for one line of small text plus the padding
+     below it, both token-derived so the strip scales. */
+  height: calc(var(--wd-font-small) * 2 + var(--wd-space));
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: 8px;
+  padding-bottom: var(--wd-space);
   background: linear-gradient(to bottom, transparent, var(--wd-color-bg) 80%);
   color: var(--wd-color-muted);
   font-size: var(--wd-font-small);
@@ -290,10 +305,13 @@ export const DEFAULT_CSS = `
 .wd-controls button {
   pointer-events: auto;
   font-family: var(--wd-font-family-body);
-  font-size: 20px;
+  /* 1.25× the fitted body size, so the chevron stays proportional
+     to the type. The 0.7× alternative was rejected: at the 12px
+     floor it would shrink the glyph below legibility. */
+  font-size: 1.25em;
   line-height: 1;
-  width: 40px;
-  height: 40px;
+  width: var(--wd-control-size);
+  height: var(--wd-control-size);
   border-radius: 50%;
   border: 1px solid var(--wd-color-border);
   background: var(--wd-color-panel);
@@ -312,7 +330,7 @@ export const DEFAULT_CSS = `
   background: var(--wd-color-panel);
   border: 1px solid var(--wd-color-border);
   border-radius: 999px;
-  padding: 2px 10px;
+  padding: calc(var(--wd-space) * 0.25) var(--wd-space);
   pointer-events: auto;
 }
 
@@ -322,18 +340,30 @@ export const DEFAULT_CSS = `
   .wd-deck--idle .wd-controls { opacity: 1; }
 }
 
-/* --- End state (§6.2): a subtle indication, not a dead end. --- */
+/* --- End state (§6.2): a subtle indication, not a dead end.
+   The note sits above the controls band, not at a fixed height:
+   controls height is the button size plus the controls' top and
+   bottom padding (both --wd-space), and the clearance above them
+   is half the space unit (C12) — so the note clears the band at
+   every width. At 360px: 44 + 2.5×8 = 64px above controls 60px
+   tall; at 1440px: 51.2 + 2.5×16 = 91.2px above controls 83.2px
+   tall. Deliberately NOT var(--wd-reserve-bottom, 64px): that
+   variable does not exist on main yet (it arrives with PR #24),
+   and its 64px fallback would still collide on desktop, where
+   the controls are 72–88px tall. When PR #24 lands, the note
+   can switch to the measured reserve — both compute the same
+   height (button + padding + clearance). --- */
 .wd-end-note {
   position: absolute;
   left: 50%;
-  bottom: 56px;
+  bottom: calc(var(--wd-control-size) + var(--wd-space) * 2.5);
   transform: translateX(-50%);
   font-size: var(--wd-font-small);
   color: var(--wd-color-muted);
   background: var(--wd-color-panel);
   border: 1px solid var(--wd-color-border);
   border-radius: 999px;
-  padding: 4px 12px;
+  padding: calc(var(--wd-space) * 0.5) var(--wd-space);
   z-index: 3;
   pointer-events: none;
 }

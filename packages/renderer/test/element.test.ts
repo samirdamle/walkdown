@@ -403,3 +403,105 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     expect(css).toContain('display: block; visibility: hidden;');
   });
 });
+
+describe('viewport-relative chrome (audit C1–C12)', () => {
+  // jsdom does not apply Shadow DOM stylesheets to computed
+  // style, so the rules are asserted on the text of the
+  // <style> the element actually renders with — the shipped
+  // CSS, not a copy of it (same approach as the alignment tests).
+  function cssOf(el: WalkdownDeckElement): string {
+    const styleEl = el.shadowRoot?.querySelector('#wd-default') as HTMLStyleElement;
+    return styleEl.textContent ?? '';
+  }
+
+  it('host min-height never exceeds the container (C1)', () => {
+    const el = createDeck('# T\n\n- One.\n');
+    expect(cssOf(el)).toContain('min-height: min(240px, 100%);');
+    expect(cssOf(el)).not.toMatch(/min-height: 240px;/);
+  });
+
+  it('panel shadow follows the §4.1 clamp formula (C2)', () => {
+    const el = createDeck('# T\n\n- One.\n');
+    expect(cssOf(el)).toContain('box-shadow: 0 0 clamp(8px, 1vw + 4px, 16px) rgb(0 0 0 / 0.06);');
+    expect(cssOf(el)).not.toContain('box-shadow: 0 1px 2px');
+  });
+
+  it('inline code radius is em-based (C3)', () => {
+    expect(DEFAULT_CSS).toContain('border-radius: 0.25em;');
+    expect(DEFAULT_CSS).not.toContain('border-radius: 4px;');
+  });
+
+  it('enter-animation travel is em-based (C4)', () => {
+    expect(DEFAULT_CSS).toContain('translateY(0.5em)');
+    expect(DEFAULT_CSS).toContain('translateX(1em)');
+    expect(DEFAULT_CSS).toContain('translateX(-1em)');
+    expect(DEFAULT_CSS).toContain('translateX(0.75em)');
+    expect(DEFAULT_CSS).toContain('translateX(-0.75em)');
+    expect(DEFAULT_CSS).not.toContain('translateY(10px)');
+    expect(DEFAULT_CSS).not.toContain('translateX(24px)');
+    expect(DEFAULT_CSS).not.toContain('translateX(-24px)');
+    expect(DEFAULT_CSS).not.toContain('translateX(16px)');
+    expect(DEFAULT_CSS).not.toContain('translateX(-16px)');
+  });
+
+  it('scroll cue height and padding derive from tokens (C5, C6)', () => {
+    const el = createDeck('# T\n\n- One.\n');
+    const css = cssOf(el);
+    expect(css).toContain('height: calc(var(--wd-font-small) * 2 + var(--wd-space));');
+    expect(css).toContain('padding-bottom: var(--wd-space);');
+    expect(css).not.toContain('height: 48px;');
+    expect(css).not.toContain('padding-bottom: 8px;');
+  });
+
+  it('control buttons derive from the clamp, with a 44px touch floor (C7, C8)', () => {
+    const el = createDeck('# T\n\n- One.\n');
+    const css = cssOf(el);
+    expect(css).toContain('--wd-control-size: clamp(44px, 3vw + 8px, 56px);');
+    expect(css).toContain('width: var(--wd-control-size);');
+    expect(css).toContain('height: var(--wd-control-size);');
+    expect(css).toContain('font-size: 1.25em;');
+    expect(css).not.toContain('font-size: 20px;');
+    expect(css).not.toContain('width: 40px;');
+    expect(css).not.toContain('height: 40px;');
+  });
+
+  it('progress pill padding derives from the space token (C9)', () => {
+    expect(DEFAULT_CSS).toContain('padding: calc(var(--wd-space) * 0.25) var(--wd-space);');
+    expect(DEFAULT_CSS).not.toContain('padding: 2px 10px;');
+  });
+
+  it('end note clears the controls band and its padding is token-based (C10, C11)', () => {
+    const el = createDeck('# T\n\n- One.\n');
+    const css = cssOf(el);
+    expect(css).toContain('bottom: calc(var(--wd-control-size) + var(--wd-space) * 2.5);');
+    expect(css).not.toContain('bottom: 56px;');
+    expect(css).toContain('padding: calc(var(--wd-space) * 0.5) var(--wd-space);');
+    expect(css).not.toContain('padding: 4px 12px;');
+  });
+
+  it('end-note clearance beats the controls height at phone and desktop widths (C8, C10, C12)', () => {
+    // Evaluate the shipped formulas: --wd-space comes from the
+    // layout engine for the container (the deck fills the window
+    // in the demo, so container width is the viewport width);
+    // --wd-control-size is the clamp in the shipped CSS.
+    const m = /--wd-control-size: clamp\(([\d.]+)px, ([\d.]+)vw \+ ([\d.]+)px, ([\d.]+)px\);/.exec(DEFAULT_CSS);
+    expect(m).not.toBeNull();
+    const [cMin, cVw, cAdd, cMax] = [m![1], m![2], m![3], m![4]].map(Number);
+    const clampPx = (w: number): number =>
+      Math.min(cMax, Math.max(cMin, (cVw * w) / 100 + cAdd));
+    for (const w of [360, 1440, 1920]) {
+      const el = createDeck('# T\n\n- One.\n');
+      el.setContainerSize(w, 900);
+      const space = parseFloat(varOf(el, '--wd-space'));
+      const btn = clampPx(w);
+      // Controls height = button + top/bottom padding (both --wd-space);
+      // end-note bottom = button + 2.5× space, i.e. half a space unit
+      // of clearance (C12) above the controls band.
+      const controls = btn + 2 * space;
+      const bottom = btn + 2.5 * space;
+      expect(btn).toBeGreaterThanOrEqual(44);
+      expect(bottom).toBeGreaterThan(controls);
+      expect(bottom - controls).toBeCloseTo(0.5 * space, 5);
+    }
+  });
+});
