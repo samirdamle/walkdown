@@ -300,6 +300,7 @@ export class WalkdownDeckElement extends HTMLElement {
   connectedCallback(): void {
     this.tabIndex = 0;
     this.addEventListener('keydown', this._onKeyDown);
+    this.addEventListener('focusin', this._onFocusIn);
     this.screenEl.addEventListener('scroll', this._onScroll);
     this.screenEl.addEventListener('pointerdown', this._onPointerDown);
     this.screenEl.addEventListener('pointermove', this._onPointerMove);
@@ -329,6 +330,7 @@ export class WalkdownDeckElement extends HTMLElement {
 
   disconnectedCallback(): void {
     this.removeEventListener('keydown', this._onKeyDown);
+    this.removeEventListener('focusin', this._onFocusIn);
     this.screenEl.removeEventListener('scroll', this._onScroll);
     this.screenEl.removeEventListener('pointerdown', this._onPointerDown);
     this.screenEl.removeEventListener('pointermove', this._onPointerMove);
@@ -704,6 +706,15 @@ export class WalkdownDeckElement extends HTMLElement {
   }
 
   private _onKeyDown = (e: KeyboardEvent): void => {
+    // Every key re-arms the idle timer (§6.5, issue #77) — Tab
+    // included, and keys the switch below ignores. It used to sit
+    // after the switch, so the `default` branch returned early
+    // and a keyboard user tabbing through an idle deck never
+    // brought the controls back. Re-arming first also means the
+    // controls are back before the key's own navigation runs.
+    // It stays first even when the menu guard below swallows the
+    // key: the keypress still counts as activity.
+    this._armIdleTimer();
     // While the navigation menu is open, ArrowUp/ArrowDown/Home/End belong
     // to the menu (§6.6, issue #72): the menu's own keydown handler moves
     // between items and stops the event, but a key pressed with focus
@@ -785,6 +796,15 @@ export class WalkdownDeckElement extends HTMLElement {
       default:
         return;
     }
+  };
+
+  /** Focus entering the deck re-arms the idle timer (§6.5,
+      issue #77): Tab, a click, or assistive tech moving focus
+      into the deck brings the controls back. `focusin` bubbles
+      and is composed, so focus landing on any shadow-DOM
+      descendant — a control, a panel link, the screen region —
+      reaches the host. */
+  private _onFocusIn = (): void => {
     this._armIdleTimer();
   };
 
@@ -814,9 +834,9 @@ export class WalkdownDeckElement extends HTMLElement {
     if (this._idleTimer !== null) clearTimeout(this._idleTimer);
     // Showing the controls again re-checks the fit (§7.2) — but
     // only on the actual transition, not on every pointer move:
-    // auto-hide only changes opacity, never height, so the
-    // reserve is the same either way; the re-check keeps the
-    // guarantee if that ever changes.
+    // auto-hide only changes opacity and visibility, never
+    // height, so the reserve is the same either way; the
+    // re-check keeps the guarantee if that ever changes.
     const wasIdle = this.deckEl.classList.contains('wd-deck--idle');
     this.deckEl.classList.remove('wd-deck--idle');
     if (wasIdle) this._applyLayout();

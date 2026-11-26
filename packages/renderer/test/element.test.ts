@@ -1144,7 +1144,11 @@ describe('navigation menu (§6.6)', () => {
   });
 
   it('the menu keeps the controls visible while it is open', () => {
-    expect(DEFAULT_CSS).toContain('.wd-deck--nav-open .wd-controls { opacity: 1; }');
+    // Visible AND focusable: opacity alone would leave the
+    // controls opaque but unfocusable while the menu is open —
+    // including the indicator, which focus returns to on close
+    // (§6.5, issue #77).
+    expect(DEFAULT_CSS).toContain('.wd-deck--nav-open .wd-controls { opacity: 1; visibility: visible; }');
     const el = createDeck(SAMPLE_DECK);
     indicator(el).click();
     expect(deckEl(el).classList.contains('wd-deck--nav-open')).toBe(true);
@@ -1497,5 +1501,93 @@ describe('Space activates the focused control (§6.1, issue #73)', () => {
     key(el, ' '); // host itself — screen 1 has 3 steps, so Next advances the step, not the screen
     expect(el.state.screenIndex).toBe(1);
     expect(el.state.stepIndex).toBe(1);
+  });
+});
+
+describe('idle auto-hide (§6.5, issue #77)', () => {
+  // jsdom has no layout and does not compute shadow-DOM
+  // stylesheet rules, so the not-focusable half is pinned on the
+  // shipped CSS text (styles.test.ts) and these tests pin the
+  // class + timer behaviour the CSS keys off: the controls go
+  // idle after 2.5s, and keyboard / focus / pointer activity
+  // brings them back and re-arms the timer.
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function idleDeck(): WalkdownDeckElement {
+    vi.useFakeTimers();
+    return createDeck(SAMPLE_DECK);
+  }
+
+  function prevBtn(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-prev') as HTMLButtonElement;
+  }
+
+  function isIdle(el: WalkdownDeckElement): boolean {
+    return deckEl(el).classList.contains('wd-deck--idle');
+  }
+
+  it('controls hide after 2.5s idle', () => {
+    const el = idleDeck();
+    expect(isIdle(el)).toBe(false);
+    vi.advanceTimersByTime(2499);
+    expect(isIdle(el)).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(isIdle(el)).toBe(true);
+  });
+
+  it('Tab re-shows the controls and re-arms the timer', () => {
+    const el = idleDeck();
+    vi.advanceTimersByTime(2500);
+    expect(isIdle(el)).toBe(true);
+    key(el, 'Tab');
+    expect(isIdle(el)).toBe(false);
+    // The timer was re-armed, not just cleared: idle returns.
+    vi.advanceTimersByTime(2500);
+    expect(isIdle(el)).toBe(true);
+  });
+
+  it('an unhandled key re-arms the timer too', () => {
+    // Tab is not the only key the old code dropped: _onKeyDown
+    // returned early on the default branch before arming, so
+    // any key the switch ignores also left an idle deck hidden.
+    const el = idleDeck();
+    vi.advanceTimersByTime(2500);
+    expect(isIdle(el)).toBe(true);
+    key(el, 'a');
+    expect(isIdle(el)).toBe(false);
+  });
+
+  it('focus entering the deck re-arms the timer', () => {
+    const el = idleDeck();
+    vi.advanceTimersByTime(2500);
+    expect(isIdle(el)).toBe(true);
+    // jsdom's .focus() does not dispatch focusin, so dispatch
+    // the event the browser delivers: focusin is composed, and
+    // the F1 tests use the same composed: true pattern for
+    // events crossing the shadow boundary.
+    prevBtn(el).dispatchEvent(new window.FocusEvent('focusin', { bubbles: true, composed: true }));
+    expect(isIdle(el)).toBe(false);
+  });
+
+  it('pointer move still re-arms the timer', () => {
+    const el = idleDeck();
+    vi.advanceTimersByTime(2500);
+    expect(isIdle(el)).toBe(true);
+    el.dispatchEvent(new window.MouseEvent('pointermove', { bubbles: true }));
+    expect(isIdle(el)).toBe(false);
+  });
+
+  it('the bottom reserve is unchanged while idle', () => {
+    // Hiding changes opacity and visibility, never height: the
+    // reserve the fit guarantees (§7.2) must be identical
+    // before and after the controls hide.
+    const el = idleDeck();
+    const before = varOf(el, '--wd-reserve-bottom');
+    expect(before).not.toBe('');
+    vi.advanceTimersByTime(2500);
+    expect(isIdle(el)).toBe(true);
+    expect(varOf(el, '--wd-reserve-bottom')).toBe(before);
   });
 });

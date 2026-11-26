@@ -636,6 +636,16 @@ Let the current state be `(s, k)` — screen *s*, step *k* — with
 - Controls auto-hide on idle on desktop and reappear on
   pointer move; they MUST NOT auto-hide on touch, where
   there is no hover to bring them back.
+- While idle-hidden the controls MUST NOT be focusable:
+  they are `visibility: hidden` — not merely transparent —
+  so Tab skips them and no invisible focus ring can land on
+  them. The hide is still a 300ms opacity fade (visibility
+  flips only after the fade completes), and the controls
+  keep their height while hidden, so the bottom reserve
+  (§7.2) is unchanged.
+- Keyboard use re-shows the controls: any keypress
+  (including Tab) and any focus entering the deck re-arms
+  the idle timer.
 - The progress indicator shows steps, not screens (§1.3):
   dots or a thin progress bar in v0.1. A full grid overview
   is v0.2.
