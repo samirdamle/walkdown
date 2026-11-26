@@ -817,6 +817,12 @@ lengths, container size) → CSS variables + column count. It MUST:
 - Scroll affordance MUST be visible: a fade / chevron /
   scrollbar cue when a screen is scrollable and not yet at its
   bottom. A reader MUST never wonder whether there is more.
+- On a screen carrying the `dark` class, the chrome that sits on
+  the screen background MUST use the dark theme: the scroll cue
+  fades to the dark background, and the cue text and the section
+  label use the dark theme's muted (7.5:1 on the dark background,
+  AAA; 6.9:1 on the dark panel). The light muted (2.63:1 on dark)
+  MUST NOT be used there (issue #74).
 - Reveal scrolls to the newly revealed panel: when a step
   reveals a panel that is not fully visible in the screen's
   scroll viewport, the renderer scrolls the screen just far

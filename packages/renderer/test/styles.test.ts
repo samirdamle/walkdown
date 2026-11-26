@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { controlSizePx, NAV_MENU_MAX_HEIGHT_CSS, SPACE_MIN_PX } from '@walkdown/core';
+import { COLORS, controlSizePx, NAV_MENU_MAX_HEIGHT_CSS, SPACE_MIN_PX } from '@walkdown/core';
 import { DEFAULT_CSS } from '../src/styles.js';
 
 /**
@@ -36,5 +36,32 @@ describe('generated token values in the stylesheet', () => {
     for (const w of [0, 360, 768, 1024, 1440, 1920, 2560]) {
       expect(controlSizePx(w)).toBeCloseTo(cssSize(w), 5);
     }
+  });
+});
+
+describe('dark-screen chrome (issue #74)', () => {
+  it('the label and cue use the dark muted on dark screens, and the cue fades to the dark background', () => {
+    // The values are the settled dark theme tokens; the ratios are
+    // hand-verified and recorded in policies/design-tokens.json and
+    // policies/README.md (7.5:1 on the dark bg, 6.9:1 on the dark panel).
+    expect(COLORS.dark.muted).toBe('#A9A9A0');
+    expect(COLORS.dark.bg).toBe('#18181C');
+    expect(DEFAULT_CSS).toContain(`.wd-screen.dark .wd-section-label,`);
+    expect(DEFAULT_CSS).toContain(`.wd-screen.dark ~ .wd-scroll-cue {`);
+    expect(DEFAULT_CSS).toContain(`color: ${COLORS.dark.muted};`);
+    expect(DEFAULT_CSS).toContain(
+      `background: linear-gradient(to bottom, transparent, ${COLORS.dark.bg} 80%);`,
+    );
+    // No second, hand-written copy of either value may hide in the CSS:
+    // the token is the one source, here and in themeVars().
+    expect(DEFAULT_CSS.split('#A9A9A0').length - 1).toBe(1);
+    expect(DEFAULT_CSS.split('#18181C').length - 1).toBe(1);
+  });
+
+  it('the light chrome is untouched: the base cue still fades to the light background', () => {
+    expect(DEFAULT_CSS).toContain(
+      'background: linear-gradient(to bottom, transparent, var(--wd-color-bg) 80%);',
+    );
+    expect(DEFAULT_CSS).toContain('.wd-section-label {');
   });
 });

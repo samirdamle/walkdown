@@ -35,7 +35,10 @@ verified by computation and match exactly.
   secondary text only), border `#E5E5DF`, accent ocean green
   `#2E7D6B` (4.7:1, AA).
 - **Colours, dark:** background `#18181C`, panel `#202024`,
-  ink `#F5F5F0` (16.2:1, AAA), muted `#A9A9A0` (7.5:1, AAA),
+  ink `#F5F5F0` (16.2:1, AAA), muted `#A9A9A0` (7.5:1 on the
+  background, 6.9:1 on the panel, AAA — since F3, issue #74, the
+  muted used for the chrome on dark screens, where the light
+  muted was 2.63:1),
   border `#2E2E33`, accent ocean green (seafoam) `#7FC8B8` (9.2:1, AAA).
 - **One accent only:** ocean green in both themes — `#2E7D6B` light, `#7FC8B8` dark.
 - **Inter (body) + Fraunces (titles) is an opt-in theme, not

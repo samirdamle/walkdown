@@ -696,7 +696,7 @@
       "max": null,
       "min": null,
       "name": "--wd-color-muted",
-      "notes": "Light muted is AA and secondary-text only; it MUST NOT be used for body text. A validator rule enforces that.",
+      "notes": "Light muted is AA and secondary-text only; it MUST NOT be used for body text. A validator rule enforces that. Dark muted is 7.5:1 on the dark background and 6.9:1 on the dark panel (both AAA); since F3 (issue #74) it is the muted used for the chrome on dark screens (section label, scroll cue), where the light muted was 2.63:1.",
       "preferred": null,
       "property": "Secondary text",
       "settled_date": "2026-11-25",
