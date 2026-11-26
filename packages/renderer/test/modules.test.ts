@@ -85,8 +85,8 @@ describe('DeckFacts (facts.ts)', () => {
   const facts = new DeckFacts(deck);
 
   it('derives the flat screens and the total step count once', () => {
-    expect(facts.screens).toHaveLength(14);
-    expect(facts.totalSteps).toBe(51);
+    expect(facts.screens).toHaveLength(15);
+    expect(facts.totalSteps).toBe(54);
   });
 
   it('counts the steps before each screen', () => {
@@ -97,15 +97,15 @@ describe('DeckFacts (facts.ts)', () => {
   });
 
   it('reports progress in steps', () => {
-    expect(facts.progress({ screenIndex: 0, stepIndex: 0, zoom: 0 })).toEqual({ current: 1, total: 51 });
-    expect(facts.progress({ screenIndex: 13, stepIndex: 2, zoom: 0 })).toEqual({ current: 51, total: 51 });
+    expect(facts.progress({ screenIndex: 0, stepIndex: 0, zoom: 0 })).toEqual({ current: 1, total: 54 });
+    expect(facts.progress({ screenIndex: 14, stepIndex: 2, zoom: 0 })).toEqual({ current: 54, total: 54 });
   });
 
   it('knows the first and last steps', () => {
     expect(facts.isAtStart({ screenIndex: 0, stepIndex: 0, zoom: 0 })).toBe(true);
     expect(facts.isAtStart({ screenIndex: 0, stepIndex: 1, zoom: 0 })).toBe(false);
-    expect(facts.isAtEnd({ screenIndex: 13, stepIndex: 2, zoom: 0 })).toBe(true);
-    expect(facts.isAtEnd({ screenIndex: 13, stepIndex: 1, zoom: 0 })).toBe(false);
+    expect(facts.isAtEnd({ screenIndex: 14, stepIndex: 2, zoom: 0 })).toBe(true);
+    expect(facts.isAtEnd({ screenIndex: 14, stepIndex: 1, zoom: 0 })).toBe(false);
   });
 
   it('maps each screen to its Section', () => {
@@ -128,7 +128,7 @@ describe('navMenuTargets (nav-menu.ts)', () => {
       { label: 'How it works', kind: 'section', screenIndex: 3, sectionIndex: 1 },
       { label: 'Walking', kind: 'section', screenIndex: 7, sectionIndex: 2 },
       { label: 'Customize', kind: 'section', screenIndex: 9, sectionIndex: 3 },
-      { label: 'Last screen', kind: 'last', screenIndex: 13 },
+      { label: 'Last screen', kind: 'last', screenIndex: 14 },
     ]);
   });
 
@@ -254,31 +254,31 @@ describe('animatePanelIn (effects.ts)', () => {
 });
 
 describe('end-to-end walk-through through the split modules', () => {
-  it('walks all 51 steps, zooms, jumps from the menu, and restores a deep link', () => {
+  it('walks all 54 steps, zooms, jumps from the menu, and restores a deep link', () => {
     const el = createDeck(SAMPLE_DECK);
-    expect(el.screens).toHaveLength(14);
-    expect(el.stepsTotal).toBe(51);
-    expect(progressText(el)).toBe('1 / 51');
+    expect(el.screens).toHaveLength(15);
+    expect(el.stepsTotal).toBe(54);
+    expect(progressText(el)).toBe('1 / 54');
 
     // Walk the whole deck via Next; every step lands on the next count.
-    for (let step = 2; step <= 51; step++) {
+    for (let step = 2; step <= 54; step++) {
       el.next();
-      expect(progressText(el)).toBe(`${step} / 51`);
+      expect(progressText(el)).toBe(`${step} / 54`);
     }
-    expect(el.state.screenIndex).toBe(13);
+    expect(el.state.screenIndex).toBe(14);
     expect(el.state.stepIndex).toBe(2);
     // At the end the Start over button shows; Next is a no-op.
     const endNote = el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement;
     expect(endNote.hidden).toBe(false);
     el.next();
-    expect(progressText(el)).toBe('51 / 51');
+    expect(progressText(el)).toBe('54 / 54');
 
     // Zoom in and out; the state survives, the step does not move.
     el.zoomInStep();
     expect(el.state.zoom).toBe(1);
     el.zoomOutStep();
     expect(el.state.zoom).toBe(0);
-    expect(progressText(el)).toBe('51 / 51');
+    expect(progressText(el)).toBe('54 / 54');
 
     // The menu jumps to a Section's first screen.
     const indicator = el.shadowRoot?.querySelector('.wd-progress-text') as HTMLButtonElement;
@@ -310,13 +310,13 @@ describe('end-to-end walk-through through the split modules', () => {
 
     // Start over returns to the hero.
     el.goToStart();
-    expect(progressText(el)).toBe('1 / 51');
+    expect(progressText(el)).toBe('1 / 54');
 
     // A deep link restores on load.
     window.location.hash = '#/3/2';
     const el2 = createDeck(SAMPLE_DECK);
     expect(el2.state.screenIndex).toBe(2);
     expect(el2.state.stepIndex).toBe(1);
-    expect(progressText(el2)).toBe('6 / 51');
+    expect(progressText(el2)).toBe('6 / 54');
   });
 });

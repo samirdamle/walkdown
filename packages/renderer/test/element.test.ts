@@ -85,14 +85,25 @@ afterEach(() => {
 });
 
 describe('<walkdown-deck> with the sample deck', () => {
-  it('renders 14 screens / 51 steps, starting at the hero', () => {
+  it('renders 15 screens / 54 steps, starting at the hero', () => {
     const el = createDeck(SAMPLE_DECK);
-    expect(el.screens).toHaveLength(14);
-    expect(el.stepsTotal).toBe(51);
+    expect(el.screens).toHaveLength(15);
+    expect(el.stepsTotal).toBe(54);
     expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
     expect(screenEl(el).querySelector('.wd-title')?.textContent).toBe('Walkdown');
     expect(screenEl(el).classList.contains('wd-screen--hero')).toBe(true);
-    expect(progressText(el)).toBe('1 / 51');
+    expect(progressText(el)).toBe('1 / 54');
+  });
+
+  it('the smallest deck screen is not hero-centred (3 panels, code block full width)', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const idx = el.screens.findIndex((s) => s.title === 'The smallest deck');
+    expect(idx).toBe(13);
+    el.jumpTo(idx);
+    // Three panels, so the single-panel hero rule does not apply:
+    // the code block is not squeezed into the 720px hero box.
+    expect(screenEl(el).classList.contains('wd-screen--hero')).toBe(false);
+    expect(panels(el)).toHaveLength(3);
   });
 
   it('the hero panel holds a bold h2 Walkdown above its line, in one panel', () => {
@@ -133,15 +144,15 @@ describe('<walkdown-deck> with the sample deck', () => {
     el.prev();
     expect(el.state.screenIndex).toBe(0);
     expect(el.state.stepIndex).toBe(0);
-    for (let i = 0; i < 50; i++) el.next();
-    expect(el.state.screenIndex).toBe(13);
+    for (let i = 0; i < 53; i++) el.next();
+    expect(el.state.screenIndex).toBe(14);
     expect(el.state.stepIndex).toBe(2); // last screen has 3 panels, all stepped
     el.next();
-    expect(el.state.screenIndex).toBe(13);
+    expect(el.state.screenIndex).toBe(14);
     el.goToStart();
     expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
     el.goToEnd();
-    expect(el.state.screenIndex).toBe(13);
+    expect(el.state.screenIndex).toBe(14);
     expect(el.state.stepIndex).toBe(2);
     expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(false);
   });
@@ -157,7 +168,7 @@ describe('<walkdown-deck> with the sample deck', () => {
     key(el, ' ');
     expect(el.state.screenIndex).toBe(1);
     key(el, 'End');
-    expect(el.state.screenIndex).toBe(13);
+    expect(el.state.screenIndex).toBe(14);
     key(el, 'Home');
     expect(el.state.screenIndex).toBe(0);
     key(el, '+');
@@ -178,7 +189,7 @@ describe('<walkdown-deck> with the sample deck', () => {
   it('clamps an out-of-range deep link to the last step', () => {
     window.location.hash = '#/99/99';
     const el = createDeck(SAMPLE_DECK);
-    expect(el.state.screenIndex).toBe(13);
+    expect(el.state.screenIndex).toBe(14);
     expect(el.state.stepIndex).toBe(2);
   });
 
@@ -234,7 +245,7 @@ describe('Start over button and zoom-in effect', () => {
     restart.click();
     expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
     expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(true);
-    expect(progressText(el)).toBe('1 / 51');
+    expect(progressText(el)).toBe('1 / 54');
   });
 
   it('the Start over button is a native keyboard-operable button', () => {
@@ -780,7 +791,7 @@ describe('navigation menu (§6.6)', () => {
     expect(menu(el).hidden).toBe(true);
     indicator(el).click();
     menuItems(el).find((b) => b.textContent === 'Last screen')?.click();
-    expect(el.state.screenIndex).toBe(13);
+    expect(el.state.screenIndex).toBe(14);
     expect(el.state.stepIndex).toBe(2);
     expect(menu(el).hidden).toBe(true);
   });
@@ -1011,7 +1022,7 @@ describe('bottom clearance is scrollable (issue #38)', () => {
   // padding-based bottom clearance let the last panel scroll
   // only as far as the container's bottom edge — underneath
   // the overlaid controls, as Samir's screenshot showed
-  // ("Lists inside panels", step 18/51). The clearance must
+  // ("Lists inside panels", step 18/54). The clearance must
   // therefore be an in-flow flex item (a trailing spacer), not
   // container padding. jsdom has no layout, so the mechanism
   // is pinned on the shipped CSS text and the clearance is

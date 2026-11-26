@@ -153,6 +153,37 @@ Simple, magical presentation from Markdown
 
 ---
 
+# The smallest deck
+
+- Here is the whole of Walkdown in twenty-two lines. Copy it into a file, walk it, then change one thing.
+```markdown
+---
+title: My first walkdown
+defaults:
+  reveal: step
+  effect: fade-in
+---
+
+<!-- section: Start -->
+
+# Hello
+
+- One bullet is one panel.
+- The walk reveals them one step at a time.
+
+---
+
+# One more screen
+
+<!-- reveal: effect: slide-in; duration: 1s -->
+
+- Three dashes start a new screen.
+- Headings do not.
+```
+- That is the smallest deck that still shows how it works. Order, nesting, and per-panel effects are variations on it — this deck walks through them a few screens back.
+
+---
+
 # Your first deck
 
 - Write a Markdown file. Split it with three dashes. Put a bullet on each idea.
