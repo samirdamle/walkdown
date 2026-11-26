@@ -9,7 +9,6 @@ import {
   startState,
   stateFromHash,
   stepsForScreen,
-  swipeThreshold,
   totalSteps,
   visiblePanelIndexes,
   zoomFactor,
@@ -133,13 +132,5 @@ describe('zoom (§7.3)', () => {
     expect(zoom).toBe(4);
     for (let i = 0; i < 12; i++) zoom = zoomOut(zoom);
     expect(zoom).toBe(-4);
-  });
-});
-
-describe('swipe threshold (§6.4, provisional)', () => {
-  it('is ~48 CSS px or 1/8 of the screen width, whichever is smaller', () => {
-    expect(swipeThreshold(1440)).toBe(48);
-    expect(swipeThreshold(360)).toBe(45);
-    expect(swipeThreshold(200)).toBe(25);
   });
 });

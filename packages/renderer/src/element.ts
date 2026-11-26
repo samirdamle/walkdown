@@ -29,20 +29,23 @@
  * screen; ArrowRight or right-half click/tap = Next; ArrowLeft or
  * left-half click/tap = Previous; Space/PageDown = Next
  * (provisional, §10); Home/End = Start/End; `+`/`-` zoom.
- * Horizontal swipe advances/retreats (provisional threshold from
- * the core's `swipeThreshold()`); vertical swipe scrolls. The two
- * gestures never fight: `touch-action: pan-y` lets the browser own
- * vertical scrolling while horizontal movement reaches this code.
+ * Horizontal swipe advances/retreats (provisional threshold,
+ * `swipeThreshold()` in `gestures.ts`); vertical swipe scrolls.
+ * The two gestures never fight: `touch-action: pan-y` lets the
+ * browser own vertical scrolling while horizontal movement
+ * reaches this code.
+ *
+ * The element is the orchestrator; each job lives in its own
+ * module: `facts.ts` (derived deck facts), `nav-menu.ts` (the
+ * §6.6 menu), `layout.ts` (layout + the font-fit measurement
+ * pass), `gestures.ts` (swipe/tap), `effects.ts` (enter
+ * animations), `scroll.ts` (reveal auto-scroll), `render.ts`
+ * (panel markup).
  */
 
 import {
-  bottomReservePx,
   clampState,
-  computeLayout,
-  CONTROLS_HEIGHT_FALLBACK_PX,
   endState,
-  flatScreens,
-  FONT_FLOOR_PX,
   hashFor,
   isEmptyDeck,
   jumpToScreen,
@@ -51,28 +54,25 @@ import {
   prevState,
   startState,
   stateFromHash,
-  stepsForScreen,
-  swipeThreshold,
   themeVars,
-  totalSteps,
   visiblePanelIndexes,
   zoomIn,
   zoomOut,
 } from '@walkdown/core';
-import type { Deck, Panel, Screen, Theme, WalkState } from '@walkdown/core';
+import type { Deck, Panel, Theme, WalkState } from '@walkdown/core';
+import { animatePanelIn } from './effects.js';
+import { DeckFacts } from './facts.js';
+import { PointerTracker } from './gestures.js';
+import { LayoutController } from './layout.js';
+import { NavMenu } from './nav-menu.js';
+import { panelsHtml } from './render.js';
+import { panelContentRect, scrollPanelIntoView } from './scroll.js';
 import { loadStylesheets } from './loader.js';
 import { deckClassesOf, sanitizeCss } from './sanitize.js';
 import { DEFAULT_CSS } from './styles.js';
 
-const TAP_MAX_MOVE_PX = 8;
 const IDLE_HIDE_MS = 2500;
 const SCROLL_STEP_FRACTION = 0.4;
-
-/** A tap that starts a scroll/drag, or on an interactive element, is not navigation (§6.3). */
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) return false;
-  return target.closest('a, button, input, textarea, select, [contenteditable], .wd-controls') !== null;
-}
 
 export class WalkdownDeckElement extends HTMLElement {
   static observedAttributes = ['src', 'markdown', 'theme'];
@@ -88,9 +88,6 @@ export class WalkdownDeckElement extends HTMLElement {
   private prevBtn!: HTMLButtonElement;
   private nextBtn!: HTMLButtonElement;
   private navMenuEl!: HTMLDivElement;
-  private _navMenuOpen = false;
-  /** The deck the menu items were built from; sections never change mid-walk, so the menu is rebuilt only for a new deck. */
-  private _navMenuDeck: Deck | null = null;
   private scrollCueEl!: HTMLDivElement;
   private controlsEl!: HTMLDivElement;
   private endNoteEl!: HTMLDivElement;
@@ -100,16 +97,19 @@ export class WalkdownDeckElement extends HTMLElement {
   private inlineStyleEl!: HTMLStyleElement;
 
   private _deck: Deck | null = null;
+  /** Derived deck facts, rebuilt for each loaded deck (`facts.ts`). */
+  private _facts: DeckFacts | null = null;
   private _state: WalkState = startState();
   private _deckUrl: string | undefined;
   private _themeOverride: Theme | null = null;
-  private _containerSize: { width: number; height: number } | null = null;
-  /** Body size the last layout pass fitted (§2.2) — the measurement pass shrinks from here, never grows. */
-  private _fittedBodyPx = 0;
+  /** Layout + font-fit measurement pass (`layout.ts`). */
+  private _layout!: LayoutController;
+  /** Section-jump menu (`nav-menu.ts`). */
+  private _navMenu!: NavMenu;
+  /** Swipe/tap state machine (`gestures.ts`). */
+  private _tracker = new PointerTracker();
   private _resizeObserver: ResizeObserver | null = null;
   private _idleTimer: ReturnType<typeof setTimeout> | null = null;
-  private _pointerStart: { x: number; y: number; interactive: boolean } | null = null;
-  private _gesture: 'undecided' | 'horizontal' | 'vertical' | 'handled' = 'undecided';
   private _stylesLoaded = false;
   private _srcLoading: string | null = null;
 
@@ -154,6 +154,13 @@ export class WalkdownDeckElement extends HTMLElement {
     this.emptyEl = this.shadow.querySelector('.wd-empty') as HTMLDivElement;
     this.externalStyleEl = this.shadow.querySelector('#wd-external') as HTMLStyleElement;
     this.inlineStyleEl = this.shadow.querySelector('#wd-inline') as HTMLStyleElement;
+    this._layout = new LayoutController(this.deckEl, this.screenEl, this.controlsEl, this.scrollCueEl, this);
+    this._navMenu = new NavMenu(this.navMenuEl, this.progressTextEl, this.deckEl, this, {
+      onFirst: () => this.goToStart(),
+      onLast: () => this.goToEnd(),
+      onJump: (screenIndex) => this.jumpTo(screenIndex, 'forward'),
+      onOpen: () => this._armIdleTimer(),
+    });
   }
 
   // --- Public API -------------------------------------------------------
@@ -200,17 +207,18 @@ export class WalkdownDeckElement extends HTMLElement {
 
   /** Total steps in the deck (the progress indicator counts these, §1.3). */
   get stepsTotal(): number {
-    return this._deck === null ? 0 : totalSteps(this._deck);
+    return this._facts === null ? 0 : this._facts.totalSteps;
   }
 
   /** The deck's screens in flat order (§1.2). */
   get screens() {
-    return this._deck === null ? [] : flatScreens(this._deck);
+    return this._facts === null ? [] : this._facts.screens;
   }
 
   /** Load a parsed deck, optionally with the URL it came from (for stylesheet resolution). */
   loadDeck(deck: Deck | null, deckUrl?: string): void {
     this._deck = deck;
+    this._facts = deck === null ? null : new DeckFacts(deck);
     this._deckUrl = deckUrl;
     this._stylesLoaded = false;
     this._state = startState();
@@ -234,7 +242,7 @@ export class WalkdownDeckElement extends HTMLElement {
   setContainerSize(width: number, height: number): void;
   setContainerSize(size: null): void;
   setContainerSize(widthOrNull: number | null, height?: number): void {
-    this._containerSize = widthOrNull === null ? null : { width: widthOrNull, height: height ?? 0 };
+    this._layout.setContainerSize(widthOrNull === null ? null : { width: widthOrNull, height: height ?? 0 });
     this._applyLayout();
   }
 
@@ -364,6 +372,7 @@ export class WalkdownDeckElement extends HTMLElement {
 
   private _showEmpty(message: string): void {
     this._deck = null;
+    this._facts = null;
     const p = this.emptyEl.querySelector('p');
     if (p !== null) p.textContent = message;
     this._render({ animate: false });
@@ -406,108 +415,14 @@ export class WalkdownDeckElement extends HTMLElement {
     for (const [k, v] of Object.entries(vars)) this.deckEl.style.setProperty(k, v);
   }
 
-  private _measureContainer(): { width: number; height: number } {
-    if (this._containerSize !== null) return this._containerSize;
-    const w = this.clientWidth || 0;
-    const h = this.clientHeight || 0;
-    // No layout yet (e.g. jsdom, or not yet painted): fall back to a
-    // desktop-sized viewport so the first render is still correct.
-    return { width: w > 0 ? w : 1440, height: h > 0 ? h : 900 };
-  }
-
-  /**
-   * Bottom reserve (§7.2): the height the bottom controls
-   * occupy, plus a small clearance, so panels never sit
-   * underneath them. Measured for real when the element has
-   * layout; the fallback covers jsdom / not-yet-painted.
-   * Auto-hide only changes the controls' opacity, never their
-   * height, so the reserve is the same whether they are
-   * currently visible or idle-hidden — they can reappear at
-   * any moment, and the layout must already clear them.
-   */
-  private _controlsReservePx(containerWidth: number): number {
-    const measured = this.controlsEl?.offsetHeight ?? 0;
-    // Measured for real when the element has layout; the
-    // fallback covers jsdom / not-yet-painted. The formula is
-    // the core's bottomReservePx — this method only supplies
-    // the height side of it.
-    return bottomReservePx(
-      measured > 0 ? measured : CONTROLS_HEIGHT_FALLBACK_PX,
-      containerWidth,
-    );
-  }
-
   /** Re-run the layout engine for the current screen (spec §7.2). Debounced by ResizeObserver's own cadence. */
   private _applyLayout(): void {
-    if (this._deck === null || this.screens.length === 0) return;
-    const screen = this.screens[this._state.screenIndex];
-    if (screen === undefined) return;
-    const { width, height } = this._measureContainer();
-    // The fit runs on ALL panels' content — the whole screen,
-    // visible or not yet revealed — so the fitted size is fixed
-    // for the screen: a step that reveals another panel never
-    // changes the type. The column count comes from the total
-    // panel count (inside computeLayout), so the grid — and
-    // every visible panel's position in it — stays put across
-    // steps; only the type size changes, never a position.
-    // The fit also reserves the bottom controls' height plus
-    // clearance, so panels never run underneath them.
-    const result = computeLayout({
-      containerWidth: width,
-      containerHeight: height,
-      panelCount: screen.panels.length,
-      contentLengths: screen.panels.map((p) => p.text.length),
-      reservedBottomPx: this._controlsReservePx(width),
-      zoom: this._state.zoom,
-      theme: this.theme,
-    });
-    for (const [k, v] of Object.entries(result.vars)) this.deckEl.style.setProperty(k, v);
-    this._fittedBodyPx = result.fontBodyPx;
-    this._fitMeasuredFont();
-    this._updateScrollCue();
+    if (this._facts === null) return;
+    this._layout.applyLayout(this._facts, this._state, this.theme);
   }
 
-  /**
-   * Measurement is the authority (§7.4): the fit is an
-   * estimate (average glyph ≈ 0.5em, uniform line-height), so
-   * after layout, shrink the body size 1px at a time while the
-   * screen still overflows, down to the 14px floor. At the
-   * floor the screen scrolls internally and the scroll cue
-   * shows. This pass only ever shrinks — growing is the fit's
-   * job, on the next layout pass (resize, screen change, zoom
-   * change — never a step change).
-   *
-   * The measurement sees the FULL screen, not just the visible
-   * panels: hidden panels take no space (§5), so they are
-   * revealed synchronously for the measurement (the
-   * `wd-screen--measuring` class makes them take layout space
-   * while staying invisible). The class is added and removed
-   * in this same task, before any paint, so nothing flickers.
-   * The screen's bottom clearance is a trailing in-flow spacer
-   * carrying the controls reserve (`--wd-reserve-bottom`), so
-   * the overflow check measures against the height available
-   * above the controls. (It used to be bottom padding on the
-   * screen — Safari does not count that toward a flex
-   * container's scrollable overflow, issue #38.)
-   * Skipped when there is no layout yet (jsdom, or not yet
-   * painted: clientHeight is 0 and there is nothing to measure).
-   */
-  private _fitMeasuredFont(): void {
-    const el = this.screenEl;
-    if (el.clientHeight === 0 || this._fittedBodyPx <= 0) return;
-    this.screenEl.classList.add('wd-screen--measuring');
-    try {
-      let size = this._fittedBodyPx;
-      let guard = 0;
-      while (size > FONT_FLOOR_PX && el.scrollHeight > el.clientHeight + 4 && guard < 24) {
-        size = Math.max(FONT_FLOOR_PX, size - 1);
-        this.deckEl.style.setProperty('--wd-font-body', `${size}px`);
-        guard++;
-      }
-    } finally {
-      this.screenEl.classList.remove('wd-screen--measuring');
-    }
-    this._updateScrollCue();
+  private _updateScrollCue(): void {
+    this._layout.updateScrollCue();
   }
 
   private _applyState(next: WalkState, opts: { animate: boolean; jump?: boolean }): void {
@@ -524,7 +439,7 @@ export class WalkdownDeckElement extends HTMLElement {
       }
       // Any navigation dismisses the menu (§6.6) — it is a
       // transient overlay, and the walk has moved on.
-      if (this._navMenuOpen) this._closeNavMenu(true);
+      if (this._navMenu.isOpen) this._navMenu.close();
     }
     this._render({ animate: opts.animate, jump: opts.jump ?? false, prev });
     // The fit is fixed per screen from its total content (§7.2):
@@ -544,28 +459,6 @@ export class WalkdownDeckElement extends HTMLElement {
     this._applyLayout();
   }
 
-  /**
-   * Play a panel's enter animation (§8). The panel's own effect
-   * (§4.1) wins over the screen's; its own duration wins over the
-   * screen's. `zoom-in` is first-class, like `slide-in` — never a
-   * fallback. `none` plays nothing.
-   */
-  private _animatePanelIn(el: HTMLElement, panel: Panel, screen: Screen, forward: boolean): void {
-    const effect = panel.effect ?? screen.reveal.effect;
-    if (effect === 'none') return;
-    const cls =
-      effect === 'slide-in'
-        ? forward
-          ? 'wd-enter--slide-in-forward'
-          : 'wd-enter--slide-in-backward'
-        : effect === 'zoom-in'
-          ? 'wd-enter--zoom-in'
-          : 'wd-enter--fade-in';
-    el.style.setProperty('--wd-anim-duration', `${panel.durationMs ?? screen.reveal.durationMs}ms`);
-    el.classList.add(cls);
-    el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
-  }
-
   private _render(opts: { animate: boolean; jump?: boolean; prev?: WalkState }): void {
     const deck = this._deck;
     const empty = deck === null || isEmptyDeck(deck) || this.screens.length === 0;
@@ -579,14 +472,16 @@ export class WalkdownDeckElement extends HTMLElement {
       this.progressTextEl.textContent = '';
       this.progressTextEl.removeAttribute('aria-label');
       this.endNoteEl.hidden = true;
-      this._navMenuOpen = false;
-      this._updateNavMenu();
+      this._navMenu.close(false);
+      this._navMenu.sync(null, null, -1);
       this.scrollCueEl.classList.remove('wd-scroll-cue--visible');
       return;
     }
+    const facts = this._facts;
+    if (facts === null) return;
     this.screenEl.style.display = '';
-    const screens = this.screens;
-    const screen = screens[this._state.screenIndex];
+    const screens = facts.screens;
+    const screen = facts.screen(this._state.screenIndex);
     if (screen === undefined) return;
     const prev = opts.prev;
     const screenChanged = prev !== undefined && prev.screenIndex !== this._state.screenIndex;
@@ -597,7 +492,7 @@ export class WalkdownDeckElement extends HTMLElement {
     // screen starts at the top (§5: re-entering forward restores
     // the screen fully revealed; scroll itself is per-screen).
     const scrollTop = this.screenEl.scrollTop;
-    const section = deck.sections.find((s) => s.screens.includes(screen));
+    const section = facts.sectionOfScreen(this._state.screenIndex);
     this.sectionEl.textContent = section?.title ?? '';
     this.sectionEl.style.display = section?.title ? '' : 'none';
     this.titleEl.textContent = screen.title ?? '';
@@ -615,14 +510,7 @@ export class WalkdownDeckElement extends HTMLElement {
         this._state.screenIndex > (prev?.screenIndex ?? 0) ? 'wd-screen-enter--forward' : 'wd-screen-enter--backward',
       );
     }
-    this.panelsEl.innerHTML = screen.panels
-      .map((panel, i) => {
-        const shown = visible.has(i);
-        const classes = ['wd-panel', `wd-panel--${panel.kind}`, ...panel.classNames].join(' ');
-        const inner = panel.blocks.map((b) => b.html).join('');
-        return `<div class="${classes}" data-panel="${i}"${shown ? '' : ' hidden aria-hidden="true"'}>${inner}</div>`;
-      })
-      .join('');
+    this.panelsEl.innerHTML = panelsHtml(screen.panels, visible);
     // Screen-level class hooks (§11.3).
     this.screenEl.classList.remove(...this._lastScreenClasses);
     this._lastScreenClasses = screen.classNames;
@@ -641,10 +529,14 @@ export class WalkdownDeckElement extends HTMLElement {
           // would skew the rect. The scroll then follows the
           // minimal-scroll rule of scrollIntoView({
           // block: 'nearest' }) (§7.4).
-          const rect = this._panelContentRect(el);
+          const rect = panelContentRect(this.screenEl, el);
           const forward = this._state.stepIndex > (prev?.stepIndex ?? -1);
-          this._animatePanelIn(el, screen.panels[newly] as Panel, screen, forward);
-          this._scrollPanelIntoView(rect);
+          animatePanelIn(el, screen.panels[newly] as Panel, screen, forward);
+          scrollPanelIntoView(
+            this.screenEl,
+            rect,
+            this._layout.controlsReservePx(this._layout.measureContainer().width),
+          );
         }
       }
     } else if (opts.animate && !opts.jump && screenChanged) {
@@ -654,222 +546,38 @@ export class WalkdownDeckElement extends HTMLElement {
         const el = this.panelsEl.querySelector(`[data-panel="${first}"]`);
         if (el instanceof HTMLElement) {
           const forward = this._state.screenIndex > (prev?.screenIndex ?? 0);
-          this._animatePanelIn(el, screen.panels[first] as Panel, screen, forward);
+          animatePanelIn(el, screen.panels[first] as Panel, screen, forward);
         }
       }
     }
 
     // Progress counts steps, not screens (§1.3).
-    const stepsBefore = screens
-      .slice(0, this._state.screenIndex)
-      .reduce((sum, s) => sum + stepsForScreen(s), 0);
-    const current = stepsBefore + this._state.stepIndex + 1;
-    const total = totalSteps(deck);
+    const { current, total } = facts.progress(this._state);
     this.progressBarEl.style.width = total > 0 ? `${(current / total) * 100}%` : '0%';
     this.progressTextEl.textContent = `${current} / ${total}`;
     this.progressTextEl.setAttribute('aria-label', `Step ${current} of ${total}. Activate to jump to a screen.`);
-    const atStart = this._state.screenIndex === 0 && this._state.stepIndex === 0;
-    const lastScreen = screens[screens.length - 1];
-    const atEnd =
-      lastScreen !== undefined &&
-      this._state.screenIndex === screens.length - 1 &&
-      this._state.stepIndex === stepsForScreen(lastScreen) - 1;
-    this.prevBtn.disabled = atStart;
-    this.nextBtn.disabled = atEnd;
-    this.endNoteEl.hidden = !atEnd;
-    this._updateNavMenu();
+    this.prevBtn.disabled = facts.isAtStart(this._state);
+    this.nextBtn.disabled = facts.isAtEnd(this._state);
+    this.endNoteEl.hidden = !facts.isAtEnd(this._state);
+    this._navMenu.sync(deck, facts, facts.sectionIndexOfScreen(this._state.screenIndex));
     this._updateScrollCue();
   }
 
   private _lastScreenClasses: string[] = [];
 
-  /**
-   * Geometry of a panel relative to the screen's scroll content
-   * (§7.4): the panel's rect minus the screen's rect, plus the
-   * current scroll, so the numbers are in content coordinates.
-   * getBoundingClientRect is used (not offsetTop) because the
-   * panels' offsetParent is the deck, not the screen. Null when
-   * there is no layout yet (jsdom, or not yet painted) — the
-   * caller then does nothing.
-   */
-  private _panelContentRect(el: HTMLElement): { top: number; bottom: number } | null {
-    const container = this.screenEl;
-    if (container.clientHeight === 0) return null;
-    const c = container.getBoundingClientRect();
-    const p = el.getBoundingClientRect();
-    const top = p.top - c.top + container.scrollTop;
-    return { top, bottom: top + p.height };
-  }
-
-  /**
-   * Reveal auto-scroll (§7.4): when a step reveals a panel
-   * that is not fully visible in the screen's scroll viewport,
-   * scroll the screen just far enough to bring it into view —
-   * the minimal-scroll semantics of scrollIntoView({
-   * block: 'nearest' }): no scroll at all when the panel is
-   * already fully visible, only as far as needed otherwise.
-   * The panel must end up clear of the bottom controls, so
-   * the visible window ends at the bottom reserve, not at the
-   * viewport edge. A panel taller than the visible window
-   * cannot fit whole: it is shown from its top. Smooth unless
-   * prefers-reduced-motion (§7.5 rung 4, §8), in which case
-   * instant. Never runs during the font-fit measurement pass —
-   * that pass reveals all panels synchronously and must not
-   * fight a scroll.
-   */
-  private _scrollPanelIntoView(rect: { top: number; bottom: number } | null): void {
-    if (rect === null) return;
-    if (this.screenEl.classList.contains('wd-screen--measuring')) return;
-    const container = this.screenEl;
-    const reserve = this._controlsReservePx(this._measureContainer().width);
-    const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
-    const visibleTop = container.scrollTop;
-    const visibleBottom = container.scrollTop + container.clientHeight - reserve;
-    let target: number | null = null;
-    if (rect.bottom > visibleBottom) {
-      // Below the fold: bring the bottom up just clear of the controls.
-      target = rect.bottom - container.clientHeight + reserve;
-      if (rect.bottom - rect.top > container.clientHeight - reserve) target = rect.top;
-    } else if (rect.top < visibleTop) {
-      // Above the fold (a `sequence` reveal can surface an
-      // earlier panel): bring the top down into view.
-      target = rect.top;
-    }
-    if (target === null) return; // already fully visible — do not move at all
-    target = Math.min(Math.max(0, target), maxScroll);
-    if (target === container.scrollTop) return;
-    if (this._prefersReducedMotion()) {
-      container.scrollTop = target;
-    } else {
-      container.scrollTo({ top: target, behavior: 'smooth' });
-    }
-  }
-
-  /** prefers-reduced-motion (§7.5 rung 4, §8) — same guarded matchMedia as the idle timer. */
-  private _prefersReducedMotion(): boolean {
-    try {
-      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch {
-      return false;
-    }
-  }
-
-  private _updateScrollCue(): void {
-    const el = this.screenEl;
-    const scrollable = el.scrollHeight > el.clientHeight + 4;
-    el.classList.toggle('wd-screen--scrolling', scrollable);
-    const notAtBottom = el.scrollTop + el.clientHeight < el.scrollHeight - 4;
-    this.scrollCueEl.classList.toggle('wd-scroll-cue--visible', scrollable && notAtBottom);
-  }
-
   // --- Navigation menu (§6.6) -------------------------------------------
 
-  /**
-   * The menu's targets, in order: First screen, one item per
-   * Section (the Section's name, in deck order), Last screen.
-   * A Section jumps to the first step of its first screen; a
-   * Section with no title is labelled `Section N` (§6.6).
-   */
-  private _navMenuTargets(): { label: string; kind: 'first' | 'section' | 'last'; screenIndex: number; sectionIndex?: number }[] {
-    if (this._deck === null) return [];
-    const flat = flatScreens(this._deck);
-    const items: { label: string; kind: 'first' | 'section' | 'last'; screenIndex: number; sectionIndex?: number }[] = [
-      { label: 'First screen', kind: 'first', screenIndex: 0 },
-    ];
-    this._deck.sections.forEach((section, i) => {
-      const first = section.screens[0];
-      if (first === undefined) return;
-      const screenIndex = flat.indexOf(first);
-      if (screenIndex < 0) return;
-      items.push({ label: section.title ?? `Section ${i + 1}`, kind: 'section', screenIndex, sectionIndex: i });
-    });
-    items.push({ label: 'Last screen', kind: 'last', screenIndex: flat.length - 1 });
-    return items;
-  }
-
-  /** Build the menu items for a new deck (built with the DOM API, so Section titles need no escaping). */
-  private _buildNavMenu(): void {
-    const deck = this._deck;
-    if (deck === null || deck === this._navMenuDeck) return;
-    this._navMenuDeck = deck;
-    this.navMenuEl.replaceChildren();
-    for (const target of this._navMenuTargets()) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.setAttribute('role', 'menuitem');
-      btn.className = 'wd-nav-menu-item';
-      btn.dataset.nav = target.kind;
-      btn.dataset.screen = String(target.screenIndex);
-      if (target.sectionIndex !== undefined) btn.dataset.section = String(target.sectionIndex);
-      btn.textContent = target.label;
-      this.navMenuEl.appendChild(btn);
-    }
-  }
-
-  /** Sync the menu's visibility, the trigger's expanded state, and the current Section's marking (§6.6). */
-  private _updateNavMenu(): void {
-    this._buildNavMenu();
-    const deck = this._deck;
-    const screen = deck === null ? undefined : this.screens[this._state.screenIndex];
-    const currentSection =
-      deck === undefined || deck === null || screen === undefined
-        ? -1
-        : deck.sections.findIndex((s) => s.screens.includes(screen));
-    for (const btn of Array.from(this.navMenuEl.querySelectorAll('.wd-nav-menu-item'))) {
-      const sectionIndex = btn.getAttribute('data-section');
-      const isCurrent = sectionIndex !== null && Number(sectionIndex) === currentSection;
-      btn.classList.toggle('wd-nav-menu-item--current', isCurrent);
-      if (isCurrent) btn.setAttribute('aria-current', 'true');
-      else btn.removeAttribute('aria-current');
-    }
-    this.navMenuEl.hidden = !this._navMenuOpen;
-    this.progressTextEl.setAttribute('aria-expanded', String(this._navMenuOpen));
-    this.deckEl.classList.toggle('wd-deck--nav-open', this._navMenuOpen);
-  }
-
-  /** Open the menu and move focus into it — the current Section's item, or the first item (§6.6). */
-  private _openNavMenu(): void {
-    this._navMenuOpen = true;
-    this._updateNavMenu();
-    const current = this.navMenuEl.querySelector('.wd-nav-menu-item--current') as HTMLElement | null;
-    const first = this.navMenuEl.querySelector('.wd-nav-menu-item') as HTMLElement | null;
-    (current ?? first)?.focus();
-    this._armIdleTimer();
-  }
-
-  /** Close the menu; focus returns to the indicator (§6.6). */
-  private _closeNavMenu(focusIndicator = true): void {
-    if (!this._navMenuOpen) return;
-    this._navMenuOpen = false;
-    this._updateNavMenu();
-    if (focusIndicator) this.progressTextEl.focus();
-  }
-
-  private _toggleNavMenu(): void {
-    if (this._navMenuOpen) this._closeNavMenu();
-    else this._openNavMenu();
-  }
-
   private _onProgressClick = (): void => {
-    this._toggleNavMenu();
+    this._navMenu.toggle();
   };
 
-  /** A menu item navigates and closes the menu (§6.6). The menu is closed first so a no-op jump (already on the first screen) still dismisses it. */
   private _onNavMenuClick = (e: MouseEvent): void => {
-    const btn = (e.target as Element | null)?.closest?.('.wd-nav-menu-item') as HTMLElement | null;
-    if (btn === null || btn === undefined) return;
-    const kind = btn.getAttribute('data-nav');
-    const screenIndex = Number(btn.getAttribute('data-screen') ?? 0);
-    this._closeNavMenu(true);
-    if (kind === 'first') this.goToStart();
-    else if (kind === 'last') this.goToEnd();
-    else this.jumpTo(screenIndex, 'forward');
+    this._navMenu.handleItemClick(e);
   };
 
-  /** A click/tap outside the deck closes the menu (§6.6). Clicks inside the Shadow DOM retarget to the host, so contains() is true for anything inside the deck. */
+  /** A click/tap outside the deck closes the menu (§6.6). */
   private _onDocumentPointerDown = (e: PointerEvent): void => {
-    if (!this._navMenuOpen) return;
-    if (!this.contains(e.target as Node)) this._closeNavMenu();
+    this._navMenu.handleOutsidePointerDown(e);
   };
 
   // --- Input ------------------------------------------------------------
@@ -912,9 +620,9 @@ export class WalkdownDeckElement extends HTMLElement {
       case 'Escape':
         // Escape closes the navigation menu (§6.6) and returns
         // focus to the indicator; otherwise it is not a walk key.
-        if (this._navMenuOpen) {
+        if (this._navMenu.isOpen) {
           e.preventDefault();
-          this._closeNavMenu();
+          this._navMenu.close();
         }
         break;
       case '+':
@@ -982,47 +690,25 @@ export class WalkdownDeckElement extends HTMLElement {
   }
 
   private _onPointerDown = (e: PointerEvent): void => {
-    this._pointerStart = { x: e.clientX, y: e.clientY, interactive: isInteractiveTarget(e.target) };
-    this._gesture = 'undecided';
+    this._tracker.down(e.clientX, e.clientY, e.target);
   };
 
   private _onPointerMove = (e: PointerEvent): void => {
-    if (this._pointerStart === null || this._gesture === 'handled' || this._gesture === 'vertical') return;
-    const dx = e.clientX - this._pointerStart.x;
-    const dy = e.clientY - this._pointerStart.y;
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
-      // Vertical: it stays a scroll (§6.4). The browser owns it (touch-action: pan-y).
-      this._gesture = 'vertical';
-      return;
-    }
-    if (this._gesture === 'undecided' && Math.abs(dx) > Math.abs(dy)) {
-      const threshold = swipeThreshold(this._measureContainer().width);
-      if (Math.abs(dx) >= threshold) {
-        this._gesture = 'handled';
-        if (dx < 0) this.next();
-        else this.prev();
-      }
-    }
+    const outcome = this._tracker.move(e.clientX, e.clientY, this._layout.measureContainer().width);
+    if (outcome === 'next') this.next();
+    else if (outcome === 'prev') this.prev();
   };
 
   private _onPointerUp = (e: PointerEvent): void => {
-    const start = this._pointerStart;
-    this._pointerStart = null;
-    if (start === null) return;
+    const tap = this._tracker.up(e.clientX, e.clientY);
+    if (!tap.hadStart) return;
     // A tap on the screen while the menu is open only dismisses
     // the menu (§6.6) — it must not also navigate.
-    if (this._navMenuOpen) {
-      this._closeNavMenu();
+    if (this._navMenu.isOpen) {
+      this._navMenu.close();
       return;
     }
-    if (this._gesture === 'handled' || this._gesture === 'vertical') {
-      this._gesture = 'undecided';
-      return;
-    }
-    this._gesture = 'undecided';
-    // Tap, not drag (§6.3): movement beyond a small threshold cancels it.
-    if (Math.abs(e.clientX - start.x) > TAP_MAX_MOVE_PX || Math.abs(e.clientY - start.y) > TAP_MAX_MOVE_PX) return;
-    if (start.interactive) return;
+    if (tap.tapX === null) return;
     // A click that selects text does nothing (§6.3).
     try {
       if (window.getSelection()?.toString() !== '') return;
@@ -1031,7 +717,7 @@ export class WalkdownDeckElement extends HTMLElement {
     }
     const rect = this.screenEl.getBoundingClientRect();
     const midX = rect.left + rect.width / 2;
-    if (e.clientX >= midX) this.next();
+    if (tap.tapX >= midX) this.next();
     else this.prev();
   };
 
