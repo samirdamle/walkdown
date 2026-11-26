@@ -106,6 +106,34 @@ describe('<walkdown-deck> with the sample deck', () => {
     expect(panels(el)).toHaveLength(3);
   });
 
+  it('Customize screens carry the dark class on the screen element (§11.3)', () => {
+    const el = createDeck(SAMPLE_DECK);
+    // Screens 10–15 are the Customize section: the dark class lands
+    // on the screen element itself (there is no section element).
+    for (const idx of [9, 10, 11, 12, 13, 14]) {
+      el.jumpTo(idx);
+      expect(screenEl(el).classList.contains('dark')).toBe(true);
+    }
+    // Everywhere else it is absent — including the hero, which
+    // carries only its own class.
+    for (const idx of [1, 5, 8]) {
+      el.jumpTo(idx);
+      expect(screenEl(el).classList.contains('dark')).toBe(false);
+    }
+    el.jumpTo(0);
+    expect(screenEl(el).classList.contains('dark')).toBe(false);
+    expect(screenEl(el).classList.contains('hero')).toBe(true);
+  });
+
+  it('a section class lands on the screen element and leaves when the walk leaves the Section', () => {
+    const el = createDeck(
+      '<!-- section: Dark; class: dark -->\n\n# A\n\n- One\n\n---\n\n<!-- section: Plain -->\n\n# B\n\n- Two\n',
+    );
+    expect(screenEl(el).classList.contains('dark')).toBe(true);
+    el.jumpTo(1);
+    expect(screenEl(el).classList.contains('dark')).toBe(false);
+  });
+
   it('the hero panel holds a bold h2 Walkdown above its line, in one panel', () => {
     const el = createDeck(SAMPLE_DECK);
     const panel = panels(el)[0] as HTMLElement;
@@ -499,7 +527,7 @@ describe('scroll cue position (§7.4, issue #64)', () => {
 
   it('away from the end the deck is not marked at-end, so the cue sits at the reserve', () => {
     const el = createDeck(SAMPLE_DECK);
-    expect(progressText(el)).toBe('1 / 51');
+    expect(progressText(el)).toBe('1 / 54');
     expect(deckEl(el).classList.contains('wd-deck--end')).toBe(false);
     expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(true);
   });

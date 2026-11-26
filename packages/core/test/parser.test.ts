@@ -599,6 +599,49 @@ describe('sections', () => {
     expect(flatScreens(deck)[1]?.reveal.mode).toBe('all');
   });
 
+  it('a section class cascades to its screens, before the screen’s own classes (§11.3)', () => {
+    const deck = parseDeck(`<!-- section: Dark; class: dark wide -->
+
+<!-- reveal: class: hero -->
+
+# A
+
+- One
+
+---
+
+# B
+
+- Two
+
+---
+
+<!-- section: Plain -->
+
+# C
+
+- Three
+`);
+    const screens = flatScreens(deck);
+    // Section first, then the screen's own class.
+    expect(screens[0]?.classNames).toEqual(['dark', 'wide', 'hero']);
+    // A screen with no marker of its own still inherits the section.
+    expect(screens[1]?.classNames).toEqual(['dark', 'wide']);
+    // A later Section without `class:` does not inherit the earlier one.
+    expect(screens[2]?.classNames).toEqual([]);
+  });
+
+  it('a screen in a section with no class keeps empty classNames', () => {
+    const deck = parseDeck(`<!-- section: Plain -->
+
+# A
+
+- One
+`);
+    expect(deck.sections[0]?.classNames).toEqual([]);
+    expect(flatScreens(deck)[0]?.classNames).toEqual([]);
+  });
+
   it('two section markers in a row: the later wins, the empty one is dropped', () => {
     const deck = parseDeck(`<!-- section: First -->
 

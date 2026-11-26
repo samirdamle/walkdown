@@ -627,7 +627,7 @@ MUST ignore them if they appear in a `class:` list.
 | Element | Walkdown class(es) | What it controls | Author assigns? | Author styles? |
 | ------- | ------------------- | ---------------- | --------------- | -------------- |
 | Deck root | `.wd-deck` | Theme variables, container size, font stack, the style cascade's scope | No — no deck class hook in v0.1 | Yes — this is how a theme addresses the deck |
-| Section wrapper | `.wd-section` (+ author classes) | Section grouping, section-level styling | Yes — `class:` on the section marker | Yes |
+| Section (no wrapper element in v0.1) | — (the section's author classes are carried by each of its screens) | Section grouping, section-level styling | Yes — `class:` on the section marker, inherited by its screens (spec §11.3) | Yes |
 | Section title (when rendered, e.g. in an overview) | `.wd-section-title` | Section title type | No | Yes |
 | Screen | `.wd-screen` (+ author classes) | Screen padding, scroll container, screen-level styling | Yes — `class:` on the reveal marker | Yes |
 | Screen, single panel | `.wd-screen--hero` | Hero treatment (§4.3) | No — derived from panel count | Yes |
