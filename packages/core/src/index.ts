@@ -22,7 +22,6 @@ export {
 export {
   computeLayout,
   columnCount,
-  countFactor,
   titleFactor,
   clampPx,
   spaceUnitPx,

@@ -3,12 +3,12 @@ import {
   FONT_BODY_MAX_PX,
   columnCount,
   computeLayout,
-  countFactor,
   estimateScreenHeight,
   fitFontSize,
   spaceUnitPx,
   titleFactor,
 } from '../src/layout.js';
+import type { LayoutResult } from '../src/types.js';
 
 function layout(width: number, height: number, panels: number, chars = 120, zoom = 0) {
   return computeLayout({
@@ -18,6 +18,16 @@ function layout(width: number, height: number, panels: number, chars = 120, zoom
     contentLengths: Array.from({ length: panels }, () => chars),
     zoom,
   });
+}
+
+/**
+ * Read a `--wd-*` var back as a number. Layout is asserted
+ * through the vars (§7.2): the numeric fields the result used
+ * to carry are the same numbers, now read from the record the
+ * renderer actually consumes.
+ */
+function varPx(result: LayoutResult, name: string): number {
+  return parseFloat(result.vars[name] ?? '');
 }
 
 describe('column count (§7.2 reference arrangements)', () => {
@@ -42,15 +52,15 @@ describe('column count (§7.2 reference arrangements)', () => {
 describe('type scale (design-policies §2.2 computed values)', () => {
   it('matches the table at 360 / 768 / 1440', () => {
     // Screen title: 1 panel → 24 / 34.6 / 56; 2–3 → 24 / 32.9 / 53; 4–6 → 24 / 30.4 / 49.3; 7–8 → 24 / 29.4 / 47.6
-    expect(layout(360, 800, 1).fontTitlePx).toBeCloseTo(24, 1);
-    expect(layout(768, 800, 1).fontTitlePx).toBeCloseTo(34.6, 0);
-    expect(layout(1440, 900, 1).fontTitlePx).toBeCloseTo(56, 0);
-    expect(layout(768, 800, 3).fontTitlePx).toBeCloseTo(32.9, 0);
-    expect(layout(1440, 900, 3).fontTitlePx).toBeCloseTo(53, 0);
-    expect(layout(768, 800, 6).fontTitlePx).toBeCloseTo(30.4, 0);
-    expect(layout(1440, 900, 6).fontTitlePx).toBeCloseTo(49.3, 0);
-    expect(layout(768, 800, 8).fontTitlePx).toBeCloseTo(29.4, 0);
-    expect(layout(1440, 900, 8).fontTitlePx).toBeCloseTo(47.6, 0);
+    expect(varPx(layout(360, 800, 1), '--wd-font-title')).toBeCloseTo(24, 1);
+    expect(varPx(layout(768, 800, 1), '--wd-font-title')).toBeCloseTo(34.6, 0);
+    expect(varPx(layout(1440, 900, 1), '--wd-font-title')).toBeCloseTo(56, 0);
+    expect(varPx(layout(768, 800, 3), '--wd-font-title')).toBeCloseTo(32.9, 0);
+    expect(varPx(layout(1440, 900, 3), '--wd-font-title')).toBeCloseTo(53, 0);
+    expect(varPx(layout(768, 800, 6), '--wd-font-title')).toBeCloseTo(30.4, 0);
+    expect(varPx(layout(1440, 900, 6), '--wd-font-title')).toBeCloseTo(49.3, 0);
+    expect(varPx(layout(768, 800, 8), '--wd-font-title')).toBeCloseTo(29.4, 0);
+    expect(varPx(layout(1440, 900, 8), '--wd-font-title')).toBeCloseTo(47.6, 0);
 
     // Panel body is content-fit now (§2.2), not a viewport
     // formula — 120 chars per panel: 1 → 32 / 32 / 32;
@@ -74,19 +84,15 @@ describe('type scale (design-policies §2.2 computed values)', () => {
     expect(layout(1440, 900, 8).fontBodyPx).toBeCloseTo(25.4, 0);
 
     // Code: 13 / 14.4 / 18. Caption: 12 / 13.5 / 14.
-    expect(layout(360, 800, 1).fontCodePx).toBeCloseTo(13, 1);
-    expect(layout(768, 800, 1).fontCodePx).toBeCloseTo(14.4, 0);
-    expect(layout(1440, 900, 1).fontCodePx).toBeCloseTo(18, 1);
-    expect(layout(360, 800, 1).fontSmallPx).toBeCloseTo(12, 1);
-    expect(layout(768, 800, 1).fontSmallPx).toBeCloseTo(13.5, 0);
-    expect(layout(1440, 900, 1).fontSmallPx).toBeCloseTo(14, 1);
+    expect(varPx(layout(360, 800, 1), '--wd-font-code')).toBeCloseTo(13, 1);
+    expect(varPx(layout(768, 800, 1), '--wd-font-code')).toBeCloseTo(14.4, 0);
+    expect(varPx(layout(1440, 900, 1), '--wd-font-code')).toBeCloseTo(18, 1);
+    expect(varPx(layout(360, 800, 1), '--wd-font-small')).toBeCloseTo(12, 1);
+    expect(varPx(layout(768, 800, 1), '--wd-font-small')).toBeCloseTo(13.5, 0);
+    expect(varPx(layout(1440, 900, 1), '--wd-font-small')).toBeCloseTo(14, 1);
   });
 
-  it('the count/title factors scale preferred + ceiling, never the floor', () => {
-    expect(countFactor(1)).toBe(1.0);
-    expect(countFactor(3)).toBe(0.92);
-    expect(countFactor(6)).toBe(0.84);
-    expect(countFactor(8)).toBe(0.78);
+  it('the title factor scales preferred + ceiling, never the floor', () => {
     expect(titleFactor(1)).toBe(1.0);
     expect(titleFactor(3)).toBe(0.95);
     expect(titleFactor(6)).toBe(0.88);
@@ -106,7 +112,7 @@ describe('type floor and zoom (§7.3)', () => {
       for (const n of [1, 3, 6, 8]) {
         for (const z of [-4, 0, 4]) {
           const l = layout(w, 800, n, 120, z);
-          for (const size of [l.fontBodyPx, l.fontTitlePx, l.fontCodePx, l.fontSmallPx]) {
+          for (const size of [l.fontBodyPx, varPx(l, '--wd-font-title'), varPx(l, '--wd-font-code'), varPx(l, '--wd-font-small')]) {
             expect(size).toBeGreaterThanOrEqual(12);
           }
         }
@@ -129,9 +135,9 @@ describe('type floor and zoom (§7.3)', () => {
 describe('content-fit font sizing (design-policies §2.2)', () => {
   it('a single short panel gets the 32px ceiling', () => {
     // Samir's example: one bullet, ~30 characters → huge.
+    // (At zoom 0 the fit is the body size, so fontBodyPx is the
+    // fit here; the pre-zoom fit has no var of its own.)
     expect(layout(1440, 900, 1, 30).fontBodyPx).toBe(32);
-    expect(layout(1440, 900, 1, 30).fitFontBodyPx).toBe(32);
-    expect(layout(1440, 900, 1, 30).scroll).toBe(false);
   });
 
   it('denser content gets a distinctly smaller size that still fits', () => {
@@ -140,14 +146,11 @@ describe('content-fit font sizing (design-policies §2.2)', () => {
     const dense = layout(1440, 900, 4, 200);
     expect(dense.fontBodyPx).toBeCloseTo(26.2, 0);
     expect(dense.fontBodyPx).toBeLessThan(32);
-    expect(dense.scroll).toBe(false);
   });
 
-  it('very long content bottoms out at the 12px floor and scrolls', () => {
+  it('very long content bottoms out at the 12px floor', () => {
     const long = layout(360, 640, 8, 900);
     expect(long.fontBodyPx).toBe(12);
-    expect(long.fitFontBodyPx).toBe(12);
-    expect(long.scroll).toBe(true);
   });
 
   it('more content never yields a larger size', () => {
@@ -216,16 +219,22 @@ describe('content-fit font sizing (design-policies §2.2)', () => {
   });
 });
 
-describe('scroll (§7.4)', () => {
-  it('a long screen scrolls internally on a phone', () => {
-    const long = layout(360, 640, 8, 900);
-    expect(long.scroll).toBe(true);
-    expect(long.columns).toBe(1);
+describe('LayoutResult shape (§7.2)', () => {
+  it('returns only columns, fontBodyPx, and vars', () => {
+    const result = layout(1440, 900, 3);
+    expect(Object.keys(result).sort()).toEqual(['columns', 'fontBodyPx', 'vars']);
   });
 
-  it('a short screen does not scroll on a desktop', () => {
-    const short = layout(1440, 900, 3, 60);
-    expect(short.scroll).toBe(false);
+  it('columns and fontBodyPx agree with the vars (one representation)', () => {
+    for (const w of [200, 360, 768, 1440, 1920]) {
+      for (const n of [1, 3, 6, 8]) {
+        for (const z of [-4, 0, 4]) {
+          const r = layout(w, 900, n, 120, z);
+          expect(r.columns).toBe(Number(r.vars['--wd-cols']));
+          expect(r.fontBodyPx).toBe(varPx(r, '--wd-font-body'));
+        }
+      }
+    }
   });
 });
 
