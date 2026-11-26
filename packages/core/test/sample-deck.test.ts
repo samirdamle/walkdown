@@ -106,9 +106,24 @@ describe('examples/walkdown-itself.md', () => {
     // only the step reveal, no effect/duration)…
     expect(screens[10]?.reveal.effect).toBe('slide-in');
     expect(screens[10]?.reveal.durationMs).toBe(250);
-    // …and carries no classes of its own: the accent/big demo was
-    // removed in #61, so the screen looks like every other screen.
-    expect(screens[10]?.classNames).toEqual([]);
+    // …and inherits the Section's `dark` class (§11.3 cascade — the
+    // accent/big demo was removed in #61, so the inherited class is
+    // its only one). The whole Customize section carries it.
+    expect(screens[10]?.classNames).toEqual(['dark']);
+    expect(screens.slice(9, 15).map((s) => s.classNames)).toEqual([
+      ['dark'],
+      ['dark'],
+      ['dark'],
+      ['dark'],
+      ['dark'],
+      ['dark'],
+    ]);
+    // The smallest-deck screen (#65) sits in this Section too, so it
+    // gains the class as well — no marker of its own needed.
+    expect(screens[13]?.classNames).toEqual(['dark']);
+    // Outside the Section, only the hero has a class of its own.
+    expect(screens[0]?.classNames).toEqual(['hero']);
+    expect(screens.slice(1, 9).map((s) => s.classNames)).toEqual([[], [], [], [], [], [], [], []]);
     expect(screens[10]?.panels.every((p) => p.classNames.length === 0)).toBe(true);
   });
 

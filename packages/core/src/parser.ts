@@ -611,7 +611,11 @@ export function parseDeck(text: string): Deck {
       ...(title !== undefined ? { title } : {}),
       panels,
       reveal,
-      classNames: revealMarker?.classNames ?? [],
+      // Section `class:` cascades to its screens (§11.3): the
+      // Section's classes first, then the screen's own. There is
+      // no section element in the renderer, so the screens are
+      // where a section class lands.
+      classNames: [...current.classNames, ...(revealMarker?.classNames ?? [])],
     };
     current.screens.push(screen);
   }

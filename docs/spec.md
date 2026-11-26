@@ -53,7 +53,7 @@ Deck
      ├─ classNames: string[]           // `class:` on the section marker (§2.4)
      └─ screens: Screen[]              // one or more
          ├─ title?: string
-         ├─ classNames: string[]       // `class:` on the reveal marker (§4.2)
+         ├─ classNames: string[]       // its Section's `class:` (§2.4), then its own on the reveal marker (§4.2, §11.3)
          ├─ panels: Panel[]            // one or more
          │   ├─ kind: 'text' | 'image' | 'code' | 'quote'
          │   ├─ content: <parsed Markdown AST>
@@ -68,9 +68,9 @@ Deck
   are a grouping only: they do not change navigation, steps, or
   layout. They exist so a long deck can be named in parts and so a
   progress indicator can show them. A Section MAY carry reveal
-  defaults for its screens (§4.3) and a `class:` (§2.4); neither
-  changes the step count. A Section MUST contain at least
-  one screen.
+  defaults for its screens (§4.3) and a `class:` (§2.4), which
+  its screens inherit (§11.3); neither changes the step count.
+  A Section MUST contain at least one screen.
 - A **screen** is one unit of the walk. A screen MUST contain at
   least one panel. A screen with no panels (e.g. an empty stretch
   between two `---` lines) MUST be dropped by the parser, not
@@ -437,13 +437,17 @@ Rules:
   Values outside 0–2000ms MUST be clamped into that range.
   A malformed duration is ignored and the default used.
 - `class` puts class names on the screen element; `panel-class`
-  puts class names on every panel of this screen (§11.3). They
-  are styling, not reveal settings: they do not participate in
-  the defaults cascade (§4.3), and a screen's `class` does not
-  inherit to its panels (use `panel-class:` for that). Class
-  names are space-separated; a token that is not a valid CSS
-  class name MUST be ignored. `sequence` takes commas inside
-  its value; `class` and `panel-class` take spaces, never commas.
+  puts class names on every panel of this screen (§11.3). `class`
+  cascades from Section to screen: a screen carries its Section's
+  `class:` (§2.4) followed by its own `class:`, in that order.
+  `panel-class` does not cascade — it is set on the screen marker
+  only — and a screen's `class` does not inherit to its panels
+  (use `panel-class:` for that). They are styling, not reveal
+  settings: they never change reveal, and no reveal setting
+  changes them. Class names are space-separated; a token that is
+  not a valid CSS class name MUST be ignored. `sequence` takes
+  commas inside its value; `class` and `panel-class` take spaces,
+  never commas.
 - Unknown keys MUST be ignored, never an error — this is how
   the grammar extends without breaking old decks.
 
@@ -476,8 +480,12 @@ Rules:
   marker sets it, and it is validated per §4.2. A `sequence`
   key in frontmatter `defaults:` or in a section marker MUST
   be ignored.
-- `class` and `panel-class` do not participate in this cascade
-  (§4.2).
+- `panel-class` does not participate in this cascade (§4.2).
+  `class` DOES cascade, but separately from reveal: a screen
+  carries its Section's `class:` followed by its own (§4.2,
+  §11.3). The class cascade never changes mode, sequence,
+  effect, or duration — it only decides which classes the
+  screen element carries.
 - The parser MUST resolve the cascade at parse time (§3.1):
   `Screen.reveal` in the model (§1.1) is fully computed, and
   the renderer MUST NOT re-resolve defaults. A fixture deck
@@ -926,8 +934,11 @@ error.
 
 ### 11.3 Classes and scoping
 
-- A Section element carries its `class:` (§2.4), a screen
-  element carries its `class:` (§4.2), and every panel on a
+- There is no section element in the v0.1 renderer: sections
+  are a grouping in the model (§1.1), rendered as flat screens.
+  A section's `class:` (§2.4) is therefore carried by each of
+  its screens — a screen element carries its Section's classes
+  followed by its own `class:` (§4.2) — and every panel on a
   screen carries that screen's `panel-class:` (§4.2).
 - Deck CSS MUST be scoped to the deck container. The
   reference renderer MUST use Shadow DOM for the deck
