@@ -134,6 +134,28 @@ describe('<walkdown-deck> with the sample deck', () => {
     expect(screenEl(el).classList.contains('dark')).toBe(false);
   });
 
+  it('dark screens re-theme the chrome: the label and cue sit on the dark screen (§7.4, issue #74)', () => {
+    const el = createDeck(SAMPLE_DECK);
+    // The dark-chrome rules in styles.ts key off the .dark class on the
+    // screen element: the section label is the screen's descendant and
+    // the scroll cue is the screen's following sibling, so both selectors
+    // match exactly when the screen is dark — and only then. jsdom does
+    // not compute shadow-DOM stylesheet rules (colour comes back
+    // `canvastext`), so this test pins the structure the selectors need
+    // and styles.test.ts pins the rules themselves; the rendered look
+    // wants a look on the live demo.
+    const label = el.shadowRoot?.querySelector('.wd-section-label') as HTMLElement;
+    const cue = el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement;
+    expect(screenEl(el).contains(label)).toBe(true);
+    expect(screenEl(el).nextElementSibling).toBe(cue);
+    for (const idx of [9, 10, 11, 12, 13, 14]) {
+      el.jumpTo(idx);
+      expect(screenEl(el).classList.contains('dark')).toBe(true);
+    }
+    el.jumpTo(1);
+    expect(screenEl(el).classList.contains('dark')).toBe(false);
+  });
+
   it('the hero panel holds a bold h2 Walkdown above its line, in one panel', () => {
     const el = createDeck(SAMPLE_DECK);
     const panel = panels(el)[0] as HTMLElement;

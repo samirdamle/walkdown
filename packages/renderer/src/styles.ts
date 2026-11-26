@@ -21,10 +21,12 @@
  * bottom-reserve fallback (`--wd-space` min) — plus the stack
  * pile values (`--wd-stack-*`, all Proposal tokens, spec §4.2)
  * and the dismiss distance/rotation the pile CSS shares with
- * the WAAPI choreography in stack.ts. Everything else here is
- * hand-written chrome.
+ * the WAAPI choreography in stack.ts. A third pair is the
+ * dark-screen chrome below (dark muted + dark background,
+ * settled tokens). Everything else here is hand-written chrome.
  */
 import {
+  COLORS,
   NAV_MENU_MAX_HEIGHT_CSS,
   SPACE_MIN_PX,
   STACK_OFFSET_PX,
@@ -451,6 +453,25 @@ export const DEFAULT_CSS = `
    zoomed --wd-font-small, and the 2px is the button's border. */
 .wd-deck--end .wd-scroll-cue {
   bottom: calc(var(--wd-reserve-bottom) + var(--wd-font-small) + 2px);
+}
+
+/* Dark screens re-theme the chrome (issue #74, F3): the section label sits
+   on the screen background and the scroll cue is the screen's following
+   sibling, so both key off the .dark class the renderer already puts on
+   the screen element (spec §11.3, PR #70) — no JS state, no _applyThemeVars
+   change; navigation, jumps and deep links get it for free. The values are
+   the settled dark theme tokens (COLORS.dark), not literals: the dark muted
+   is 7.5:1 on the dark background (AAA) and 6.9:1 on the dark panel, where
+   the light muted was 2.63:1 on dark. The light muted stays for the chrome
+   that sits on light surfaces (panel blockquotes, the progress pill, the
+   empty state). A light screen in a dark-theme deck is not handled — no
+   such deck exists; that belongs with the theme work (issue #75, F4). */
+.wd-screen.dark .wd-section-label,
+.wd-screen.dark ~ .wd-scroll-cue {
+  color: ${COLORS.dark.muted};
+}
+.wd-screen.dark ~ .wd-scroll-cue {
+  background: linear-gradient(to bottom, transparent, ${COLORS.dark.bg} 80%);
 }
 
 /* --- Controls (§6.5): minimal — Previous / Next chevrons and a step count. --- */
