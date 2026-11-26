@@ -692,9 +692,15 @@ lengths, container size) → CSS variables + column count. It MUST:
    (progress bar + step count + Previous/Next) overlay the
    bottom of the screen, so the fit MUST subtract their height
    plus a small clearance from the available height before
-   sizing, and the screen's bottom padding MUST clear them, so
-   panels never sit underneath the controls — including when
-   scrolled to the bottom. If the controls' height varies
+   sizing, and the screen's scrollable content MUST end with
+   that much clearance, so panels never sit underneath the
+   controls — including when scrolled to the bottom. The
+   clearance MUST be part of the scrollable content (a trailing
+   in-flow spacer), NOT bottom padding on the screen: padding
+   on a flex scroll container is not scrollable in
+   Safari/WebKit, so a padding-based clearance lets the last
+   panel scroll only as far as the container's bottom edge —
+   underneath the controls. If the controls' height varies
    (e.g. auto-hide on idle), use their visible height when
    shown and keep the clearance when they reappear; re-check
    the fit when the controls show or hide.

@@ -457,7 +457,12 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     const el = createDeck('# Short\n\n- One short bullet.\n');
     const styleEl = el.shadowRoot?.querySelector('#wd-default') as HTMLStyleElement;
     const css = styleEl.textContent ?? '';
-    expect(css).toContain('padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));');
+    // The clearance is a trailing in-flow spacer, not bottom
+    // padding on the screen (issue #38: Safari does not count
+    // end padding toward a flex container's scrollable
+    // overflow, so padding let the last panel sit under the
+    // controls at max scroll).
+    expect(css).toContain('height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));');
     expect(css).not.toContain('var(--wd-reserve-bottom, 64px)');
     expect(css).toContain('.wd-screen--measuring .wd-panel[hidden]');
     expect(css).toContain('display: block; visibility: hidden;');
@@ -887,5 +892,71 @@ describe('reveal auto-scroll (§7.4)', () => {
     expect(scrollTo).not.toHaveBeenCalled();
     el.next(); // panel 2: below the fold — scrolls
     expect(scrollTo).toHaveBeenCalledWith({ top: 204, behavior: 'smooth' });
+  });
+});
+
+describe('bottom clearance is scrollable (issue #38)', () => {
+  // Safari/WebKit does not count end padding toward a flex
+  // container's scrollable overflow (WebKit bug 318111), so a
+  // padding-based bottom clearance let the last panel scroll
+  // only as far as the container's bottom edge — underneath
+  // the overlaid controls, as Samir's screenshot showed
+  // ("Lists inside panels", step 18/47). The clearance must
+  // therefore be an in-flow flex item (a trailing spacer), not
+  // container padding. jsdom has no layout, so the mechanism
+  // is pinned on the shipped CSS text and the clearance is
+  // evaluated from the shipped formulas — the WebKit behaviour
+  // itself can only be checked in a real browser.
+  function cssOf(el: WalkdownDeckElement): string {
+    const styleEl = el.shadowRoot?.querySelector('#wd-default') as HTMLStyleElement;
+    return styleEl.textContent ?? '';
+  }
+  function ruleOf(css: string, selector: string): string {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const m = new RegExp(`${escaped} \\{([^}]*)\\}`).exec(css);
+    expect(m).not.toBeNull();
+    return m![1];
+  }
+
+  it('the screen carries no reserve in its bottom padding', () => {
+    const css = cssOf(createDeck('# T\n\n- One.\n'));
+    const rule = ruleOf(css, '.wd-screen');
+    expect(rule).not.toContain('--wd-reserve-bottom');
+    expect(rule).not.toContain('padding-bottom');
+    expect(rule).toContain('padding: var(--wd-space-screen-y) var(--wd-space-screen-x) 0;');
+  });
+
+  it('a trailing in-flow spacer carries the full clearance', () => {
+    const css = cssOf(createDeck('# T\n\n- One.\n'));
+    const rule = ruleOf(css, '.wd-screen::after');
+    expect(rule).toContain("content: '';");
+    expect(rule).toContain('flex: 0 0 auto;');
+    expect(rule).toContain(
+      'height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));',
+    );
+    expect(rule).not.toContain('var(--wd-reserve-bottom, 64px)');
+  });
+
+  it('the spacer clearance beats the controls height at phone and desktop widths', () => {
+    // Evaluate the shipped formulas at each width: screen
+    // padding Y is clamp(16, 3vh + 8, 48); the reserve is the
+    // controls' height (button + 2× space) + half-space
+    // clearance. The spacer must clear the controls band with
+    // room to spare at every width, so the last panel's last
+    // line can scroll fully above it.
+    for (const [w, h] of [
+      [360, 640],
+      [1440, 900],
+      [1920, 1080],
+    ] as const) {
+      const el = createDeck('# T\n\n- One.\n');
+      el.setContainerSize(w, h);
+      const space = parseFloat(varOf(el, '--wd-space'));
+      const padY = parseFloat(varOf(el, '--wd-space-screen-y'));
+      const reserve = parseFloat(varOf(el, '--wd-reserve-bottom'));
+      const btn = Math.min(56, Math.max(44, (3 * w) / 100 + 8));
+      const controls = btn + 2 * space;
+      expect(padY + reserve).toBeGreaterThan(controls);
+    }
   });
 });
