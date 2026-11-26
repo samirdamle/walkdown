@@ -30,12 +30,12 @@ verified by computation and match exactly.
   "Cascadia Code", Menlo, Consolas, monospace`.
 - **Colours, light:** background `#FAFAF7`, panel `#FFFFFF`,
   ink `#1B1B18` (16.5:1, AAA), muted `#5C5C57` (6.4:1, AA,
-  secondary text only), border `#E5E5DF`, accent amber
-  `#B45309` (4.8:1, AA).
+  secondary text only), border `#E5E5DF`, accent ocean green
+  `#2E7D6B` (4.7:1, AA).
 - **Colours, dark:** background `#18181C`, panel `#202024`,
   ink `#F5F5F0` (16.2:1, AAA), muted `#A9A9A0` (7.5:1, AAA),
-  border `#2E2E33`, accent gold `#F0D45D` (12.0:1, AAA).
-- **One accent only:** amber in light mode, gold in dark mode.
+  border `#2E2E33`, accent ocean green (seafoam) `#7FC8B8` (9.2:1, AAA).
+- **One accent only:** ocean green in both themes — `#2E7D6B` light, `#7FC8B8` dark.
 - **Inter (body) + Fraunces (titles) is an opt-in theme, not
   the default.** A deck opts in by linking the theme through
   frontmatter `stylesheets:` (spec §11.4). The default theme

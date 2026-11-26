@@ -109,6 +109,6 @@ describe('examples/walkdown-itself.md', () => {
     expect(deck.styles).toContain('.hero');
     expect(deck.styles).toContain('.accent');
     expect(deck.styles).toContain('.big');
-    expect(deck.styles).toContain('#eeaa3d');
+    expect(deck.styles).toContain('#2E7D6B');
   });
 });

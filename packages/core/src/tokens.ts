@@ -26,7 +26,7 @@ export interface ColorSet {
   accent: string;
 }
 
-/** Colours — settled 2026-11-25, contrast ratios verified (see policies/design-tokens.json). */
+/** Colours — settled 2026-11-25; accent re-settled ocean green 2026-11-26 (Samir's choice), contrast ratios verified (see policies/design-tokens.json). */
 export const COLORS: Record<Theme, ColorSet> = {
   light: {
     bg: '#FAFAF7',
@@ -34,7 +34,7 @@ export const COLORS: Record<Theme, ColorSet> = {
     ink: '#1B1B18', // 16.5:1 on bg — AAA
     muted: '#5C5C57', // 6.4:1 on bg — AA, secondary text only, never body
     border: '#E5E5DF',
-    accent: '#B45309', // 4.8:1 on bg — AA
+    accent: '#2E7D6B', // 4.7:1 on bg — AA (4.9:1 on panel)
   },
   dark: {
     bg: '#18181C',
@@ -42,7 +42,7 @@ export const COLORS: Record<Theme, ColorSet> = {
     ink: '#F5F5F0', // 16.2:1 on bg — AAA
     muted: '#A9A9A0', // 7.5:1 on bg — AAA
     border: '#2E2E33',
-    accent: '#F0D45D', // 12.0:1 on bg — AAA
+    accent: '#7FC8B8', // 9.2:1 on bg — AAA (8.4:1 on panel)
   },
 };
 

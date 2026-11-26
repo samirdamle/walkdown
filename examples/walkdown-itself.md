@@ -148,7 +148,7 @@ Simple, magical presentation from Markdown
 }
 
 .accent {
-  border-left: 4px solid #eeaa3d;
+  border-left: 4px solid #2E7D6B;
 }
 
 .big {
