@@ -31,6 +31,8 @@ Simple, magical presentation from Markdown
 
 ---
 
+<!-- reveal: step; effect: stack; direction: left -->
+
 # Screens, not slides
 
 - A screen is one unit of the walk. Walkdown calls them screens because they are not fixed slides.

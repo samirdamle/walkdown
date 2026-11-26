@@ -61,6 +61,10 @@ import {
   SPACE_SCREEN_Y_PX,
   SPACE_SCREEN_Y_VH,
   SPACE_VW,
+  STACK_OFFSET_PX,
+  STACK_SCALE_STEP,
+  STACK_SHADE_STEP,
+  STACK_VISIBLE_BEHIND,
   TOKEN_META,
   ZOOM_MAX_STEPS,
   ZOOM_MIN_STEPS,
@@ -84,7 +88,7 @@ describe('one token source', () => {
     expect(generateTokens(json)).toBe(readFileSync(GENERATED_PATH, 'utf8'));
   });
 
-  it('the JSON and §8 agree: 27 §8 rows + 9 font/colour tokens = 36', () => {
+  it('the JSON and §8 agree: 31 §8 rows + 9 font/colour tokens = 40', () => {
     const json = loadTokens();
     const doc = readFileSync(SECTION_8_PATH, 'utf8');
     const sec8 = doc.split('## 8.')[1].split('## 9.')[0];
@@ -92,7 +96,7 @@ describe('one token source', () => {
     // The old count note said 26 rows / 35 total — the table
     // actually has 27 rows (it gained one without the note
     // being updated). This test locks the true count.
-    expect(rows).toHaveLength(27);
+    expect(rows).toHaveLength(31);
     const section8 = new Map<string, { min: string; max: string; units: string; status: string; pref: string }>();
     for (const row of rows) {
       const cells = row
@@ -104,8 +108,8 @@ describe('one token source', () => {
         .map((c) => c.trim().replace(/`/g, '').replace(/\*\*/g, ''));
       section8.set(cells[0], { min: cells[2], pref: cells[3], max: cells[4], units: cells[5], status: cells[6] });
     }
-    expect(json.token_count).toBe(36);
-    expect(json.tokens).toHaveLength(36);
+    expect(json.token_count).toBe(40);
+    expect(json.tokens).toHaveLength(40);
     const fontColour = [
       '--wd-color-accent',
       '--wd-color-bg',
@@ -195,17 +199,24 @@ describe('one token source', () => {
     expect([LINE_LENGTH_MIN_CH, LINE_LENGTH_IDEAL_CH, LINE_LENGTH_MAX_CH]).toEqual([45, 60, 75]);
     expect(LINE_LENGTH_PANEL_MIN_CH).toBe(30);
     expect(NAV_MENU_MAX_HEIGHT_CSS).toBe('min(50vh, 420px)');
+    expect([STACK_OFFSET_PX, STACK_SCALE_STEP, STACK_SHADE_STEP, STACK_VISIBLE_BEHIND]).toEqual([10, 0.03, 0.07, 2]);
   });
 
   it('Proposal tokens are marked, Settled tokens are not', () => {
-    expect(PROPOSAL_TOKENS).toHaveLength(17);
+    expect(PROPOSAL_TOKENS).toHaveLength(21);
     expect(PROPOSAL_TOKENS).toContain('--wd-nav-menu-max-height');
+    expect(PROPOSAL_TOKENS).toContain('--wd-stack-offset');
+    expect(PROPOSAL_TOKENS).toContain('--wd-stack-scale-step');
+    expect(PROPOSAL_TOKENS).toContain('--wd-stack-shade-step');
+    expect(PROPOSAL_TOKENS).toContain('--wd-stack-visible-behind');
     expect(PROPOSAL_TOKENS).not.toContain('--wd-font-floor');
     expect(PROPOSAL_TOKENS).not.toContain('--wd-color-accent');
     expect(TOKEN_META['--wd-font-floor'].status).toBe('settled');
     expect(TOKEN_META['--wd-nav-menu-max-height'].status).toBe('proposal');
+    expect(TOKEN_META['--wd-stack-offset'].status).toBe('proposal');
     const generated = readFileSync(GENERATED_PATH, 'utf8');
     expect(generated).toContain('// PROPOSAL — --wd-nav-menu-max-height');
+    expect(generated).toContain('// PROPOSAL — --wd-stack-offset');
     expect(generated).not.toContain('// PROPOSAL — --wd-font-floor');
     expect(generated).not.toContain('// PROPOSAL — --wd-color-accent');
   });

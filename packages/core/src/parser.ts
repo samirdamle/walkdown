@@ -25,6 +25,7 @@ import type {
   Panel,
   PanelKind,
   Reveal,
+  RevealDirection,
   RevealEffect,
   RevealMode,
   Screen,
@@ -35,12 +36,15 @@ import type {
 export const DURATION_DEFAULT_MS = 300;
 export const DURATION_MIN_MS = 0;
 export const DURATION_MAX_MS = 2000;
-export const EFFECTS: readonly RevealEffect[] = ['fade-in', 'slide-in', 'zoom-in', 'none'];
+export const EFFECTS: readonly RevealEffect[] = ['fade-in', 'slide-in', 'zoom-in', 'stack', 'none'];
+export const DIRECTIONS: readonly RevealDirection[] = ['left', 'right', 'up', 'down'];
+export const DIRECTION_DEFAULT: RevealDirection = 'left';
 
 interface DeckDefaults {
   mode?: RevealMode;
   effect?: RevealEffect;
   durationMs?: number;
+  direction?: RevealDirection;
 }
 
 interface SectionParams extends DeckDefaults {
@@ -85,6 +89,12 @@ function parseEffect(value: string): RevealEffect | undefined {
   return (EFFECTS as readonly string[]).includes(v) ? (v as RevealEffect) : undefined;
 }
 
+/** A `direction` value is one of the four compass directions (§4.2); anything else is ignored. */
+function parseDirection(value: string): RevealDirection | undefined {
+  const v = value.trim().toLowerCase();
+  return (DIRECTIONS as readonly string[]).includes(v) ? (v as RevealDirection) : undefined;
+}
+
 /** Minimal YAML-subset reader for frontmatter (§2.1): scalar keys, a `defaults:` map, a `stylesheets:` list. Unknown keys are ignored, never an error. */
 function parseFrontmatter(lines: string[]): { frontmatter: Frontmatter; rest: string[] } {
   if (lines[0]?.trim() !== '---') return { frontmatter: { ...EMPTY_FRONTMATTER }, rest: lines };
@@ -126,6 +136,7 @@ function parseFrontmatter(lines: string[]): { frontmatter: Frontmatter; rest: st
       if (key === 'reveal') fm.defaults.mode = parseMode(value);
       else if (key === 'effect') fm.defaults.effect = parseEffect(value);
       else if (key === 'duration') fm.defaults.durationMs = parseDuration(value);
+      else if (key === 'direction') fm.defaults.direction = parseDirection(value);
       // `sequence` is never a deck default (§4.3) — ignored here, as is any unknown key.
     }
   }
@@ -212,11 +223,12 @@ function validClassNames(value: string | undefined): string[] {
 
 interface ScreenMarker {
   mode?: RevealMode;
-  /** True when the marker sets any reveal parameter (mode/effect/duration/sequence) — then the mode is 'step' unless a bare value says otherwise (§4.1). */
+  /** True when the marker sets any reveal parameter (mode/effect/duration/direction/sequence) — then the mode is 'step' unless a bare value says otherwise (§4.1). */
   hasRevealParams: boolean;
   sequence?: number[];
   effect?: RevealEffect;
   durationMs?: number;
+  direction?: RevealDirection;
   classNames: string[];
   panelClassNames: string[];
 }
@@ -245,6 +257,9 @@ function parseRevealMarker(inside: string): ScreenMarker | undefined {
       marker.hasRevealParams = true;
     } else if (key === 'duration') {
       marker.durationMs = parseDuration(value);
+      marker.hasRevealParams = true;
+    } else if (key === 'direction') {
+      marker.direction = parseDirection(value);
       marker.hasRevealParams = true;
     } else if (key === 'class') {
       marker.classNames = validClassNames(value);
@@ -277,6 +292,7 @@ function parseSectionMarker(inside: string): SectionMarker | undefined {
     if (key === 'reveal') params.mode = parseMode(value);
     else if (key === 'effect') params.effect = parseEffect(value);
     else if (key === 'duration') params.durationMs = parseDuration(value);
+    else if (key === 'direction') params.direction = parseDirection(value);
     else if (key === 'class') params.classNames = validClassNames(value);
     // `sequence` is NOT a section parameter (§4.2) — ignored.
   }
@@ -392,7 +408,11 @@ function parsePanels(lines: string[]): Panel[] {
       if (/^reveal\s*:/i.test(inside)) {
         const marker = parseRevealMarker(inside);
         if (marker !== undefined) {
-          pendingEffect = marker.effect;
+          // `stack` is screen-level only (§4.2): a per-panel
+          // marker naming it falls back to the screen's effect
+          // — the panel inherits, as if the marker had no
+          // effect. Its duration, if present, still applies.
+          pendingEffect = marker.effect === 'stack' ? undefined : marker.effect;
           pendingDurationMs = marker.durationMs;
         }
       }
@@ -517,6 +537,11 @@ function resolveReveal(
     DURATION_MAX_MS,
     Math.max(DURATION_MIN_MS, marker?.durationMs ?? sectionParams?.durationMs ?? deckDefaults.durationMs ?? DURATION_DEFAULT_MS),
   );
+  // `direction` cascades like the other reveal settings and
+  // defaults to `left`; an invalid value is ignored at parse
+  // time, so the resolved value is always a valid direction.
+  // It is meaningless for every effect but `stack` (§4.2).
+  const direction = marker?.direction ?? sectionParams?.direction ?? deckDefaults.direction ?? DIRECTION_DEFAULT;
   let sequence = Array.from({ length: panelCount }, (_v, i) => i);
   if (marker?.sequence) {
     const wanted = marker.sequence.map((n) => n - 1);
@@ -526,7 +551,7 @@ function resolveReveal(
       wanted.every((n) => n >= 0 && n < panelCount);
     if (valid) sequence = wanted; // an invalid sequence is ignored in full (§4.2)
   }
-  return { mode, sequence, effect, durationMs };
+  return { mode, sequence, effect, durationMs, direction };
 }
 
 /** A deck that parses to zero screens is an empty deck (§3.3) — the renderer surfaces it, the parser does not crash. */

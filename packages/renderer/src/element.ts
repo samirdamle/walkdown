@@ -59,14 +59,15 @@ import {
   zoomIn,
   zoomOut,
 } from '@walkdown/core';
-import type { Deck, Panel, Theme, WalkState } from '@walkdown/core';
+import type { Deck, Panel, Screen, Theme, WalkState } from '@walkdown/core';
 import { animatePanelIn } from './effects.js';
 import { DeckFacts } from './facts.js';
 import { PointerTracker } from './gestures.js';
 import { LayoutController } from './layout.js';
 import { NavMenu } from './nav-menu.js';
 import { panelsHtml } from './render.js';
-import { panelContentRect, scrollPanelIntoView } from './scroll.js';
+import { panelContentRect, prefersReducedMotion, scrollPanelIntoView } from './scroll.js';
+import { animateStackStep, isStackScreen, stackPanelsHtml } from './stack.js';
 import { loadStylesheets } from './loader.js';
 import { deckClassesOf, sanitizeCss } from './sanitize.js';
 import { DEFAULT_CSS } from './styles.js';
@@ -513,7 +514,30 @@ export class WalkdownDeckElement extends HTMLElement {
         this._state.screenIndex > (prev?.screenIndex ?? 0) ? 'wd-screen-enter--forward' : 'wd-screen-enter--backward',
       );
     }
-    this.panelsEl.innerHTML = panelsHtml(screen.panels, visible);
+    // Stack pile (§4.2): a stack screen renders its panels as a
+    // pile, not a grid. The container carries the pile class and
+    // the dismiss direction; the panels HTML is the pile at the
+    // current step. On a genuine step forward/back the pile
+    // animates on the CURRENT DOM (which still shows the old
+    // pile) and the panels swap to the new rest state when the
+    // choreography finishes — so the swap is deferred, and this
+    // render leaves the panels alone.
+    const isStack = isStackScreen(screen);
+    this.panelsEl.classList.toggle('wd-panels--stack', isStack);
+    if (isStack) this.panelsEl.setAttribute('data-stack-direction', screen.reveal.direction);
+    else this.panelsEl.removeAttribute('data-stack-direction');
+    // A screen change abandons any in-flight stack
+    // choreography: its elements are about to be replaced.
+    if (screenChanged) this._cancelStackAnimation();
+    let stackAnimating = false;
+    if (isStack && opts.animate && !opts.jump && !screenChanged && prev !== undefined) {
+      stackAnimating = this._startStackAnimation(screen, prev.stepIndex, this._state.stepIndex);
+    }
+    if (!stackAnimating) {
+      this.panelsEl.innerHTML = isStack
+        ? stackPanelsHtml(screen, this._state.stepIndex)
+        : panelsHtml(screen.panels, visible);
+    }
     // Screen-level class hooks (§11.3).
     this.screenEl.classList.remove(...this._lastScreenClasses);
     this._lastScreenClasses = screen.classNames;
@@ -522,7 +546,14 @@ export class WalkdownDeckElement extends HTMLElement {
     else this.screenEl.scrollTop = scrollTop;
 
     // Enter animation (§5, §8): only the newly revealed panel, only on a step (never on a jump).
-    if (opts.animate && !opts.jump && !screenChanged) {
+    // Stack screens never take this path: the pile's
+    // dismiss/promote choreography is the enter animation there,
+    // and a stack screen entered fresh (or by jump) renders its
+    // pile in its rest state with no animation — the pile is a
+    // pure function of (screen, stepIndex) (§4.2). A stack
+    // screen also never scrolls on a step: the pile does not
+    // move vertically.
+    if (!isStack && opts.animate && !opts.jump && !screenChanged) {
       const newly = [...visible].find((i) => !prevVisible.includes(i));
       if (newly !== undefined) {
         const el = this.panelsEl.querySelector(`[data-panel="${newly}"]`);
@@ -542,7 +573,7 @@ export class WalkdownDeckElement extends HTMLElement {
           );
         }
       }
-    } else if (opts.animate && !opts.jump && screenChanged) {
+    } else if (!isStack && opts.animate && !opts.jump && screenChanged) {
       // First panel of a newly entered screen reveals with its own effect (§8).
       const first = screen.reveal.sequence[0];
       if (first !== undefined) {
@@ -568,6 +599,58 @@ export class WalkdownDeckElement extends HTMLElement {
     this.deckEl.classList.toggle('wd-deck--end', facts.isAtEnd(this._state));
     this._navMenu.sync(deck, facts, facts.sectionIndexOfScreen(this._state.screenIndex));
     this._updateScrollCue();
+  }
+
+  /** Generation counter for stack choreography: a newer step bumps it, making an older animation's completion a no-op. */
+  private _stackGen = 0;
+  /** The running stack animations, so a new step can cancel them. */
+  private _stackAnimations: Animation[] = [];
+
+  /** Cancels any in-flight stack choreography and retires its generation. */
+  private _cancelStackAnimation(): void {
+    this._stackGen += 1;
+    for (const a of this._stackAnimations) a.cancel();
+    this._stackAnimations = [];
+  }
+
+  /**
+   * Starts the stack dismiss/promote choreography on the current
+   * DOM — which still shows the pile at `fromStep` — and swaps
+   * the panels to the new rest state when it finishes. Returns
+   * true when an animation is running (the caller leaves the
+   * panels alone); false when the caller should render the new
+   * rest state synchronously. No animation under reduced motion,
+   * at zero duration, without WAAPI, or when a step arrives
+   * mid-flight (the pile then jumps to the new rest state: the
+   * in-flight from-state is a stale pile, so animating from it
+   * would visibly snap a card).
+   */
+  private _startStackAnimation(screen: Screen, fromStep: number, toStep: number): boolean {
+    if (fromStep === toStep) return false;
+    this._stackGen += 1;
+    const gen = this._stackGen;
+    if (this._stackAnimations.length > 0) {
+      // A step mid-flight: cancel and jump to the new rest state.
+      for (const a of this._stackAnimations) a.cancel();
+      this._stackAnimations = [];
+      return false;
+    }
+    if (prefersReducedMotion() || screen.reveal.durationMs <= 0) return false;
+    const forward = toStep > fromStep;
+    const result = animateStackStep(this.panelsEl, screen, fromStep, toStep, forward);
+    if (result === null) return false;
+    this._stackAnimations = result.animations;
+    const screenIndex = this._state.screenIndex;
+    result.finished.then(() => {
+      if (this._stackGen !== gen) return; // superseded by a newer step
+      if (this._state.screenIndex !== screenIndex || this._state.stepIndex !== toStep) return;
+      this._stackAnimations = [];
+      const current = this._facts?.screen(screenIndex);
+      if (current === undefined || !isStackScreen(current)) return;
+      this.panelsEl.innerHTML = stackPanelsHtml(current, toStep);
+      this._updateScrollCue();
+    });
+    return true;
   }
 
   private _lastScreenClasses: string[] = [];

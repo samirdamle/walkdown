@@ -534,9 +534,9 @@ defaults:
 `);
     const screens = flatScreens(deck);
     // Screen one: deck fade-in/500ms, Section 250ms.
-    expect(screens[0]?.reveal).toEqual({ mode: 'step', sequence: [0, 1], effect: 'fade-in', durationMs: 250 });
+    expect(screens[0]?.reveal).toEqual({ mode: 'step', sequence: [0, 1], effect: 'fade-in', durationMs: 250, direction: 'left' });
     // Screen two: screen marker overrides duration only; effect stays deck fade-in.
-    expect(screens[1]?.reveal).toEqual({ mode: 'step', sequence: [0, 1], effect: 'fade-in', durationMs: 1000 });
+    expect(screens[1]?.reveal).toEqual({ mode: 'step', sequence: [0, 1], effect: 'fade-in', durationMs: 1000, direction: 'left' });
     // Screen three: same Section, so Section duration 250ms still applies.
     expect(screens[2]?.reveal.durationMs).toBe(250);
     expect(screens[2]?.reveal.effect).toBe('fade-in');
@@ -702,5 +702,134 @@ describe('inline CSS block (§2.8)', () => {
 - Three
 `);
     expect(totalSteps(deck)).toBe(1 + 3);
+  });
+});
+
+describe('stack effect and direction (§4.2)', () => {
+  it('parses stack as an effect with a direction', () => {
+    const deck = parseDeck(`<!-- reveal: step; effect: stack; direction: right -->
+
+# Pile
+
+- One
+- Two
+- Three
+`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.reveal.effect).toBe('stack');
+    expect(screen?.reveal.direction).toBe('right');
+    expect(screen?.reveal.durationMs).toBe(300);
+  });
+
+  it('direction defaults to left when the marker omits it', () => {
+    const deck = parseDeck(`<!-- reveal: step; effect: stack -->
+
+# Pile
+
+- One
+- Two
+`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.reveal.effect).toBe('stack');
+    expect(screen?.reveal.direction).toBe('left');
+  });
+
+  it('direction defaults to left on a non-stack screen too', () => {
+    const deck = parseDeck(`<!-- reveal: step; effect: fade-in -->
+
+# Plain
+
+- One
+- Two
+`);
+    expect(flatScreens(deck)[0]?.reveal.direction).toBe('left');
+  });
+
+  it('an invalid direction is ignored and the default used', () => {
+    const deck = parseDeck(`<!-- reveal: step; effect: stack; direction: sideways -->
+
+# Pile
+
+- One
+- Two
+`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.reveal.effect).toBe('stack');
+    expect(screen?.reveal.direction).toBe('left');
+  });
+
+  it('direction cascades deck → Section → screen, per property', () => {
+    const deck = parseDeck(`---
+defaults:
+  reveal: step
+  effect: stack
+  direction: up
+---
+
+<!-- section: Part one; direction: down -->
+
+# Screen one
+
+- One
+- Two
+
+---
+
+<!-- reveal: direction: right -->
+
+# Screen two
+
+- One
+- Two
+
+---
+
+# Screen three
+
+- One
+- Two
+`);
+    const screens = flatScreens(deck);
+    // Screen one: deck direction up, Section overrides to down.
+    expect(screens[0]?.reveal.direction).toBe('down');
+    expect(screens[0]?.reveal.effect).toBe('stack');
+    // Screen two: screen marker overrides direction only; effect stays deck stack.
+    expect(screens[1]?.reveal.direction).toBe('right');
+    expect(screens[1]?.reveal.effect).toBe('stack');
+    // Screen three: same Section, so Section direction down still applies.
+    expect(screens[2]?.reveal.direction).toBe('down');
+  });
+
+  it('a per-panel stack marker falls back to the screen effect; its duration still applies', () => {
+    const deck = parseDeck(`<!-- reveal: step; effect: fade-in; duration: 500ms -->
+
+# Moves
+
+- One
+
+<!-- reveal: effect: stack; duration: 1s -->
+
+- Two
+`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.reveal.effect).toBe('fade-in');
+    expect(screen?.panels[1]?.effect).toBeUndefined();
+    expect(screen?.panels[1]?.durationMs).toBe(1000);
+  });
+
+  it('a stack screen with a sequence deals its cards in sequence order', () => {
+    const deck = parseDeck(`<!-- reveal: step; sequence: 3, 1, 2; effect: stack -->
+
+# Ordered pile
+
+- One
+- Two
+- Three
+`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.reveal.sequence).toEqual([2, 0, 1]);
+    expect(screen?.reveal.effect).toBe('stack');
+    // Step count is unchanged by the effect: one step per panel.
+    expect(totalSteps(deck)).toBe(3);
   });
 });

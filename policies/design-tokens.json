@@ -32,7 +32,7 @@
     "proposal": "A number this document proposes; Samir may change it in a later review.",
     "settled": "A decision Samir has already made; the structured form MUST reproduce the settled value exactly."
   },
-  "token_count": 36,
+  "token_count": 40,
   "tokens": [
     {
       "enforcement": [
@@ -470,6 +470,70 @@
       "units": [
         "px",
         "vh"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-stack-offset",
+      "preferred": "10px",
+      "property": "Stack peek offset per level",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "px"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-stack-scale-step",
+      "preferred": "0.03",
+      "property": "Stack scale-down per level",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "unitless"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-stack-shade-step",
+      "preferred": "0.07",
+      "property": "Stack brightness loss per level",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "unitless"
+      ]
+    },
+    {
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-stack-visible-behind",
+      "preferred": "2",
+      "property": "Stack cards visible behind the front card",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "count"
       ]
     },
     {
