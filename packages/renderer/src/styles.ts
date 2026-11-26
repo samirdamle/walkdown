@@ -39,13 +39,28 @@ export const DEFAULT_CSS = `
   line-height: var(--wd-line-height-body);
   box-sizing: border-box;
   /* Control-button size (§6.5): one source of truth, used by the
-     buttons themselves and by anything that must clear them
-     (the end note below). 44px is the minimum touch target on
-     phones, ~51px on a 1440px desktop, capped at 56px. */
+     buttons themselves and by the bottom reserve below.
+     44px is the minimum touch target on phones, ~51px on a
+     1440px desktop, capped at 56px. */
   --wd-control-size: clamp(44px, 3vw + 8px, 56px);
   /* Nav menu cap (§6.6, token --wd-nav-menu-max-height):
      half the viewport, at most 420px like the image cap. */
   --wd-nav-menu-max-height: min(50vh, 420px);
+  /* Bottom reserve (§7.2): the ONE pre-paint fallback
+     definition of --wd-reserve-bottom — the controls'
+     height plus half-space clearance (C12), derived from the
+     tokens instead of hardcoding a number: control size +
+     top/bottom padding (2× space) + half-space clearance =
+     control size + 2.5× space. At minimum (44px buttons,
+     8px space) it is 64px; at 1440px it is 91.2px. The
+     spacer, the nav menu and the end note read this var with
+     no fallback of their own — this line is the fallback.
+     computeLayout's measured value is set inline on
+     .wd-deck on every layout pass and overrides it; before
+     the first layout pass this default is what clears the
+     controls. The TS side of the same formula is
+     bottomReservePx (core reserve.ts). */
+  --wd-reserve-bottom: calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5);
 }
 
 .wd-deck *,
@@ -83,17 +98,16 @@ export const DEFAULT_CSS = `
    last panel can always scroll clear. Same height as the old
    padding: the screen's vertical padding plus the reserve —
    the controls' height + clearance, measured by the renderer
-   (--wd-reserve-bottom); the fallback derives it from the
-   tokens instead of hardcoding 64px — control size +
-   top/bottom padding (2× space) + half-space clearance
-   (C12), i.e. the same height the end note uses. At minimum
-   (44px buttons, 8px space) it is 64px, as before;
-   --wd-space falls back to 8px before layout runs. */
+   (--wd-reserve-bottom); before the first layout pass the
+   fallback defined once on .wd-deck applies (control size +
+   2.5× space, derived from the tokens — see the .wd-deck
+   rule). At minimum (44px buttons, 8px space) it is 64px,
+   as before; --wd-space falls back to 8px before layout runs. */
 .wd-screen::after {
   content: '';
   display: block;
   flex: 0 0 auto;
-  height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));
+  height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom));
 }
 
 .wd-title {
@@ -386,7 +400,8 @@ export const DEFAULT_CSS = `
 /* --- Navigation menu (§6.6): First screen, Sections, Last screen.
    Bottom-anchored above the controls band: the bottom edge sits
    one space unit above the top edge of the controls bar. The
-   reserve is the controls' height plus half-space clearance, so
+   reserve is the controls' height plus half-space clearance
+   (--wd-reserve-bottom, defined once on .wd-deck), so
    reserve + half-space = controls height + one full space.
    The height is capped (token above) and the menu scrolls
    within itself, so many Sections never push it past the
@@ -396,7 +411,7 @@ export const DEFAULT_CSS = `
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)) + var(--wd-space, 8px) / 2);
+  bottom: calc(var(--wd-reserve-bottom) + var(--wd-space, 8px) / 2);
   width: min(84vw, 24em);
   max-height: var(--wd-nav-menu-max-height, min(50vh, 420px));
   overflow-y: auto;
@@ -443,19 +458,19 @@ export const DEFAULT_CSS = `
 }
 
 /* --- End state (§6.2): a subtle indication, not a dead end.
-   The note sits above the controls band, at the measured bottom
+   The note sits above the controls band, at the bottom
    reserve (--wd-reserve-bottom): controls height is the button
    size plus the controls' top and bottom padding (both
    --wd-space), and the clearance above them is half the space
-   unit (C12). The fallback is the same height computed from
-   tokens, so the note clears the band at every width even before
-   the first layout pass. At 360px: 44 + 2.5×8 = 64px above
-   controls 60px tall; at 1440px: 51.2 + 2.5×16 = 91.2px above
-   controls 83.2px tall. --- */
+   unit (C12). The fallback is the single definition on
+   .wd-deck, so the note clears the band at every width even
+   before the first layout pass. At 360px: 44 + 2.5×8 = 64px
+   above controls 60px tall; at 1440px: 51.2 + 2.5×16 = 91.2px
+   above controls 83.2px tall. --- */
 .wd-end-note {
   position: absolute;
   left: 50%;
-  bottom: var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5));
+  bottom: var(--wd-reserve-bottom);
   transform: translateX(-50%);
   font-size: var(--wd-font-small);
   color: var(--wd-color-muted);
