@@ -117,6 +117,44 @@ export class NavMenu {
     else this.open();
   }
 
+  /**
+   * Arrow-key navigation inside the menu (§6.6, `menu` guide): ArrowUp/
+   * ArrowDown move between items (wrapping), Home/End jump to the first/
+   * last item. The event is stopped so the host's walk keys never see it
+   * — without this the host would scroll the screen (arrows) or jump the
+   * deck (Home/End) while the menu has focus. All items are enabled, so
+   * every item is a stop. Focus is already inside the menu when this
+   * fires (open() moves it to the current item); if it is not on an item
+   * (target is the menu element itself), ArrowDown/Home land on the first
+   * item and ArrowUp/End on the last.
+   */
+  handleKeyDown(e: KeyboardEvent): void {
+    if (!this._open) return;
+    const items = Array.from(this._menuEl.querySelectorAll('.wd-nav-menu-item')) as HTMLElement[];
+    if (items.length === 0) return;
+    const current = items.indexOf(e.target as HTMLElement);
+    let next = -1;
+    switch (e.key) {
+      case 'ArrowDown':
+        next = current < 0 ? 0 : (current + 1) % items.length;
+        break;
+      case 'ArrowUp':
+        next = current < 0 ? items.length - 1 : (current - 1 + items.length) % items.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = items.length - 1;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    items[next]?.focus();
+  }
+
   /** A menu item navigates and closes the menu (§6.6). The menu is closed first so a no-op jump (already on the first screen) still dismisses it. */
   handleItemClick(e: MouseEvent): void {
     const btn = (e.target as Element | null)?.closest?.('.wd-nav-menu-item') as HTMLElement | null;
