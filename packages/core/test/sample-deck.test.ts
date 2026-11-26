@@ -13,20 +13,20 @@ describe('examples/walkdown-itself.md', () => {
   const deck = parseDeck(SAMPLE_DECK);
   const screens = flatScreens(deck);
 
-  it('parses to 14 screens in 4 Sections', () => {
-    expect(screens).toHaveLength(14);
+  it('parses to 15 screens in 4 Sections', () => {
+    expect(screens).toHaveLength(15);
     expect(deck.sections.map((s) => s.title)).toEqual(['Intro', 'How it works', 'Walking', 'Customize']);
-    expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 5]);
+    expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 6]);
   });
 
-  it('parses to 51 panels and 51 steps', () => {
+  it('parses to 54 panels and 54 steps', () => {
     const panelCount = screens.reduce((sum, s) => sum + s.panels.length, 0);
-    expect(panelCount).toBe(51);
-    expect(totalSteps(deck)).toBe(51);
+    expect(panelCount).toBe(54);
+    expect(totalSteps(deck)).toBe(54);
   });
 
   it('has the right panel counts per screen', () => {
-    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 5, 3, 3, 4, 4, 3]);
+    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 5, 3, 3, 4, 4, 3, 3]);
   });
 
   it('has the right screen titles', () => {
@@ -44,6 +44,7 @@ describe('examples/walkdown-itself.md', () => {
       'Make it look like yours',
       'Make it move',
       'Make it yours',
+      'The smallest deck',
       'Your first deck',
     ]);
   });
@@ -145,6 +146,55 @@ describe('examples/walkdown-itself.md', () => {
     // The first three panels carry no per-panel marker.
     expect(panels.slice(0, 3).map((p) => p.effect)).toEqual([undefined, undefined, undefined]);
     expect(panels.slice(0, 3).every((p) => p.durationMs === undefined)).toBe(true);
+  });
+
+  it('the smallest deck screen shows a minimal sample deck as code', () => {
+    const screen = screens[13];
+    expect(screen?.title).toBe('The smallest deck');
+    expect(screen?.panels).toHaveLength(3);
+    // No screen marker: the Section override applies (step, slide-in, 250ms).
+    expect(screen?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'slide-in', durationMs: 250 });
+    const panels = screen?.panels ?? [];
+    // Intro and closing panels carry the framing copy.
+    // (Panel text is plain text: the hyphen in "twenty-two"
+    // becomes a space, so assert on the unhyphenated words.)
+    expect(panels[0]?.text).toContain('Copy it into a file, walk it');
+    expect(panels[2]?.text).toContain('smallest deck that still shows how it works');
+    // The sample itself is displayed as code, verbatim — its `---`
+    // lines and `<!-- ... -->` comment lines are inert text inside
+    // the fence, so they create no extra screen or panel.
+    const sample = [
+      '---',
+      'title: My first walkdown',
+      'defaults:',
+      '  reveal: step',
+      '  effect: fade-in',
+      '---',
+      '',
+      '<!-- section: Start -->',
+      '',
+      '# Hello',
+      '',
+      '- One bullet is one panel.',
+      '- The walk reveals them one step at a time.',
+      '',
+      '---',
+      '',
+      '# One more screen',
+      '',
+      '<!-- reveal: effect: slide-in; duration: 1s -->',
+      '',
+      '- Three dashes start a new screen.',
+      '- Headings do not.',
+    ].join('\n');
+    const code = panels[1]?.blocks[0];
+    expect(code?.type).toBe('code');
+    expect(code?.markdown).toBe('```markdown\n' + sample + '\n```');
+    expect(code?.html).toContain('&lt;!-- section: Start --&gt;');
+    expect(code?.html).toContain('&lt;!-- reveal: effect: slide-in; duration: 1s --&gt;');
+    // A code panel's text is empty (plainText strips fenced code),
+    // so the fit estimator does not count the sample's lines.
+    expect(panels[1]?.text).toBe('');
   });
 
   it('extracts the trailing CSS block as the deck stylesheet', () => {
