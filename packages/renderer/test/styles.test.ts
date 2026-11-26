@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { COLORS, controlSizePx, NAV_MENU_MAX_HEIGHT_CSS, SPACE_MIN_PX } from '@walkdown/core';
-import { DEFAULT_CSS } from '../src/styles.js';
+import { COLORS, controlSizePx, NAV_MENU_MAX_HEIGHT_CSS, SPACE_MIN_PX, themeVars } from '@walkdown/core';
+import type { Theme } from '@walkdown/core';
+import { DEFAULT_CSS, themeVarsCss } from '../src/styles.js';
 
 /**
  * The two values in the stylesheet that come from the tokens,
@@ -59,9 +60,76 @@ describe('dark-screen chrome (issue #74)', () => {
   });
 
   it('the light chrome is untouched: the base cue still fades to the light background', () => {
+    // F4 renamed every DEFAULT_CSS reference to the private alias;
+    // the intent is unchanged: the base cue still fades to the
+    // (light) background.
     expect(DEFAULT_CSS).toContain(
-      'background: linear-gradient(to bottom, transparent, var(--wd-color-bg) 80%);',
+      'background: linear-gradient(to bottom, transparent, var(--_wd-color-bg) 80%);',
     );
     expect(DEFAULT_CSS).toContain('.wd-section-label {');
+  });
+});
+
+/**
+ * Theme vars live in a stylesheet layer, not inline style
+ * (issue #75, spec §11.2). The theme layer defines one private
+ * alias per theme var — each reading the public var with the
+ * theme value as fallback — and the default stylesheet reads
+ * only the aliases, so a deck stylesheet setting a theme var
+ * wins without `!important`.
+ */
+describe('theme vars in a stylesheet layer (issue #75)', () => {
+  const THEME_VAR_NAMES = Object.keys(themeVars('light'));
+
+  it('themeVarsCss emits one private alias per theme var, with the theme value as fallback', () => {
+    for (const theme of ['light', 'dark'] as const) {
+      const css = themeVarsCss(theme);
+      for (const [name, value] of Object.entries(themeVars(theme))) {
+        expect(css).toContain(`--_${name.slice(2)}: var(${name}, ${value});`);
+      }
+      // No hand-written copy: every theme value appears exactly
+      // once in the layer — the alias fallback is its only home.
+      for (const value of Object.values(themeVars(theme))) {
+        expect(css.split(value).length - 1).toBe(1);
+      }
+    }
+  });
+
+  it('light and dark layers differ only in the colour fallbacks', () => {
+    expect(themeVarsCss('light')).toContain('--_wd-color-bg: var(--wd-color-bg, #FAFAF7);');
+    expect(themeVarsCss('dark')).toContain('--_wd-color-bg: var(--wd-color-bg, #18181C);');
+    expect(themeVarsCss('light')).toContain('--_wd-color-accent: var(--wd-color-accent, #2E7D6B);');
+    expect(themeVarsCss('dark')).toContain('--_wd-color-accent: var(--wd-color-accent, #7FC8B8);');
+    // Font families are theme-independent: the same alias line
+    // in both layers.
+    for (const name of ['--wd-font-family-body', '--wd-font-family-title', '--wd-font-family-code']) {
+      const line = (theme: Theme) =>
+        themeVarsCss(theme)
+          .split('\n')
+          .find((l) => l.includes(`--_${name.slice(2)}:`));
+      expect(line('light')).toBe(line('dark'));
+    }
+  });
+
+  it('the alias is defined on .wd-deck and every element inside it', () => {
+    // That is what lets a deck rule on .wd-deck — or on a screen
+    // or a panel — re-theme through the alias, and what lets a
+    // page set a theme var on an ancestor of the host: the alias
+    // re-resolves at each element from that element's own public
+    // var. The public var is never seeded on :host.
+    expect(themeVarsCss('light')).toContain('.wd-deck, .wd-deck * {');
+    expect(themeVarsCss('light')).not.toContain(':host');
+  });
+
+  it('the default stylesheet reads only the private aliases for theme vars', () => {
+    expect(DEFAULT_CSS).not.toContain('var(--wd-color-');
+    expect(DEFAULT_CSS).not.toContain('var(--wd-font-family-');
+    for (const name of THEME_VAR_NAMES) {
+      expect(DEFAULT_CSS).toContain(`var(--_${name.slice(2)})`);
+    }
+    // Layout vars still go through the public names — they are
+    // set inline per pass, not themed.
+    expect(DEFAULT_CSS).toContain('var(--wd-font-body)');
+    expect(DEFAULT_CSS).toContain('var(--wd-reserve-bottom)');
   });
 });

@@ -120,7 +120,6 @@ export interface LayoutInput {
   reservedBottomPx?: number;
   /** Zoom steps from default (default 0). */
   zoom?: number;
-  theme?: Theme;
 }
 
 /** Output of the layout engine: CSS variables + column count (§7.2). */
@@ -133,6 +132,6 @@ export interface LayoutResult {
    * real measurement overflows.
    */
   fontBodyPx: number;
-  /** CSS variables to set on `.wd-deck` (incl. `--wd-cols` and the settled theme tokens). */
+  /** CSS variables to set on `.wd-deck` — layout only (`--wd-cols`, `--wd-font-body`, …). Theme vars are NOT emitted here: they live in the renderer's `#wd-theme` stylesheet layer (spec §11.2, issue #75), so a deck stylesheet can override them without `!important`. */
   vars: Record<string, string>;
 }

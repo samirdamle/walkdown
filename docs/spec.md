@@ -1025,6 +1025,18 @@ In load / application order, most deck-specific last:
    It is the most deck-specific source, so it wins over
    the external stylesheet on equal specificity.
 
+- The renderer defaults' theme values (layer 1) are applied
+  as a stylesheet layer inside the Shadow DOM, not as inline
+  style: each theme variable (`--wd-color-*`,
+  `--wd-font-family-*`) has a private alias (`--_wd-…`) whose
+  fallback is the theme value, and the chrome reads the alias.
+  A deck stylesheet (layers 2–3) can therefore set a theme
+  variable on `.wd-deck` — or on a screen or a panel — and the
+  override wins without `!important`; a page can likewise set
+  one on an ancestor of the host element. Layout variables
+  (`--wd-font-body`, `--wd-reserve-bottom`, …) are measured per
+  pass and still go inline on `.wd-deck` (§7.2).
+
 Classes are hooks, not a layer: a `class:` or `panel-class:`
 (§11.3) names classes that the stylesheets above define.
 An element carrying a class no stylesheet defines renders

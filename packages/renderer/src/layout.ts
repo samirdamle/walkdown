@@ -4,11 +4,11 @@
  * Owns the container measurement, the bottom-controls reserve,
  * the `computeLayout` pass, the measurement pass that shrinks
  * overflowing type to the floor, and the scroll cue. The element
- * only tells it the current facts, state, and theme; the fitted
+ * only tells it the current facts and state; the fitted
  * body size lives here, never in the element.
  */
 import { bottomReservePx, computeLayout, controlsHeightFallbackPx, FONT_FLOOR_PX } from '@walkdown/core';
-import type { Theme, WalkState } from '@walkdown/core';
+import type { WalkState } from '@walkdown/core';
 import type { DeckFacts } from './facts.js';
 
 /** The container size, in CSS px. */
@@ -85,7 +85,7 @@ export class LayoutController {
   }
 
   /** Re-run the layout engine for the current screen (spec §7.2). Debounced by ResizeObserver's own cadence. */
-  applyLayout(facts: DeckFacts, state: WalkState, theme: Theme): void {
+  applyLayout(facts: DeckFacts, state: WalkState): void {
     const screen = facts.screen(state.screenIndex);
     if (screen === undefined) return;
     const { width, height } = this.measureContainer();
@@ -105,7 +105,6 @@ export class LayoutController {
       contentLengths: screen.panels.map((p) => p.text.length),
       reservedBottomPx: this.controlsReservePx(width),
       zoom: state.zoom,
-      theme,
     });
     for (const [k, v] of Object.entries(result.vars)) this._deckEl.style.setProperty(k, v);
     this._fittedBodyPx = result.fontBodyPx;

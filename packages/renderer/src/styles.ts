@@ -5,7 +5,20 @@
  * tokens (`--wd-color-*`, `--wd-font-family-*` from
  * `policies/design-tokens.json` via `themeVars()`).
  *
- * The style cascade is: this stylesheet → external
+ * Theme vars are NOT inline style (issue #75). The theme
+ * defaults live in their own stylesheet layer — see
+ * `themeVarsCss()` below: one private alias per theme var, each
+ * reading the public var with the theme value as fallback,
+ * defined on `.wd-deck` and every element inside it. The chrome
+ * in this file reads the aliases, never the public vars, so a
+ * deck stylesheet (or a page, on an ancestor of the host) can
+ * set a theme var and win without `!important` — and the alias
+ * re-resolves per element, so a rule on a screen or a panel
+ * re-themes just that element. Layout vars (`--wd-font-body`,
+ * `--wd-reserve-bottom`, …) are measured per pass and still go
+ * inline on `.wd-deck`, where they belong.
+ *
+ * The style cascade is: theme layer → this stylesheet → external
  * stylesheet(s) → inline CSS block. Those later layers are
  * injected as separate `<style>` elements after this one, in
  * the deck's Shadow DOM, so they win on equal specificity
@@ -33,8 +46,43 @@ import {
   STACK_SCALE_STEP,
   STACK_SHADE_STEP,
   STACK_VISIBLE_BEHIND,
+  themeVars,
 } from '@walkdown/core';
+import type { Theme } from '@walkdown/core';
 import { STACK_DISMISS_DISTANCE, STACK_DISMISS_ROTATE_DEG } from './stack.js';
+
+/**
+ * Theme defaults as a stylesheet layer (spec §11.2, layer 1),
+ * generated from `themeVars()` — the settled font/colour tokens
+ * for the given theme. One private alias per theme var, each
+ * reading the public var with the theme value as fallback:
+ *
+ *   .wd-deck, .wd-deck * {
+ *     --_wd-color-accent: var(--wd-color-accent, #2E7D6B);
+ *     …
+ *   }
+ *
+ * The alias is defined on `.wd-deck` and every element inside
+ * it, so it re-resolves at each element from that element's own
+ * public var: a deck stylesheet can set `--wd-color-accent` on
+ * `.wd-deck`, on a screen, or on a panel, and the override wins
+ * without `!important`; a page can set it on an ancestor of the
+ * host and it inherits in. The public var is never seeded on
+ * `:host` (guide `styling-web-components`: "leave the public
+ * property unset on `:host` and rely on the fallback in each
+ * `var()`; do not seed the public property on `:host`"). The
+ * renderer replaces this layer's text when the theme changes
+ * (element `_applyThemeVars`); it is never re-set on layout
+ * passes. No value here is hand-written: every fallback comes
+ * from `themeVars()`, so the token-generation drift test still
+ * guards them.
+ */
+export function themeVarsCss(theme: Theme): string {
+  const aliases = Object.entries(themeVars(theme))
+    .map(([name, value]) => `  --_${name.slice(2)}: var(${name}, ${value});`)
+    .join('\n');
+  return `/* Theme defaults for "${theme}" — generated from themeVars(); the renderer replaces this layer on a theme change. */\n.wd-deck, .wd-deck * {\n${aliases}\n}`;
+}
 
 export const DEFAULT_CSS = `
 :host {
@@ -53,9 +101,9 @@ export const DEFAULT_CSS = `
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--wd-color-bg);
-  color: var(--wd-color-ink);
-  font-family: var(--wd-font-family-body);
+  background: var(--_wd-color-bg);
+  color: var(--_wd-color-ink);
+  font-family: var(--_wd-font-family-body);
   font-size: var(--wd-font-body);
   line-height: var(--wd-line-height-body);
   box-sizing: border-box;
@@ -121,7 +169,7 @@ export const DEFAULT_CSS = `
   display: flex;
   flex-direction: column;
   scrollbar-width: thin;
-  scrollbar-color: var(--wd-color-border) transparent;
+  scrollbar-color: var(--_wd-color-border) transparent;
 }
 
 /* Bottom clearance (§7.2, issue #38): a trailing in-flow
@@ -150,7 +198,7 @@ export const DEFAULT_CSS = `
 }
 
 .wd-title {
-  font-family: var(--wd-font-family-title);
+  font-family: var(--_wd-font-family-title);
   font-size: var(--wd-font-title);
   line-height: var(--wd-line-height-title);
   font-weight: 700;
@@ -167,7 +215,7 @@ export const DEFAULT_CSS = `
 .wd-section-label {
   font-size: var(--wd-font-small);
   line-height: 1.4;
-  color: var(--wd-color-muted);
+  color: var(--_wd-color-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin: 0 0 var(--wd-space);
@@ -258,8 +306,8 @@ export const DEFAULT_CSS = `
 }
 
 .wd-panel {
-  background: var(--wd-color-panel);
-  border: 1px solid var(--wd-color-border);
+  background: var(--_wd-color-panel);
+  border: 1px solid var(--_wd-color-border);
   border-radius: var(--wd-radius-panel);
   padding: var(--wd-pad-panel);
   font-size: var(--wd-font-body);
@@ -280,13 +328,13 @@ export const DEFAULT_CSS = `
 .wd-panel blockquote {
   margin: 0;
   padding-left: 0.75em;
-  border-left: 3px solid var(--wd-color-accent);
-  color: var(--wd-color-muted);
+  border-left: 3px solid var(--_wd-color-accent);
+  color: var(--_wd-color-muted);
 }
 .wd-panel code {
-  font-family: var(--wd-font-family-code);
+  font-family: var(--_wd-font-family-code);
   font-size: var(--wd-font-code);
-  background: color-mix(in srgb, var(--wd-color-ink) 7%, transparent);
+  background: color-mix(in srgb, var(--_wd-color-ink) 7%, transparent);
   border-radius: 0.25em;
   padding: 0.1em 0.3em;
 }
@@ -311,9 +359,9 @@ export const DEFAULT_CSS = `
   border-radius: calc(var(--wd-radius-panel) / 2);
   margin: 0 auto;
 }
-.wd-panel a { color: var(--wd-color-accent); }
+.wd-panel a { color: var(--_wd-color-accent); }
 .wd-panel h1, .wd-panel h2, .wd-panel h3, .wd-panel h4 {
-  font-family: var(--wd-font-family-title);
+  font-family: var(--_wd-font-family-title);
   line-height: var(--wd-line-height-title);
   margin: 0 0 0.5em;
 }
@@ -411,7 +459,7 @@ export const DEFAULT_CSS = `
 .wd-progress-bar {
   height: 100%;
   width: 0%;
-  background: var(--wd-color-accent);
+  background: var(--_wd-color-accent);
   transition: width 200ms ease-out;
 }
 
@@ -434,8 +482,8 @@ export const DEFAULT_CSS = `
   align-items: flex-end;
   justify-content: center;
   padding-bottom: var(--wd-space);
-  background: linear-gradient(to bottom, transparent, var(--wd-color-bg) 80%);
-  color: var(--wd-color-muted);
+  background: linear-gradient(to bottom, transparent, var(--_wd-color-bg) 80%);
+  color: var(--_wd-color-muted);
   font-size: var(--wd-font-small);
   pointer-events: none;
   opacity: 0;
@@ -465,7 +513,7 @@ export const DEFAULT_CSS = `
    the light muted was 2.63:1 on dark. The light muted stays for the chrome
    that sits on light surfaces (panel blockquotes, the progress pill, the
    empty state). A light screen in a dark-theme deck is not handled — no
-   such deck exists; that belongs with the theme work (issue #75, F4). */
+   such deck exists; that case is still open (issue #75 did not take it on). */
 .wd-screen.dark .wd-section-label,
 .wd-screen.dark ~ .wd-scroll-cue {
   color: ${COLORS.dark.muted};
@@ -490,7 +538,7 @@ export const DEFAULT_CSS = `
 }
 .wd-controls button {
   pointer-events: auto;
-  font-family: var(--wd-font-family-body);
+  font-family: var(--_wd-font-family-body);
   /* 1.25× the fitted body size, so the chevron stays proportional
      to the type. The 0.7× alternative was rejected: at the 14px
      floor it would shrink the glyph below legibility. */
@@ -499,22 +547,22 @@ export const DEFAULT_CSS = `
   width: var(--wd-control-size);
   height: var(--wd-control-size);
   border-radius: 50%;
-  border: 1px solid var(--wd-color-border);
-  background: var(--wd-color-panel);
-  color: var(--wd-color-ink);
+  border: 1px solid var(--_wd-color-border);
+  background: var(--_wd-color-panel);
+  color: var(--_wd-color-ink);
   cursor: pointer;
 }
-.wd-controls button:hover { border-color: var(--wd-color-accent); }
+.wd-controls button:hover { border-color: var(--_wd-color-accent); }
 .wd-controls button:disabled { opacity: 0.35; cursor: default; }
 .wd-controls button:focus-visible {
-  outline: 2px solid var(--wd-color-accent);
+  outline: 2px solid var(--_wd-color-accent);
   outline-offset: 2px;
 }
 .wd-progress-text {
   font-size: var(--wd-font-small);
-  color: var(--wd-color-muted);
-  background: var(--wd-color-panel);
-  border: 1px solid var(--wd-color-border);
+  color: var(--_wd-color-muted);
+  background: var(--_wd-color-panel);
+  border: 1px solid var(--_wd-color-border);
   border-radius: 999px;
   padding: calc(var(--wd-space) * 0.25) var(--wd-space);
   pointer-events: auto;
@@ -530,7 +578,7 @@ export const DEFAULT_CSS = `
   font-size: var(--wd-font-small);
   cursor: pointer;
 }
-.wd-progress-text[aria-expanded="true"] { border-color: var(--wd-color-accent); }
+.wd-progress-text[aria-expanded="true"] { border-color: var(--_wd-color-accent); }
 
 /* Controls auto-hide on idle on desktop (§6.5); never on touch, where there is no hover to bring them back. */
 .wd-deck--idle .wd-controls { opacity: 0; }
@@ -559,8 +607,8 @@ export const DEFAULT_CSS = `
   width: min(84vw, 24em);
   max-height: var(--wd-nav-menu-max-height, ${NAV_MENU_MAX_HEIGHT_CSS});
   overflow-y: auto;
-  background: var(--wd-color-panel);
-  border: 1px solid var(--wd-color-border);
+  background: var(--_wd-color-panel);
+  border: 1px solid var(--_wd-color-border);
   border-radius: var(--wd-radius-panel);
   box-shadow: 0 0 clamp(8px, 1vw + 4px, 16px) rgb(0 0 0 / 0.06);
   padding: calc(var(--wd-space) * 0.5);
@@ -577,18 +625,18 @@ export const DEFAULT_CSS = `
   width: 100%;
   min-height: clamp(48px, 3vw + 12px, 56px);
   text-align: left;
-  font-family: var(--wd-font-family-body);
+  font-family: var(--_wd-font-family-body);
   font-size: clamp(16px, 1.2vw + 10px, 20px);
   line-height: 1.4;
-  color: var(--wd-color-ink);
+  color: var(--_wd-color-ink);
   background: transparent;
   border: none;
   padding: calc(var(--wd-space) * 0.5) var(--wd-space);
   cursor: pointer;
 }
-.wd-nav-menu-item:hover { background: color-mix(in srgb, var(--wd-color-ink) 5%, transparent); }
+.wd-nav-menu-item:hover { background: color-mix(in srgb, var(--_wd-color-ink) 5%, transparent); }
 .wd-nav-menu-item:focus-visible {
-  outline: 2px solid var(--wd-color-accent);
+  outline: 2px solid var(--_wd-color-accent);
   outline-offset: -2px;
 }
 .wd-nav-menu-item--current {
@@ -597,7 +645,7 @@ export const DEFAULT_CSS = `
      colour, so it follows the theme: light #D5E5E1 (ink
      13.3:1 AAA), dark #334242 (ink 9.6:1 AAA).
      Font-weight stays bold. */
-  background: color-mix(in srgb, var(--wd-color-accent) 20%, var(--wd-color-panel));
+  background: color-mix(in srgb, var(--_wd-color-accent) 20%, var(--_wd-color-panel));
   font-weight: 700;
 }
 
@@ -617,7 +665,7 @@ export const DEFAULT_CSS = `
   bottom: var(--wd-reserve-bottom);
   transform: translateX(-50%);
   font-size: var(--wd-font-small);
-  color: var(--wd-color-muted);
+  color: var(--_wd-color-muted);
   z-index: 3;
   pointer-events: none;
 }
@@ -629,19 +677,19 @@ export const DEFAULT_CSS = `
    pointer events, so the button re-enables them. */
 .wd-end-note button {
   pointer-events: auto;
-  font-family: var(--wd-font-family-body);
+  font-family: var(--_wd-font-family-body);
   font-size: var(--wd-font-small);
   line-height: 1;
-  color: var(--wd-color-ink);
-  background: var(--wd-color-panel);
-  border: 1px solid var(--wd-color-border);
+  color: var(--_wd-color-ink);
+  background: var(--_wd-color-panel);
+  border: 1px solid var(--_wd-color-border);
   border-radius: 999px;
   padding: calc(var(--wd-space) * 0.25) var(--wd-space);
   cursor: pointer;
 }
-.wd-end-note button:hover { border-color: var(--wd-color-accent); }
+.wd-end-note button:hover { border-color: var(--_wd-color-accent); }
 .wd-end-note button:focus-visible {
-  outline: 2px solid var(--wd-color-accent);
+  outline: 2px solid var(--_wd-color-accent);
   outline-offset: 2px;
 }
 .wd-end-note[hidden] { display: none; }
@@ -653,7 +701,7 @@ export const DEFAULT_CSS = `
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: var(--wd-color-muted);
+  color: var(--_wd-color-muted);
   padding: var(--wd-space-screen-y) var(--wd-space-screen-x);
 }
 .wd-empty[hidden] { display: none; }

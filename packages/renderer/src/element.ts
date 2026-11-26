@@ -54,7 +54,6 @@ import {
   prevState,
   startState,
   stateFromHash,
-  themeVars,
   visiblePanelIndexes,
   zoomIn,
   zoomOut,
@@ -70,7 +69,7 @@ import { panelContentRect, prefersReducedMotion, scrollPanelIntoView } from './s
 import { animateStackStep, isStackScreen, stackPanelsHtml } from './stack.js';
 import { loadStylesheets } from './loader.js';
 import { deckClassesOf, sanitizeCss } from './sanitize.js';
-import { DEFAULT_CSS } from './styles.js';
+import { DEFAULT_CSS, themeVarsCss } from './styles.js';
 
 const IDLE_HIDE_MS = 2500;
 const SCROLL_STEP_FRACTION = 0.4;
@@ -94,6 +93,7 @@ export class WalkdownDeckElement extends HTMLElement {
   private endNoteEl!: HTMLDivElement;
   private restartBtn!: HTMLButtonElement;
   private emptyEl!: HTMLDivElement;
+  private themeStyleEl!: HTMLStyleElement;
   private externalStyleEl!: HTMLStyleElement;
   private inlineStyleEl!: HTMLStyleElement;
 
@@ -118,6 +118,7 @@ export class WalkdownDeckElement extends HTMLElement {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
     this.shadow.innerHTML = `
+      <style id="wd-theme"></style>
       <style id="wd-default">${DEFAULT_CSS}</style>
       <style id="wd-external"></style>
       <style id="wd-inline"></style>
@@ -153,8 +154,13 @@ export class WalkdownDeckElement extends HTMLElement {
     this.endNoteEl = this.shadow.querySelector('.wd-end-note') as HTMLDivElement;
     this.restartBtn = this.shadow.querySelector('.wd-restart') as HTMLButtonElement;
     this.emptyEl = this.shadow.querySelector('.wd-empty') as HTMLDivElement;
+    this.themeStyleEl = this.shadow.querySelector('#wd-theme') as HTMLStyleElement;
     this.externalStyleEl = this.shadow.querySelector('#wd-external') as HTMLStyleElement;
     this.inlineStyleEl = this.shadow.querySelector('#wd-inline') as HTMLStyleElement;
+    // Theme defaults from construction: the layer is valid before
+    // any deck loads, and _applyThemeVars refreshes it on load
+    // and on a `theme` attribute change.
+    this._applyThemeVars();
     this._layout = new LayoutController(this.deckEl, this.screenEl, this.controlsEl, this.scrollCueEl, this);
     this._navMenu = new NavMenu(this.navMenuEl, this.progressTextEl, this.deckEl, this, {
       onFirst: () => this.goToStart(),
@@ -411,17 +417,26 @@ export class WalkdownDeckElement extends HTMLElement {
     }
   }
 
+  /**
+   * Apply the theme defaults (spec §11.2, layer 1): replace the
+   * `#wd-theme` stylesheet layer with the current theme's
+   * private aliases (`themeVarsCss`). Called on load and on a
+   * `theme` attribute change — the only two ways the theme can
+   * change — and from the constructor, so the layer is valid
+   * before any deck loads. Theme vars are NOT inline style
+   * (issue #75): deck stylesheets set the public vars and win
+   * without `!important` because the aliases read them.
+   * Layout passes never touch this layer; measured layout vars
+   * still go inline on `.wd-deck` (§7.2).
+   */
   private _applyThemeVars(): void {
-    // themeVars() is re-applied with the layout vars on every
-    // layout pass; this keeps the colours right before first layout.
-    const vars = themeVars(this.theme);
-    for (const [k, v] of Object.entries(vars)) this.deckEl.style.setProperty(k, v);
+    this.themeStyleEl.textContent = themeVarsCss(this.theme);
   }
 
   /** Re-run the layout engine for the current screen (spec §7.2). Debounced by ResizeObserver's own cadence. */
   private _applyLayout(): void {
     if (this._facts === null) return;
-    this._layout.applyLayout(this._facts, this._state, this.theme);
+    this._layout.applyLayout(this._facts, this._state);
   }
 
   private _updateScrollCue(): void {
