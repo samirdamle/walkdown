@@ -140,15 +140,3 @@ export function zoomOut(zoom: number): number {
 export function zoomFactor(zoom: number): number {
   return Math.pow(ZOOM_STEP, zoom);
 }
-
-/**
- * Swipe threshold (§6.4, provisional): a swipe that advances
- * needs at least ~48 CSS px, or 1/8 of the screen width,
- * whichever is smaller. The renderer applies it in Phase 3;
- * the constant lives here so the value is recorded in one place.
- */
-export const SWIPE_THRESHOLD_PX = 48;
-
-export function swipeThreshold(containerWidth: number): number {
-  return Math.min(SWIPE_THRESHOLD_PX, containerWidth / 8);
-}

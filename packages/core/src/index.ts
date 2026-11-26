@@ -16,8 +16,6 @@ export {
   zoomIn,
   zoomOut,
   zoomFactor,
-  swipeThreshold,
-  SWIPE_THRESHOLD_PX,
 } from './model.js';
 export {
   computeLayout,
