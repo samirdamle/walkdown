@@ -61,4 +61,4 @@ npm test
 
 `test/sample-deck.test.ts` parses `examples/walkdown-itself.md`
 and asserts the expected model: 13 screens, 4 Sections,
-46 panels, 46 steps.
+47 panels, 47 steps.

@@ -646,7 +646,8 @@ MUST ignore them if they appear in a `class:` list.
 | Progress dots | `.wd-progress-dots`, `.wd-progress-dot`, `.wd-progress-dot--current` | Dots form (if used), current step | No — renderer state for `--current` | Yes |
 | Navigation controls | `.wd-nav` | Controls container | No | Yes |
 | Previous / Next buttons | `.wd-nav-prev`, `.wd-nav-next` | Chevron buttons | No | Yes |
-| Start / End controls | `.wd-nav-start`, `.wd-nav-end` | Start / End (in a menu or on long-press, spec §6.5) | No | Yes |
+| Start / End controls | `.wd-nav-start`, `.wd-nav-end` | Start / End (in the navigation menu, spec §6.6) | No | Yes |
+| Navigation menu | `.wd-nav-menu`, `.wd-nav-menu-item`, `.wd-nav-menu-item--current` | Jump menu above the controls: First screen, Sections, Last screen (spec §6.6) | No | Yes |
 | Zoom controls | `.wd-zoom`, `.wd-zoom-in`, `.wd-zoom-out` | Zoom buttons | No | Yes |
 | Scroll hint | `.wd-scroll-hint` | The "there is more" cue (§6.3) | No | Yes (its look, not its presence) |
 | End-of-deck state | `.wd-end-state` | The subtle end indication (§6.2) | No | Yes |
@@ -739,6 +740,7 @@ needs rewriting, not a row to skip.
 | `--wd-image-max-height` | Image max-height | — | `min(45vh, 420px)` | 420px | px / vh | Settled 2026-11-25 | CSS var; layout-engine check |
 | `--wd-image-min-size` | Image minimum useful size | 200×120px | — | — | px | Proposal | Layout-engine check |
 | `--wd-code-max-height` | Code block max-height | — | `40vh` | — | vh | Proposal | CSS var |
+| `--wd-nav-menu-max-height` | Navigation menu max-height | — | `min(50vh, 420px)` | 420px | px / vh | Proposal | CSS var |
 | `--wd-safe-area` | Safe-area padding | `env(safe-area-inset-*)` | `max(policy, safe-area)` | — | px | Proposal | CSS var |
 
 Reading the table: "Preferred" is the formula the renderer

@@ -524,6 +524,7 @@ Scroll and advance are separate inputs by design (settled, brief
 | Horizontal swipe right | Retreat one step (Previous) |
 | `Home` | Start — first step of the first screen |
 | `End` | End — last step of the last screen |
+| Click the step count | Open the navigation menu (§6.6) |
 | `+` / `-` | Zoom type in / out (§7.3) |
 
 ### 6.2 Transitions
@@ -578,14 +579,61 @@ Let the current state be `(s, k)` — screen *s*, step *k* — with
 ### 6.5 Controls
 
 - On-screen controls are minimal: Previous / Next chevrons,
-  a progress indicator, and Start / End (in a menu or on
-  long-press — not four loud buttons).
+  a progress indicator, and Start / End in the navigation
+  menu (§6.6) — not four loud buttons.
 - Controls auto-hide on idle on desktop and reappear on
   pointer move; they MUST NOT auto-hide on touch, where
   there is no hover to bring them back.
 - The progress indicator shows steps, not screens (§1.3):
   dots or a thin progress bar in v0.1. A full grid overview
   is v0.2.
+
+### 6.6 Navigation menu
+
+The step-count indicator in the bottom nav is a button. It
+opens a menu that jumps across the deck without stepping
+through it — the way Start and End are reached on screen.
+
+- **Trigger:** clicking (or tapping) the indicator toggles
+  the menu; clicking it again closes it. The trigger is a
+  real `<button>` with `aria-haspopup="menu"` and
+  `aria-expanded` reflecting the menu's state.
+- **Contents, in deck order:** "First screen", one item per
+  Section, "Last screen". A Section's item carries the
+  Section's name as its text. A Section with no title (§2.4)
+  is labelled `Section N`, counting Sections from 1.
+- **Targets:** "First screen" goes to the first step of the
+  first screen (the same as Start, §6.2); a Section goes to
+  the first step of that Section's first screen; "Last
+  screen" goes to the last step of the last screen (the same
+  as End, §6.2). A jump shows the target with no reveal
+  animation (§5). Selecting any item closes the menu.
+- **Positioning:** the menu sits just above the bottom nav —
+  its bottom edge aligned to the top edge of the controls
+  bar with one `--wd-space` of margin between. The gap is
+  token-derived (the bottom reserve plus half the space
+  unit), never a fixed pixel value, so it scales with the
+  screen like the rest of the chrome (§7). The menu MUST
+  NOT overlap the controls bar.
+- **Scrolling:** the menu's height is capped at
+  `--wd-nav-menu-max-height` (`min(50vh, 420px)`) and it
+  scrolls within itself (`overflow-y: auto`), so a deck with
+  many Sections never grows the menu past the screen.
+- **Closing:** Escape closes the menu and returns focus to
+  the indicator; clicking or tapping outside the deck closes
+  it; tapping the screen while the menu is open only closes
+  it (it MUST NOT also navigate); selecting an item closes
+  it; any other navigation (Next, Previous, Home, End, a
+  deep link) also closes it.
+- **Focus and current state:** when the menu opens, focus
+  moves into it — to the current Section's item, or the
+  first item if the current screen has no Section. When the
+  menu closes, focus returns to the indicator. The item for
+  the Section containing the current screen is marked
+  `aria-current="true"` and visually highlighted, so the
+  reader can see where they are.
+- **Idle:** while the menu is open the controls MUST NOT
+  auto-hide (§6.5) — the menu is anchored to them.
 
 ## 7. Responsive layout
 
