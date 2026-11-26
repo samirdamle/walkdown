@@ -59,7 +59,7 @@ The layout engine (spec §7.2) applies the panel-count factors
 to the font tokens before clamping, and applies the zoom
 multiplier (`--wd-zoom-step`, ×1.1 per step, ±4 steps) to the
 computed type size, then re-clamps to the floor
-(`--wd-font-floor`, 12px) and the ceilings. Zoom never pushes
+(`--wd-font-floor`, 14px) and the ceilings. Zoom never pushes
 type below the floor.
 
 Colour tokens are applied per theme (`light` / `dark`,

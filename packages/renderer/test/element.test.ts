@@ -312,13 +312,13 @@ describe('Start over button and zoom-in effect', () => {
 });
 
 describe('zoom and layout', () => {
-  it('never renders body type below the 12px floor, even zoomed fully out on a phone', () => {
+  it('never renders body type below the 14px floor, even zoomed fully out on a phone', () => {
     const el = createDeck(SAMPLE_DECK);
     el.setContainerSize(360, 640);
     for (let i = 0; i < 4; i++) el.zoomOutStep();
     expect(el.state.zoom).toBe(-4);
     const bodyPx = parseFloat(varOf(el, '--wd-font-body'));
-    expect(bodyPx).toBeGreaterThanOrEqual(12);
+    expect(bodyPx).toBeGreaterThanOrEqual(14);
   });
 
   it('zooms in and out within ±4 steps', () => {
@@ -476,7 +476,7 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     Object.defineProperty(screen, 'clientHeight', { value: 600, configurable: true });
     Object.defineProperty(screen, 'scrollTop', { value: 0, configurable: true });
     el.setContainerSize(1440, 900);
-    expect(varOf(el, '--wd-font-body')).toBe('12px');
+    expect(varOf(el, '--wd-font-body')).toBe('14px');
     expect(screen.classList.contains('wd-screen--scrolling')).toBe(true);
     expect((el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement).classList.contains('wd-scroll-cue--visible')).toBe(true);
     // The measuring class is removed again after the pass — it
@@ -523,7 +523,7 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     expect(varOf(el, '--wd-reserve-bottom')).toBe('68px');
     const size = parseFloat(varOf(el, '--wd-font-body'));
     expect(size).toBeLessThan(32);
-    expect(size).toBeGreaterThan(12);
+    expect(size).toBeGreaterThan(14);
   });
 
   it('the screen clears the bottom controls and the measurement sees the full screen', () => {
@@ -726,7 +726,7 @@ describe('navigation menu (§6.6)', () => {
   });
 
   it('items are finger-sized, and the current item is a background highlight only — no border, ocean-green tint', () => {
-    // Type clearly above the 12–14px small size; at least 48px
+    // Type clearly above the 14px small size; at least 48px
     // tall, a touch above the settled 44px touch floor (C8);
     // both viewport-relative clamps, never a fixed px size.
     expect(DEFAULT_CSS).toContain('font-size: clamp(16px, 1.2vw + 10px, 20px);');

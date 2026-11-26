@@ -65,7 +65,7 @@ describe('type scale (design-policies §2.2 computed values)', () => {
     // Panel body is content-fit now (§2.2), not a viewport
     // formula — 120 chars per panel: 1 → 32 / 32 / 32;
     // 2–3 → 24.6 / 30.1 / 32; 4–6 → 15.8 / 22.6 / 31.7;
-    // 7–8 → 12 / — / 25.4. Sparse screens grow to the 32px
+    // 7–8 → 14 / — / 25.4. Sparse screens grow to the 32px
     // ceiling at every width; only dense screens shrink.
     expect(layout(360, 800, 1).fontBodyPx).toBe(32);
     // The hero tagline is 42 chars: it still fits at the 32px
@@ -80,16 +80,23 @@ describe('type scale (design-policies §2.2 computed values)', () => {
     expect(layout(360, 800, 6).fontBodyPx).toBeCloseTo(15.8, 0);
     expect(layout(768, 800, 6).fontBodyPx).toBeCloseTo(22.6, 0);
     expect(layout(1440, 900, 6).fontBodyPx).toBeCloseTo(31.7, 0);
-    expect(layout(360, 800, 8).fontBodyPx).toBe(12);
+    expect(layout(360, 800, 8).fontBodyPx).toBe(14);
     expect(layout(1440, 900, 8).fontBodyPx).toBeCloseTo(25.4, 0);
 
-    // Code: 13 / 14.4 / 18. Caption: 12 / 13.5 / 14.
-    expect(varPx(layout(360, 800, 1), '--wd-font-code')).toBeCloseTo(13, 1);
+    // Code: 14 / 14.4 / 18. Caption: 14 / 14 / 14 (small text
+    // is a fixed 14px — its min and max coincide).
+    expect(varPx(layout(360, 800, 1), '--wd-font-code')).toBeCloseTo(14, 1);
     expect(varPx(layout(768, 800, 1), '--wd-font-code')).toBeCloseTo(14.4, 0);
     expect(varPx(layout(1440, 900, 1), '--wd-font-code')).toBeCloseTo(18, 1);
-    expect(varPx(layout(360, 800, 1), '--wd-font-small')).toBeCloseTo(12, 1);
-    expect(varPx(layout(768, 800, 1), '--wd-font-small')).toBeCloseTo(13.5, 0);
+    expect(varPx(layout(360, 800, 1), '--wd-font-small')).toBeCloseTo(14, 1);
+    expect(varPx(layout(768, 800, 1), '--wd-font-small')).toBeCloseTo(14, 0);
     expect(varPx(layout(1440, 900, 1), '--wd-font-small')).toBeCloseTo(14, 1);
+  });
+
+  it('small text is a fixed 14px at every width', () => {
+    expect(varPx(layout(360, 800, 1), '--wd-font-small')).toBe(14);
+    expect(varPx(layout(768, 800, 1), '--wd-font-small')).toBe(14);
+    expect(varPx(layout(1440, 900, 1), '--wd-font-small')).toBe(14);
   });
 
   it('the title factor scales preferred + ceiling, never the floor', () => {
@@ -97,23 +104,23 @@ describe('type scale (design-policies §2.2 computed values)', () => {
     expect(titleFactor(3)).toBe(0.95);
     expect(titleFactor(6)).toBe(0.88);
     expect(titleFactor(8)).toBe(0.85);
-    // The body no longer sits at a 14px floor on a phone: the
-    // fit grows a sparse phone screen to the ceiling (1×120
-    // chars → 32px) and only a dense one reaches the floor
-    // (8×120 chars → 12px, scrolling).
+    // The body sits at the 14px absolute floor on a dense
+    // phone screen: the fit grows a sparse phone screen to
+    // the ceiling (1×120 chars → 32px) and only a dense one
+    // reaches the floor (8×120 chars → 14px, scrolling).
     expect(layout(360, 800, 1, 120).fontBodyPx).toBe(32);
-    expect(layout(360, 800, 8, 120).fontBodyPx).toBe(12);
+    expect(layout(360, 800, 8, 120).fontBodyPx).toBe(14);
   });
 });
 
 describe('type floor and zoom (§7.3)', () => {
-  it('no text renders below the 12px floor, at any width or zoom', () => {
+  it('no text renders below the 14px floor, at any width or zoom', () => {
     for (const w of [320, 360, 768, 1440]) {
       for (const n of [1, 3, 6, 8]) {
         for (const z of [-4, 0, 4]) {
           const l = layout(w, 800, n, 120, z);
           for (const size of [l.fontBodyPx, varPx(l, '--wd-font-title'), varPx(l, '--wd-font-code'), varPx(l, '--wd-font-small')]) {
-            expect(size).toBeGreaterThanOrEqual(12);
+            expect(size).toBeGreaterThanOrEqual(14);
           }
         }
       }
@@ -127,8 +134,8 @@ describe('type floor and zoom (§7.3)', () => {
     // out; a dense screen already at the floor stays there
     // when zooming out (zooming in from the floor grows again).
     expect(layout(360, 800, 1, 120, -4).fontBodyPx).toBeCloseTo(21.8, 0);
-    expect(layout(360, 800, 8, 900, -4).fontBodyPx).toBe(12);
-    expect(layout(360, 800, 8, 900, 0).fontBodyPx).toBe(12);
+    expect(layout(360, 800, 8, 900, -4).fontBodyPx).toBe(14);
+    expect(layout(360, 800, 8, 900, 0).fontBodyPx).toBe(14);
   });
 });
 
@@ -148,14 +155,14 @@ describe('content-fit font sizing (design-policies §2.2)', () => {
     expect(dense.fontBodyPx).toBeLessThan(32);
   });
 
-  it('very long content bottoms out at the 12px floor', () => {
+  it('very long content bottoms out at the 14px floor', () => {
     const long = layout(360, 640, 8, 900);
-    expect(long.fontBodyPx).toBe(12);
+    expect(long.fontBodyPx).toBe(14);
   });
 
   it('more content never yields a larger size', () => {
     const sizes = [30, 120, 400, 900].map((chars) => layout(1440, 900, 4, chars).fontBodyPx);
-    expect(sizes).toEqual([32, 31.7, 18.8, 12.5]);
+    expect(sizes).toEqual([32, 31.7, 18.8, 14]);
     for (let i = 1; i < sizes.length; i++) expect(sizes[i]).toBeLessThanOrEqual(sizes[i - 1]);
   });
 
@@ -173,7 +180,7 @@ describe('content-fit font sizing (design-policies §2.2)', () => {
     // One short panel fits at the ceiling.
     expect(fitFontSize({ ...geo, contentLengths: [30] })).toBe(32);
     // A wall of text does not fit even at the floor.
-    expect(fitFontSize({ ...geo, contentLengths: [20000] })).toBe(12);
+    expect(fitFontSize({ ...geo, contentLengths: [20000] })).toBe(14);
     // The estimate never exceeds the container at the fitted size…
     const fit = fitFontSize({ ...geo, contentLengths: [200, 200, 200, 200], columns: 3, columnWidth: 381 });
     expect(estimateScreenHeight({ ...geo, columns: 3, columnWidth: 381, contentLengths: [200, 200, 200, 200], fontBodyPx: fit })).toBeLessThanOrEqual(900);
@@ -202,7 +209,7 @@ describe('content-fit font sizing (design-policies §2.2)', () => {
     expect(noReserve).toBe(32);
     const reserved = fitFontSize({ ...geo, contentLengths: [950], reservedBottomPx: 64 });
     expect(reserved).toBeLessThan(32);
-    expect(reserved).toBeGreaterThan(12);
+    expect(reserved).toBeGreaterThan(14);
     // The reserved fit really fits the reduced height.
     expect(estimateScreenHeight({ ...geo, contentLengths: [950], fontBodyPx: reserved })).toBeLessThanOrEqual(900 - 64);
     // No reserve is the default: omitting it changes nothing.
@@ -249,7 +256,7 @@ describe('CSS variables', () => {
     expect(light.vars['--wd-font-family-title']).toContain('Georgia');
     expect(light.vars['--wd-content-max-width']).toBe('1200px');
     expect(light.vars['--wd-image-max-height']).toBe('min(45vh, 420px)');
-    expect(light.vars['--wd-font-floor']).toBe('12px');
+    expect(light.vars['--wd-font-floor']).toBe('14px');
 
     const dark = computeLayout({
       containerWidth: 1440,

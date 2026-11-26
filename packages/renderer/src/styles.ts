@@ -348,7 +348,7 @@ export const DEFAULT_CSS = `
   pointer-events: auto;
   font-family: var(--wd-font-family-body);
   /* 1.25× the fitted body size, so the chevron stays proportional
-     to the type. The 0.7× alternative was rejected: at the 12px
+     to the type. The 0.7× alternative was rejected: at the 14px
      floor it would shrink the glyph below legibility. */
   font-size: 1.25em;
   line-height: 1;
@@ -424,7 +424,7 @@ export const DEFAULT_CSS = `
 }
 .wd-nav-menu[hidden] { display: none; }
 /* Menu items are finger targets, not captions (§6.6): type at
-   clamp(16px, 1.2vw + 10px, 20px) — clearly above the 12–14px
+   clamp(16px, 1.2vw + 10px, 20px) — clearly above the 14px
    small size — and at least 48px tall, a touch above the
    settled 44px touch floor (C8), with the same 56px cap as
    the controls. Padding comes from --wd-space. */

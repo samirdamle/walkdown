@@ -58,7 +58,7 @@
         "fixture-screenshot"
       ],
       "max": "32px",
-      "min": "12px",
+      "min": "14px",
       "name": "--wd-font-body",
       "preferred": "largest size that fits visible content (content-fit; see design-policies \u00a72.2)",
       "property": "Panel body size",
@@ -75,7 +75,7 @@
         "css-var-clamp"
       ],
       "max": "18px",
-      "min": "13px",
+      "min": "14px",
       "name": "--wd-font-code",
       "preferred": "1.1vw + 6px",
       "property": "Panel code size",
@@ -92,9 +92,9 @@
         "css-var-clamp"
       ],
       "max": "14px",
-      "min": "12px",
+      "min": "14px",
       "name": "--wd-font-small",
-      "preferred": "0.85vw + 7px",
+      "preferred": null,
       "property": "Caption / small size",
       "settled_date": null,
       "settled_source": null,
@@ -110,12 +110,12 @@
         "validator-rule"
       ],
       "max": null,
-      "min": "12px",
+      "min": "14px",
       "name": "--wd-font-floor",
       "preferred": null,
       "property": "Absolute type floor",
-      "settled_date": null,
-      "settled_source": "brief \u00a715.6 (12px type floor on mobiles)",
+      "settled_date": "2026-11-26",
+      "settled_source": "Samir's decision 2026-11-26 (supersedes brief \u00a715.6's 12px floor)",
       "status": "settled",
       "units": [
         "px"

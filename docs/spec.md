@@ -687,7 +687,7 @@ lengths, container size) → CSS variables + column count. It MUST:
    *total* content of the screen — all panels, visible or not
    yet revealed — in the container (content-fit — the fit is
    computed once per screen from the total text of all its
-   panels, between the 12px floor in §7.3 and the 32px
+   panels, between the 14px floor in §7.3 and the 32px
    ceiling), then measure real overflow of the full content
    after rendering and shrink further if the estimate was
    optimistic. The fitted size is FIXED for the screen: it
@@ -720,10 +720,10 @@ lengths, container size) → CSS variables + column count. It MUST:
 
 ### 7.3 Type floor and zoom
 
-- **Type floor (settled, brief §15.6): 12px minimum on mobiles.**
-  Body text MUST NOT render below 12px on a phone-width
-  container. The engine degrades to scroll (§7.4) sooner rather
-  than shrink type below the floor. The floor is 12px on every
+- **Type floor (settled, Samir's decision 2026-11-26, superseding brief §15.6's 12px): 14px minimum.**
+  Body text MUST NOT render below 14px on any container. The
+  engine degrades to scroll (§7.4) sooner rather than shrink
+  type below the floor. The floor is 14px on every
   container; what grows on larger containers is the *fit* — a
   sparse screen grows toward the 32px ceiling instead of
   sitting at a formula floor.

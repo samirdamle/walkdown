@@ -46,8 +46,8 @@ export const COLORS: Record<Theme, ColorSet> = {
   },
 };
 
-/** Absolute type floor (settled, brief §15.6 / spec §7.3): no text renders below this anywhere. */
-export const FONT_FLOOR_PX = 12;
+/** Absolute type floor (settled, Samir's decision 2026-11-26 superseding brief §15.6's 12px / spec §7.3): no text renders below this anywhere. */
+export const FONT_FLOOR_PX = 14;
 /** Root font size (settled, design-policies §9). */
 export const ROOT_FONT_PX = 16;
 /** Zoom: one step is ×1.1, bounded at ±4 steps (settled, spec §7.3). */
