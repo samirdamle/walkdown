@@ -725,6 +725,18 @@ lengths, container size) → CSS variables + column count. It MUST:
 - Scroll affordance MUST be visible: a fade / chevron /
   scrollbar cue when a screen is scrollable and not yet at its
   bottom. A reader MUST never wonder whether there is more.
+- Reveal scrolls to the newly revealed panel: when a step
+  reveals a panel that is not fully visible in the screen's
+  scroll viewport, the renderer scrolls the screen just far
+  enough to bring that panel into view, clear of the bottom
+  controls — the minimal-scroll (`scrollIntoView({
+  block: 'nearest' })`) semantics: no scroll at all when the
+  panel is already fully visible, and only as far as needed
+  otherwise. The scroll is smooth unless
+  `prefers-reduced-motion` is set, in which case it is
+  instant (§8). It MUST NOT run during the font-fit
+  measurement pass (§7.2), which reveals all panels
+  synchronously.
 - Panel content is top- and left-aligned, always: panels
   start at the top of the screen and the first column starts
   at the left edge, so revealing another panel never moves the
@@ -779,7 +791,8 @@ cannot be met, go one rung down.
   walk (forward = in from the right, back = in from the left).
 - **Reduced motion:** `prefers-reduced-motion: reduce` → no
   enter / exit animation at all. Steps still advance; content
-  simply appears. This is not optional.
+  simply appears. Reveal auto-scroll is instant, never smooth,
+  under reduced motion. This is not optional.
 - **Performance:** transform + opacity only (compositor-
   friendly). No layout animation. Animations MUST hold 60 fps
   on a mid-range phone; if they cannot, the engine drops to
