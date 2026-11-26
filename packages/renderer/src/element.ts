@@ -472,6 +472,7 @@ export class WalkdownDeckElement extends HTMLElement {
       this.progressTextEl.textContent = '';
       this.progressTextEl.removeAttribute('aria-label');
       this.endNoteEl.hidden = true;
+      this.deckEl.classList.toggle('wd-deck--end', false);
       this._navMenu.close(false);
       this._navMenu.sync(null, null, -1);
       this.scrollCueEl.classList.remove('wd-scroll-cue--visible');
@@ -559,6 +560,10 @@ export class WalkdownDeckElement extends HTMLElement {
     this.prevBtn.disabled = facts.isAtStart(this._state);
     this.nextBtn.disabled = facts.isAtEnd(this._state);
     this.endNoteEl.hidden = !facts.isAtEnd(this._state);
+    // The scroll cue lifts above the end note while it shows (§7.4,
+    // issue #64): both sit at the bottom reserve, so without the
+    // lift the centred cue text would sit on the Start over button.
+    this.deckEl.classList.toggle('wd-deck--end', facts.isAtEnd(this._state));
     this._navMenu.sync(deck, facts, facts.sectionIndexOfScreen(this._state.screenIndex));
     this._updateScrollCue();
   }

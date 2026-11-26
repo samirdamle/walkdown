@@ -453,6 +453,63 @@ describe('empty deck and scroll cue', () => {
   });
 });
 
+describe('scroll cue position (§7.4, issue #64)', () => {
+  it('the scroll cue sits at the bottom reserve, above the controls band', () => {
+    // jsdom does not apply Shadow DOM stylesheets to computed style,
+    // so the rule is asserted on the shipped CSS text — the same
+    // pattern as the top-left alignment tests. The cue used to sit
+    // at bottom: 0, inside the controls band, where the centred
+    // step-count pill covered the centred cue text.
+    const css = (createDeck('# T\n\n- One.\n').shadowRoot?.querySelector('#wd-default') as HTMLStyleElement).textContent ?? '';
+    const cueRule = css.slice(css.indexOf('.wd-scroll-cue {'), css.indexOf('.wd-scroll-cue--visible'));
+    expect(cueRule).toContain('bottom: var(--wd-reserve-bottom);');
+    expect(cueRule).not.toContain('bottom: 0;');
+    // The reserve is controls height + half-space clearance (§7.2),
+    // so the cue's text — one space above the cue's bottom edge —
+    // clears the top of the controls bar by 1.5× space at every
+    // width (12px at 360px, 17.5px at 768px, 24px at 1440px).
+    expect(DEFAULT_CSS).toContain('--wd-reserve-bottom: calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5);');
+  });
+
+  it('the cue lifts above the Start over note at the end of the deck', () => {
+    expect(DEFAULT_CSS).toContain('.wd-deck--end .wd-scroll-cue {');
+    expect(DEFAULT_CSS).toContain('bottom: calc(var(--wd-reserve-bottom) + var(--wd-font-small) + 2px);');
+  });
+
+  it('at the end of a long last screen the cue and the end note are both visible, with the deck marked at-end', () => {
+    const long = 'word '.repeat(60);
+    // The last screen reveals stepwise (without a marker it would
+    // be a single step, and there would be no long last screen to
+    // scroll — totalSteps would be 2, not 5).
+    const el = createDeck(`# First\n\n- One.\n\n---\n\n<!-- reveal: step -->\n\n# Last\n\n- ${long}\n- ${long}\n- ${long}\n- ${long}\n`);
+    el.goToEnd();
+    expect(progressText(el)).toBe('5 / 5');
+    const screen = screenEl(el);
+    Object.defineProperty(screen, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(screen, 'clientHeight', { value: 600, configurable: true });
+    Object.defineProperty(screen, 'scrollTop', { value: 0, configurable: true });
+    screen.dispatchEvent(new window.Event('scroll'));
+    // The end note shows (last step) and the cue shows (scrollable,
+    // not at the bottom) — the deck class is what lifts the cue
+    // above the note, so without it the two would overlap.
+    expect(deckEl(el).classList.contains('wd-deck--end')).toBe(true);
+    expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(false);
+    expect((el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement).classList.contains('wd-scroll-cue--visible')).toBe(true);
+  });
+
+  it('away from the end the deck is not marked at-end, so the cue sits at the reserve', () => {
+    const el = createDeck(SAMPLE_DECK);
+    expect(progressText(el)).toBe('1 / 51');
+    expect(deckEl(el).classList.contains('wd-deck--end')).toBe(false);
+    expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(true);
+  });
+
+  it('an empty deck is not marked at-end', () => {
+    const el = createDeck('');
+    expect(deckEl(el).classList.contains('wd-deck--end')).toBe(false);
+  });
+});
+
 describe('top-left alignment and content-fit (design-policies §2.2)', () => {
   it('panels, title and section label are top- and left-aligned', () => {
     const el = createDeck('# Title\n\n- One.\n- Two.\n');

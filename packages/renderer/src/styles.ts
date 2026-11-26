@@ -320,12 +320,18 @@ export const DEFAULT_CSS = `
   transition: width 200ms ease-out;
 }
 
-/* --- Scroll cue (§7.4): a reader must never wonder whether there is more. --- */
+/* --- Scroll cue (§7.4): a reader must never wonder whether there is more.
+   The cue sits directly above the controls band, at the bottom
+   reserve (--wd-reserve-bottom): controls height plus half-space
+   clearance (§7.2). It used to sit at bottom: 0, inside the
+   controls band, where the centred step-count pill covered the
+   centred cue text (issue #64). The gradient still fades the
+   content below the cue — only the strip's placement moved. --- */
 .wd-scroll-cue {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--wd-reserve-bottom);
   /* Tall enough for one line of small text plus the padding
      below it, both token-derived so the strip scales. */
   height: calc(var(--wd-font-small) * 2 + var(--wd-space));
@@ -342,6 +348,17 @@ export const DEFAULT_CSS = `
   z-index: 2;
 }
 .wd-scroll-cue--visible { opacity: 1; }
+
+/* At the end of the deck the Start over note occupies the same
+   band — its bottom edge is the reserve too, and it is one small
+   line plus its padding and border tall. The cue lifts above it
+   while the note shows (the element toggles .wd-deck--end with
+   the note), so the cue's text clears the note's top by half a
+   space unit at every width and zoom: both sides read the same
+   zoomed --wd-font-small, and the 2px is the button's border. */
+.wd-deck--end .wd-scroll-cue {
+  bottom: calc(var(--wd-reserve-bottom) + var(--wd-font-small) + 2px);
+}
 
 /* --- Controls (§6.5): minimal — Previous / Next chevrons and a step count. --- */
 .wd-controls {
