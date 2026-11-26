@@ -303,6 +303,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.nextBtn.addEventListener('click', this._onNextClick);
     this.progressTextEl.addEventListener('click', this._onProgressClick);
     this.navMenuEl.addEventListener('click', this._onNavMenuClick);
+    this.navMenuEl.addEventListener('keydown', this._onNavMenuKeyDown);
     this.restartBtn.addEventListener('click', this._onRestartClick);
     document.addEventListener('pointerdown', this._onDocumentPointerDown);
     window.addEventListener('hashchange', this._onHashChange);
@@ -331,6 +332,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.nextBtn.removeEventListener('click', this._onNextClick);
     this.progressTextEl.removeEventListener('click', this._onProgressClick);
     this.navMenuEl.removeEventListener('click', this._onNavMenuClick);
+    this.navMenuEl.removeEventListener('keydown', this._onNavMenuKeyDown);
     this.restartBtn.removeEventListener('click', this._onRestartClick);
     document.removeEventListener('pointerdown', this._onDocumentPointerDown);
     window.removeEventListener('hashchange', this._onHashChange);
@@ -580,6 +582,11 @@ export class WalkdownDeckElement extends HTMLElement {
     this._navMenu.handleItemClick(e);
   };
 
+  /** Arrow/Home/End keys inside the menu are the menu's own navigation (§6.6, issue #72). */
+  private _onNavMenuKeyDown = (e: KeyboardEvent): void => {
+    this._navMenu.handleKeyDown(e);
+  };
+
   /** A click/tap outside the deck closes the menu (§6.6). */
   private _onDocumentPointerDown = (e: PointerEvent): void => {
     this._navMenu.handleOutsidePointerDown(e);
@@ -588,6 +595,20 @@ export class WalkdownDeckElement extends HTMLElement {
   // --- Input ------------------------------------------------------------
 
   private _onKeyDown = (e: KeyboardEvent): void => {
+    // While the navigation menu is open, ArrowUp/ArrowDown/Home/End belong
+    // to the menu (§6.6, issue #72): the menu's own keydown handler moves
+    // between items and stops the event, but a key pressed with focus
+    // outside the menu element — e.g. on the indicator — would otherwise
+    // reach this handler and scroll the screen or jump the deck. Swallow
+    // the keys here instead (no preventDefault: nothing happens at all).
+    // Edge: with focus on the indicator the key is a dead key — the menu
+    // is still closable via Escape or by clicking the indicator.
+    if (
+      this._navMenu.isOpen &&
+      (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Home' || e.key === 'End')
+    ) {
+      return;
+    }
     switch (e.key) {
       case 'ArrowRight':
         e.preventDefault();

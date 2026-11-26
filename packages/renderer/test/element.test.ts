@@ -792,6 +792,16 @@ describe('navigation menu (§6.6)', () => {
     return el.shadowRoot?.activeElement ?? null;
   }
 
+  // Dispatch a keydown on the focused menu item (or the menu itself),
+  // composed so the event crosses the shadow boundary to the host's walk
+  // handler — exactly like a real keypress. Without `composed: true` the
+  // host handler would never fire in jsdom and the "host skips the key"
+  // assertions below would be vacuous.
+  function menuKey(el: WalkdownDeckElement, keyName: string): void {
+    const target = shadowActive(el) ?? menu(el);
+    target.dispatchEvent(new window.KeyboardEvent('keydown', { key: keyName, bubbles: true, composed: true, cancelable: true }));
+  }
+
   it('the step count is a button with menu semantics; the menu is hidden by default', () => {
     const el = createDeck(SAMPLE_DECK);
     const btn = indicator(el);
@@ -901,6 +911,87 @@ describe('navigation menu (§6.6)', () => {
     key(el, 'Escape');
     expect(menu(el).hidden).toBe(true);
     expect(shadowActive(el)).toBe(indicator(el));
+  });
+
+  it('ArrowDown moves to the next item, ArrowUp to the previous', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    // Focus starts on the current Section, "Intro".
+    expect(shadowActive(el)?.textContent).toBe('Intro');
+    menuKey(el, 'ArrowDown');
+    expect(shadowActive(el)?.textContent).toBe('How it works');
+    menuKey(el, 'ArrowDown');
+    expect(shadowActive(el)?.textContent).toBe('Walking');
+    menuKey(el, 'ArrowUp');
+    expect(shadowActive(el)?.textContent).toBe('How it works');
+    expect(menu(el).hidden).toBe(false);
+  });
+
+  it('ArrowDown wraps from the last item to the first, ArrowUp from the first to the last', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    menuKey(el, 'End');
+    expect(shadowActive(el)?.textContent).toBe('Last screen');
+    menuKey(el, 'ArrowDown');
+    expect(shadowActive(el)?.textContent).toBe('First screen');
+    menuKey(el, 'ArrowUp');
+    expect(shadowActive(el)?.textContent).toBe('Last screen');
+  });
+
+  it('Home jumps to the first item, End to the last', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    menuKey(el, 'ArrowDown');
+    menuKey(el, 'ArrowDown');
+    expect(shadowActive(el)?.textContent).toBe('Walking');
+    menuKey(el, 'Home');
+    expect(shadowActive(el)?.textContent).toBe('First screen');
+    menuKey(el, 'End');
+    expect(shadowActive(el)?.textContent).toBe('Last screen');
+    expect(menu(el).hidden).toBe(false);
+  });
+
+  it('ArrowUp/Down/Home/End while the menu is open do not scroll the screen or jump the deck', () => {
+    const el = createDeck(SAMPLE_DECK);
+    el.jumpTo(7); // mid-deck, so Home/End would move if they reached the host
+    indicator(el).click();
+    const before = el.state;
+    // jsdom has no Element.scrollBy; provide the browser's so the
+    // "host did not scroll" assertion can observe the call. Without the
+    // fix, ArrowDown reaches the host and calls scrollBy, and End calls
+    // goToEnd (state changes and the menu closes on navigation).
+    const scrollBy = vi.fn();
+    screenEl(el).scrollBy = scrollBy as never;
+    menuKey(el, 'ArrowDown');
+    expect(el.state).toEqual(before);
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(menu(el).hidden).toBe(false);
+    menuKey(el, 'End');
+    expect(el.state).toEqual(before);
+    expect(menu(el).hidden).toBe(false);
+    menuKey(el, 'Home');
+    expect(el.state).toEqual(before);
+    expect(menu(el).hidden).toBe(false);
+  });
+
+  it('every item is reachable by keyboard alone — ArrowDown walks the whole menu', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    menuKey(el, 'Home');
+    const seen: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      seen.push(shadowActive(el)?.textContent ?? '');
+      menuKey(el, 'ArrowDown');
+    }
+    expect(seen).toEqual(['First screen', 'Intro', 'How it works', 'Walking', 'Customize', 'Last screen']);
+    // After the sixth ArrowDown focus wrapped to the first item;
+    // ArrowUp from there lands back on the last.
+    expect(shadowActive(el)?.textContent).toBe('First screen');
+    menuKey(el, 'ArrowUp');
+    expect(shadowActive(el)?.textContent).toBe('Last screen');
+    // Focusing an item scrolls it into view in a real browser, so the
+    // menu's own scroll (overflow-y: auto) is reachable by keyboard;
+    // jsdom does no layout, so the focus walk above is the provable form.
   });
 
   it('clicking outside the deck closes the menu', () => {

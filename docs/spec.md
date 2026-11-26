@@ -653,6 +653,15 @@ through it — the way Start and End are reached on screen.
   the Section containing the current screen is marked
   `aria-current="true"` and visually highlighted, so the
   reader can see where they are.
+- **Keyboard:** the menu carries `role="menu"` and its items
+  `role="menuitem"`, so it MUST honour the menu keyboard
+  contract: ArrowDown/ArrowUp move focus between items,
+  wrapping at the ends; Home/End jump to the first/last
+  item. While the menu is open, ArrowUp/ArrowDown/Home/End
+  MUST NOT scroll the screen or jump the deck — the host's
+  walk keys are suspended for those keys until the menu
+  closes. Focusing an item scrolls it into view, so the
+  menu's own scroll is reachable by keyboard.
 - **Idle:** while the menu is open the controls MUST NOT
   auto-hide (§6.5) — the menu is anchored to them.
 
