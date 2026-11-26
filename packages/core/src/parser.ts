@@ -17,6 +17,7 @@
  *   → Deck model (§1.1)
  */
 import { plainText, renderBlocks } from './markdown.js';
+import { parseMarkerParams, parseMarkerSegment, splitMarkerSegments } from './marker.js';
 import { scanBlocks, type ScannedBlock } from './scan.js';
 import type {
   Block,
@@ -203,35 +204,6 @@ function splitScreens(lines: string[]): string[][] {
   return screens;
 }
 
-interface MarkerParams {
-  bare?: string;
-  values: Map<string, string>;
-}
-
-/**
- * Split a marker's inside text on `;` — semicolons separate
- * properties, commas only inside a value (§4.1). The first
- * segment may be a bare value.
- */
-function parseMarkerParams(inside: string): MarkerParams {
-  const segments = inside
-    .split(';')
-    .map((s) => s.trim())
-    .filter((s) => s !== '');
-  const params: MarkerParams = { values: new Map() };
-  segments.forEach((segment, index) => {
-    const colon = segment.indexOf(':');
-    if (colon === -1) {
-      if (index === 0) params.bare = segment;
-      return; // a bare value anywhere else is ignored
-    }
-    const key = segment.slice(0, colon).trim().toLowerCase();
-    const value = segment.slice(colon + 1).trim();
-    if (key !== '' && value !== '') params.values.set(key, value);
-  });
-  return params;
-}
-
 function validClassNames(value: string | undefined): string[] {
   if (!value) return [];
   // Space-separated; a token that is not a valid CSS class name is ignored (§4.2).
@@ -290,17 +262,18 @@ interface SectionMarker {
 }
 
 function parseSectionMarker(inside: string): SectionMarker | undefined {
-  // inside starts with `section:` — the first segment is the title (it may contain ':').
+  // inside starts with `section:` — the first segment is the title (it may contain ':'),
+  // so it is read raw from the shared splitter; only the later segments go through
+  // the shared `key: value` parser. An empty first segment is an empty title (§2.4).
   const after = inside.slice('section'.length).replace(/^:\s*/, '');
-  const segments = after.split(';').map((s) => s.trim());
+  const segments = splitMarkerSegments(after);
   const title = segments[0] ?? '';
   if (title === '') return undefined; // a Section title MUST be non-empty (§2.4)
   const params: SectionParams = { classNames: [] };
   for (const segment of segments.slice(1)) {
-    const colon = segment.indexOf(':');
-    if (colon === -1) continue;
-    const key = segment.slice(0, colon).trim().toLowerCase();
-    const value = segment.slice(colon + 1).trim();
+    const parsed = parseMarkerSegment(segment);
+    if (parsed === undefined) continue;
+    const { key, value } = parsed;
     if (key === 'reveal') params.mode = parseMode(value);
     else if (key === 'effect') params.effect = parseEffect(value);
     else if (key === 'duration') params.durationMs = parseDuration(value);
