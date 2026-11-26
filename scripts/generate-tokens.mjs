@@ -353,6 +353,17 @@ function derive(tokens) {
     proposal: true,
   });
 
+  // Stack pile (spec §4.2, §7.2): the peek offset, the per-level
+  // scale-down and brightness loss, and how many cards peek
+  // behind the front one. All Proposal — Samir has not settled
+  // the pile's look. The pile CSS (renderer styles.ts) and the
+  // dismiss/promote choreography (renderer stack.ts) both read
+  // these constants, so the look has one source.
+  px('STACK_OFFSET_PX', '--wd-stack-offset', 'preferred');
+  unitless('STACK_SCALE_STEP', '--wd-stack-scale-step', 'preferred');
+  unitless('STACK_SHADE_STEP', '--wd-stack-shade-step', 'preferred');
+  unitless('STACK_VISIBLE_BEHIND', '--wd-stack-visible-behind', 'preferred');
+
   for (const name of Object.keys(NO_NUMERIC_CONSTANT)) {
     if (!byName.has(name)) throw new Error(`NO_NUMERIC_CONSTANT lists ${name}, which is not in the JSON`);
   }

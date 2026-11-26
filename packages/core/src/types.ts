@@ -5,8 +5,10 @@
  * the renderer must not re-resolve defaults.
  */
 
-export type RevealEffect = 'fade-in' | 'slide-in' | 'zoom-in' | 'none';
+export type RevealEffect = 'fade-in' | 'slide-in' | 'zoom-in' | 'stack' | 'none';
 export type RevealMode = 'step' | 'all';
+/** The direction a `stack` front card flies when dismissed (§4.2). Ignored by every other effect. */
+export type RevealDirection = 'left' | 'right' | 'up' | 'down';
 export type Theme = 'light' | 'dark';
 export type PanelKind = 'text' | 'image' | 'code' | 'quote';
 
@@ -19,6 +21,8 @@ export interface Reveal {
   effect: RevealEffect;
   /** Enter animation duration, milliseconds, clamped to 0–2000. */
   durationMs: number;
+  /** Dismiss direction for `stack` (§4.2): the front card flies this way; the default is `left`. Ignored by other effects. */
+  direction: RevealDirection;
 }
 
 /** One block of content inside a panel (spec §2.5). */

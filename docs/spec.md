@@ -140,7 +140,7 @@ only in v0.1. Known keys:
 | `title` | string | first `#` heading, or unset |
 | `author` | string | unset |
 | `theme` | `light` \| `dark` | `light` |
-| `defaults` | map: `reveal` (`step` \| `all`), `effect`, `duration` | no deck defaults (spec §4.3) |
+| `defaults` | map: `reveal` (`step` \| `all`), `effect`, `duration`, `direction` | no deck defaults (spec §4.3) |
 | `stylesheets` | list of strings (URLs / paths) | empty (no external stylesheet) |
 
 ```yaml
@@ -156,9 +156,9 @@ stylesheets:
 ```
 
 - `defaults` is the deck-level reveal default (§4.3). It holds
-  only `reveal`, `effect`, and `duration` — `sequence` is never a
-  deck default, because it is per-screen (§4.2). An unknown key
-  inside `defaults` MUST be ignored.
+  only `reveal`, `effect`, `duration`, and `direction` —
+  `sequence` is never a deck default, because it is per-screen
+  (§4.2). An unknown key inside `defaults` MUST be ignored.
 - `stylesheets` is the canonical key for an external stylesheet
   (§11.4). There is no singular `stylesheet` key: one stylesheet
   is a one-item list. Relative paths resolve against the deck's
@@ -204,7 +204,7 @@ first screen of the Section:
   it opens (at the top of a screen, or at the top of the file).
 - The marker MAY carry semicolon-separated parameters, in the same
   grammar as reveal markers (§4.1): `reveal`, `effect`, `duration`,
-  and `class`. These are the Section's reveal defaults (§4.3) and
+  `direction`, and `class`. These are the Section's reveal defaults (§4.3) and
   its class (§11.3):
 
   ```markdown
@@ -380,7 +380,7 @@ marker    := "<!--" WS "reveal" ":" param-list WS "-->"
 param-list:= param (";" param)*
 param     := key ":" value | bare-value
 bare-value:= "step" | "all"
-key       := "sequence" | "effect" | "duration" | "class" | "panel-class"
+key       := "sequence" | "effect" | "duration" | "direction" | "class" | "panel-class"
 value     := <text up to the next ";" or "-->">
 ```
 
@@ -403,13 +403,16 @@ Rules:
 - A `reveal:` comment line anywhere else in a screen — after
   the title, or between panels — is a **panel marker**: it
   applies to the next panel only, and only its `effect` and
-  `duration` take effect. `mode`, `sequence`, `class`, and
-  `panel-class` in a panel marker are ignored: they are
-  screen-level settings. A panel marker before the first panel
-  of a screen is the screen's marker instead (it sits at the
-  top of the screen), so a panel marker for the first panel
-  goes after the screen title. A panel with no marker inherits
-  the screen's effect and duration.
+  `duration` take effect. `mode`, `sequence`, `direction`,
+  `class`, and `panel-class` in a panel marker are ignored:
+  they are screen-level settings. `stack` as a panel marker's
+  effect is likewise ignored — `stack` is screen-level only
+  (§4.2): the panel falls back to the screen's effect, while a
+  duration in the same marker still applies. A panel marker
+  before the first panel of a screen is the screen's marker
+  instead (it sits at the top of the screen), so a panel marker
+  for the first panel goes after the screen title. A panel with
+  no marker inherits the screen's effect and duration.
 
 ### 4.2 Parameters
 
@@ -417,8 +420,9 @@ Rules:
 | --------- | ------ | ------- |
 | mode (bare first value) | `step` \| `all` | `all` (no marker) |
 | `sequence` | list of 1-based panel indices, e.g. `2, 1, 3` | document order (`1, 2, 3, …`) |
-| `effect` | `fade-in` \| `slide-in` \| `zoom-in` \| `none` | `fade-in` |
+| `effect` | `fade-in` \| `slide-in` \| `zoom-in` \| `stack` \| `none` | `fade-in` |
 | `duration` | CSS time, e.g. `1s`, `250ms` | `300ms` |
+| `direction` | `left` \| `right` \| `up` \| `down` | `left` |
 | `class` | space-separated class names, e.g. `hero dark` | none |
 | `panel-class` | space-separated class names, applied to every panel on this screen | none |
 
@@ -433,6 +437,23 @@ Rules:
   appear instantly; steps still advance. A single panel can
   override the effect (and the duration) with its own reveal
   marker (§4.1); the screen's effect is the fallback.
+  `stack` is the one effect a single panel CANNOT take: it is
+  screen-level only (§4.1, §8).
+- `direction` is the direction a `stack` front card flies when
+  it is dismissed (§8): `left`, `right`, `up`, or `down`. It
+  cascades like `effect` and `duration` (§4.3) and defaults to
+  `left`. An invalid value is ignored and the default used. On
+  any screen whose effect is not `stack`, `direction` is
+  ignored — it changes nothing.
+- `stack` lays a screen's panels out as a pile — a card deck —
+  instead of a grid (§8): the front card is in flow, the cards
+  behind peek at the top edge, scaled down and shaded darker
+  per level, and only the front card plus two behind are ever
+  visibly distinct. The pile order follows the reveal order:
+  the first panel in `sequence` order is on top, so a stack
+  screen with a `sequence` deals its cards in sequence order.
+  Step count is unchanged: step *k* of a stack screen shows
+  the pile with the first *k* cards already dismissed (§5).
 - `duration` is the enter animation duration for each panel.
   Values outside 0–2000ms MUST be clamped into that range.
   A malformed duration is ignored and the default used.
@@ -463,10 +484,10 @@ replace):
 
 | Level | Source | Sets |
 | ----- | ------ | ---- |
-| 1 (lowest) | Spec base defaults | mode `all`, effect `fade-in`, duration `300ms`, sequence = document order |
-| 2 | Frontmatter `defaults:` (§2.1) | `reveal`, `effect`, `duration` |
-| 3 | Section marker (§2.4) | `reveal`, `effect`, `duration` |
-| 4 (highest) | Screen reveal marker (§4.1) | mode, `sequence`, `effect`, `duration` |
+| 1 (lowest) | Spec base defaults | mode `all`, effect `fade-in`, duration `300ms`, direction `left`, sequence = document order |
+| 2 | Frontmatter `defaults:` (§2.1) | `reveal`, `effect`, `duration`, `direction` |
+| 3 | Section marker (§2.4) | `reveal`, `effect`, `duration`, `direction` |
+| 4 (highest) | Screen reveal marker (§4.1) | mode, `sequence`, `effect`, `duration`, `direction` |
 
 Rules:
 
@@ -495,7 +516,8 @@ Base case, with no frontmatter defaults, no section parameters,
 and no screen marker (or `<!-- reveal: all -->`): all panels
 visible on arrival, one step for the screen. `<!-- reveal:
 step -->`: one panel per step, `fade-in`, `300ms`, document
-order.
+order, direction `left` (irrelevant unless the effect is
+`stack`).
 
 ## 5. Steps and reveal (runtime)
 
@@ -509,6 +531,20 @@ order.
   with the reverse of its enter animation, then — on the next
   backward step — moves to the previous screen at its last step
   (fully revealed).
+- On a `stack` screen (§4.2, §8) the step model is the same
+  count with a different picture: step *k* shows the pile with
+  the first *k* cards dismissed. Moving forward dismisses the
+  front card — it flies away in the screen's `direction` over
+  the screen's `durationMs` — and the next card rises to the
+  front; moving backward re-deals the dismissed card, flying
+  it back in from the same direction while the front card
+  settles back down. The pile is a pure function of (screen,
+  stepIndex): entering a stack screen, jumping to it, or
+  deep-linking to `#/<screen>/<step>` shows the pile with the
+  first *stepIndex* cards already dismissed, with NO animation.
+  Animation happens only on a genuine step forward/back.
+  A stack screen never scrolls on a step: the pile does not
+  move vertically, so there is no reveal-scroll (§7.4) for it.
 - Jumping (Start / End / deep link / dots) shows the target
   position with no per-panel animation: panels simply appear
   in their final state. A jump MUST NOT play *n* reveal
@@ -725,6 +761,25 @@ lengths, container size) → CSS variables + column count. It MUST:
    (e.g. auto-hide on idle), use their visible height when
    shown and keep the clearance when they reappear; re-check
    the fit when the controls show or hide.
+8. A `stack` screen (§4.2) lays its panels out as a pile, not
+   a grid: the front card is in flow and sets the pile height;
+   the cards behind are absolutely positioned over it, aligned
+   with the front card's top edge and lifted by a per-level
+   peek offset, so their top edges show. The pile container
+   carries top padding equal to the full peek (the number of
+   visible cards behind × the offset), so the peek never
+   overflows the screen's scroll container — the screen needs
+   no overflow change. The font-fit (rule 4) still counts the
+   total text of ALL panels, as for every screen, and the
+   measurement pass measures the pile as rendered: its height
+   is the front card's (a taller card behind still counts,
+   because it extends the pile's scrollable overflow — the
+   pass shrinks type until the tallest pile card fits). The
+   pass MUST NOT count dismissed cards: they are translated
+   far off the pile, and an up/down dismissal would otherwise
+   inflate the scrollable overflow and shrink the font for a
+   pile that fits. A later, taller front card that still
+   overflows at the floor scrolls internally, as usual (§7.4).
 
 ### 7.3 Type floor and zoom
 
@@ -811,6 +866,27 @@ cannot be met, go one rung down.
 - **Enter (`zoom-in`):** the panel grows from slightly smaller
   (scale ~0.92) with a fade. Transform + opacity only, like
   the other effects.
+- **Enter (`stack`):** the screen is a pile (§4.2, §7.2), not a
+  grid. Per level behind the front card: the card is lifted
+  10px (its top edge peeks above the front card), scaled down
+  by 0.03, and shaded darker by 0.07 brightness. Only the
+  front card plus 2 behind are ever visibly distinct — deeper
+  cards share the third level's transform, so a long screen
+  does not spread the pile. Advancing a step dismisses the
+  front card: it flies away in the screen's `direction`
+  (default `left`) — translating 130% of its own size in that
+  direction, rotating ±6°, fading to 0 — over the screen's
+  `durationMs`, ease-in; the next card rises to the front
+  (scale to 1, shade to full, ease-out) while the card behind
+  it shifts up one level (ease-in-out). Going back re-deals
+  the dismissed card: it flies back in from the same
+  direction, ease-out, and the front card settles back down a
+  level. The pile is a pure function of (screen, stepIndex)
+  (§5): entering or jumping to a stack screen shows the pile
+  with the first `stepIndex` cards already dismissed, with no
+  animation. The pile numbers (10px, 0.03, 0.07, 2) are
+  Proposal tokens (`--wd-stack-*`, §11.2) — the pile's look is
+  not settled.
 - **Enter (`none`):** the panel appears instantly.
 - **Exit:** the reverse of entry on Previous — the panel plays
   its enter animation backwards. Screens cross-fade / slide a
@@ -819,11 +895,18 @@ cannot be met, go one rung down.
 - **Reduced motion:** `prefers-reduced-motion: reduce` → no
   enter / exit animation at all. Steps still advance; content
   simply appears. Reveal auto-scroll is instant, never smooth,
-  under reduced motion. This is not optional.
+  under reduced motion. This is not optional. On a `stack`
+  screen the fly/zoom transitions are instant in the same way
+  — the state changes immediately — but the pile layout itself
+  (peek, shade, perspective) is not motion and stays.
 - **Performance:** transform + opacity only (compositor-
   friendly). No layout animation. Animations MUST hold 60 fps
   on a mid-range phone; if they cannot, the engine drops to
-  the static rung (§7.5).
+  the static rung (§7.5). The one exception is the `stack`
+  promote: it also animates `filter: brightness()` by a single
+  0.07 step, so the card lightens as it rises to the front —
+  the shade is the card's rest state, and a separate shade
+  overlay would add a node per panel.
 
 ## 9. Conformance and testing
 

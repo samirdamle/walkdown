@@ -57,6 +57,10 @@ export const TOKEN_META = {
   "--wd-image-min-size": { property: "Image minimum useful size", status: "proposal", min: "200×120px", preferred: null, max: null, units: "px", settledDate: null, settledSource: null },
   "--wd-code-max-height": { property: "Code block max-height", status: "proposal", min: null, preferred: "40vh", max: null, units: "vh", settledDate: null, settledSource: null },
   "--wd-nav-menu-max-height": { property: "Navigation menu max-height", status: "proposal", min: null, preferred: "min(50vh, 420px)", max: "420px", units: "px / vh", settledDate: null, settledSource: null },
+  "--wd-stack-offset": { property: "Stack peek offset per level", status: "proposal", min: null, preferred: "10px", max: null, units: "px", settledDate: null, settledSource: null },
+  "--wd-stack-scale-step": { property: "Stack scale-down per level", status: "proposal", min: null, preferred: "0.03", max: null, units: "unitless", settledDate: null, settledSource: null },
+  "--wd-stack-shade-step": { property: "Stack brightness loss per level", status: "proposal", min: null, preferred: "0.07", max: null, units: "unitless", settledDate: null, settledSource: null },
+  "--wd-stack-visible-behind": { property: "Stack cards visible behind the front card", status: "proposal", min: null, preferred: "2", max: null, units: "count", settledDate: null, settledSource: null },
   "--wd-safe-area": { property: "Safe-area padding", status: "proposal", min: "env(safe-area-inset-*)", preferred: "max(policy, safe-area)", max: null, units: "px", settledDate: null, settledSource: null },
   "--wd-font-family-body": { property: "Body / UI font stack", status: "settled", min: null, preferred: "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif", max: null, units: "font-stack", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)" },
   "--wd-font-family-title": { property: "Title font stack", status: "settled", min: null, preferred: "Georgia, \"Iowan Old Style\", \"Palatino Linotype\", \"Times New Roman\", serif", max: null, units: "font-stack", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)" },
@@ -87,6 +91,10 @@ export const PROPOSAL_TOKENS: readonly string[] = [
   "--wd-image-min-size",
   "--wd-code-max-height",
   "--wd-nav-menu-max-height",
+  "--wd-stack-offset",
+  "--wd-stack-scale-step",
+  "--wd-stack-shade-step",
+  "--wd-stack-visible-behind",
   "--wd-safe-area",
 ];
 
@@ -232,3 +240,11 @@ export const LINE_LENGTH_MAX_CH = 75;
 export const LINE_LENGTH_PANEL_MIN_CH = 30;
 // PROPOSAL — --wd-nav-menu-max-height (PROPOSAL; preferred) — Proposal value: change it only by changing the token and re-running npm run tokens
 export const NAV_MENU_MAX_HEIGHT_CSS = "min(50vh, 420px)";
+// PROPOSAL — --wd-stack-offset (proposal; preferred)
+export const STACK_OFFSET_PX = 10;
+// PROPOSAL — --wd-stack-scale-step (proposal; preferred)
+export const STACK_SCALE_STEP = 0.03;
+// PROPOSAL — --wd-stack-shade-step (proposal; preferred)
+export const STACK_SHADE_STEP = 0.07;
+// PROPOSAL — --wd-stack-visible-behind (proposal; preferred)
+export const STACK_VISIBLE_BEHIND = 2;

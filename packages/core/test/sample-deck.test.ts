@@ -58,7 +58,17 @@ describe('examples/walkdown-itself.md', () => {
       './walkdown-theme.css',
     ]);
     // Screen 2 has no marker: deck defaults apply (step, fade-in, 500ms).
-    expect(screens[1]?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'fade-in', durationMs: 500 });
+    expect(screens[1]?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'fade-in', durationMs: 500, direction: 'left' });
+  });
+
+  it('the "Screens, not slides" screen is a stack pile, dismissing left', () => {
+    // Screen 3 (index 2) is the stack demo (§4.2): three short
+    // uniform panels, and the third panel says the panels are
+    // the cards you see. Deck totals are unchanged: the effect
+    // is a layout, not a new screen.
+    expect(screens[2]?.title).toBe('Screens, not slides');
+    expect(screens[2]?.panels).toHaveLength(3);
+    expect(screens[2]?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'stack', durationMs: 500, direction: 'left' });
   });
 
   it('the hero screen reveals all, with the hero class', () => {
@@ -101,7 +111,7 @@ describe('examples/walkdown-itself.md', () => {
 
   it('the last Section overrides to slide-in at 250ms with the dark class', () => {
     expect(deck.sections[3]?.classNames).toEqual(['dark']);
-    expect(screens[9]?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'slide-in', durationMs: 250 });
+    expect(screens[9]?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'slide-in', durationMs: 250, direction: 'left' });
     // Screen 11 inherits the Section override (its own marker sets
     // only the step reveal, no effect/duration)…
     expect(screens[10]?.reveal.effect).toBe('slide-in');
@@ -145,7 +155,7 @@ describe('examples/walkdown-itself.md', () => {
     expect(screen?.title).toBe('Make it yours');
     expect(screen?.panels).toHaveLength(4);
     // The screen keeps the Section override (step, slide-in, 250ms).
-    expect(screen?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2, 3], effect: 'slide-in', durationMs: 250 });
+    expect(screen?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2, 3], effect: 'slide-in', durationMs: 250, direction: 'left' });
     const panels = screen?.panels ?? [];
     // Styling sample: the backticked phrase renders as inline code,
     // which carries the highlighted background — no deck CSS needed.
@@ -172,7 +182,7 @@ describe('examples/walkdown-itself.md', () => {
     expect(screen?.title).toBe('The smallest deck');
     expect(screen?.panels).toHaveLength(3);
     // No screen marker: the Section override applies (step, slide-in, 250ms).
-    expect(screen?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'slide-in', durationMs: 250 });
+    expect(screen?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'slide-in', durationMs: 250, direction: 'left' });
     const panels = screen?.panels ?? [];
     // Intro and closing panels carry the framing copy.
     // (Panel text is plain text: the hyphen in "twenty-two"

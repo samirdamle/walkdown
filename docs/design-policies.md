@@ -635,6 +635,8 @@ MUST ignore them if they appear in a `class:` list.
 | Screen, current | `.wd-screen--current` | Which screen the walk is on (transitions) | No — renderer state | Yes |
 | Screen title | `.wd-screen-title` | Title type, title-to-panel gap | No | Yes |
 | Panels container | `.wd-panels` | The grid: columns, gaps, row heights | No | Yes |
+| Panels container, stack pile | `.wd-panels--stack` | Card-deck layout (§4.2): pile container, top padding absorbs the peek, dismiss direction | No — renderer state | Yes |
+| Panel, in a stack pile | `.wd-panel--stack`, `.wd-panel--stack-dismissed` | Pile level transform / shade; dismissed state (flown away, faded) | No — renderer state | Yes |
 | Panel | `.wd-panel` (+ author `panel-class:`) | Card frame: padding, radius, border, shadow | Via `panel-class:` only (all panels on the screen) | Yes |
 | Panel, by kind | `.wd-panel--text`, `.wd-panel--image`, `.wd-panel--code`, `.wd-panel--quote` | Content treatment per kind (§4.4) | No — derived from content | Yes |
 | Panel, revealed / hidden | `.wd-panel--revealed`, `.wd-panel--hidden` | Step state: visible now, or waiting for its step | No — renderer state | Yes (e.g. a theme may restyle the hidden state, but MUST NOT make hidden panels visible or take space — §5 of the spec) |
@@ -746,6 +748,10 @@ needs rewriting, not a row to skip.
 | `--wd-image-min-size` | Image minimum useful size | 200×120px | — | — | px | Proposal | Layout-engine check |
 | `--wd-code-max-height` | Code block max-height | — | `40vh` | — | vh | Proposal | CSS var |
 | `--wd-nav-menu-max-height` | Navigation menu max-height | — | `min(50vh, 420px)` | 420px | px / vh | Proposal | CSS var |
+| `--wd-stack-offset` | Stack peek offset per level | — | `10px` | — | px | Proposal | CSS var |
+| `--wd-stack-scale-step` | Stack scale-down per level | — | `0.03` | — | unitless | Proposal | CSS var |
+| `--wd-stack-shade-step` | Stack brightness loss per level | — | `0.07` | — | unitless | Proposal | CSS var |
+| `--wd-stack-visible-behind` | Stack cards visible behind the front card | — | `2` | — | count | Proposal | CSS var |
 | `--wd-safe-area` | Safe-area padding | `env(safe-area-inset-*)` | `max(policy, safe-area)` | — | px | Proposal | CSS var |
 
 Reading the table: "Preferred" is the formula the renderer

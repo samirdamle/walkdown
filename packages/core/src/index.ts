@@ -38,6 +38,10 @@ export {
   ZOOM_MAX_STEPS,
   NAV_MENU_MAX_HEIGHT_CSS,
   SPACE_MIN_PX,
+  STACK_OFFSET_PX,
+  STACK_SCALE_STEP,
+  STACK_SHADE_STEP,
+  STACK_VISIBLE_BEHIND,
 } from './tokens.js';
 export type {
   Block,
@@ -48,6 +52,7 @@ export type {
   Panel,
   PanelKind,
   Reveal,
+  RevealDirection,
   RevealEffect,
   RevealMode,
   Screen,

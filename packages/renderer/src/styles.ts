@@ -18,10 +18,21 @@
  * `policies/design-tokens.json` (via `@walkdown/core`) rather
  * than hard-coded: the nav-menu cap (`--wd-nav-menu-max-height`,
  * a Proposal token) and the space-unit floor used in the
- * bottom-reserve fallback (`--wd-space` min). Everything else
- * here is hand-written chrome.
+ * bottom-reserve fallback (`--wd-space` min) — plus the stack
+ * pile values (`--wd-stack-*`, all Proposal tokens, spec §4.2)
+ * and the dismiss distance/rotation the pile CSS shares with
+ * the WAAPI choreography in stack.ts. Everything else here is
+ * hand-written chrome.
  */
-import { NAV_MENU_MAX_HEIGHT_CSS, SPACE_MIN_PX } from '@walkdown/core';
+import {
+  NAV_MENU_MAX_HEIGHT_CSS,
+  SPACE_MIN_PX,
+  STACK_OFFSET_PX,
+  STACK_SCALE_STEP,
+  STACK_SHADE_STEP,
+  STACK_VISIBLE_BEHIND,
+} from '@walkdown/core';
+import { STACK_DISMISS_DISTANCE, STACK_DISMISS_ROTATE_DEG } from './stack.js';
 
 export const DEFAULT_CSS = `
 :host {
@@ -74,6 +85,19 @@ export const DEFAULT_CSS = `
      fallback controlsHeightFallbackPx. The space floor
      below is the generated --wd-space min. */
   --wd-reserve-bottom: calc(var(--wd-control-size) + var(--wd-space, ${SPACE_MIN_PX}px) * 2.5);
+  /* Stack pile (§4.2, tokens --wd-stack-*): the peek offset, the
+     per-level scale-down and shade, and how many cards peek
+     behind the front one. Generated from the tokens (all
+     Proposal — see the stack constants); do not hard-code new
+     values here, change the tokens and re-run npm run tokens.
+     The pile CSS below reads these vars; the WAAPI
+     choreography (stack.ts) reads the same constants, and the
+     dismiss distance/rotation below are the shared
+     STACK_DISMISS_* constants, not a second copy. */
+  --wd-stack-offset: ${STACK_OFFSET_PX}px;
+  --wd-stack-scale-step: ${STACK_SCALE_STEP};
+  --wd-stack-shade-step: ${STACK_SHADE_STEP};
+  --wd-stack-visible-behind: ${STACK_VISIBLE_BEHIND};
 }
 
 .wd-deck *,
@@ -168,6 +192,69 @@ export const DEFAULT_CSS = `
   flex: 0 0 auto;
 }
 
+/* --- Stack pile (§4.2): panels as a card deck instead of a grid. --- */
+/* The pile container is a plain block, not a grid: the front card
+   is in flow and sets the pile height; the cards behind are
+   absolute over it, lifted by the peek offset so their top edges
+   show. The top padding absorbs the peek — the pile never
+   overflows the screen's scroll container, so the screen needs
+   no overflow change (its overflow-x: hidden already clips a
+   dismissing card at the screen edge). Dismiss direction is a
+   data attribute on the container; the dismissed card's rest
+   transform reads it. */
+.wd-panels--stack {
+  display: block;
+  position: relative;
+  padding-top: calc(var(--wd-stack-visible-behind) * var(--wd-stack-offset));
+}
+.wd-panel--stack {
+  transform: translateY(calc(var(--wd-stack-level, 0) * var(--wd-stack-offset) * -1))
+    scale(calc(1 - var(--wd-stack-level, 0) * var(--wd-stack-scale-step)));
+  filter: brightness(calc(1 - var(--wd-stack-level, 0) * var(--wd-stack-shade-step)));
+  transform-origin: top center;
+}
+/* The front card is in flow (it sets the pile height); every
+   other card is absolute over it, aligned with the front card's
+   top edge — the transform lifts it by its level's peek. */
+.wd-panel--stack[data-stack-level="0"] {
+  position: relative;
+}
+.wd-panel--stack:not([data-stack-level="0"]) {
+  position: absolute;
+  top: calc(var(--wd-stack-visible-behind) * var(--wd-stack-offset));
+  left: 0;
+  right: 0;
+}
+/* A dismissed card has flown away in the container's direction
+   and faded out; it stays in the DOM (visibility hidden, never
+   display none) so a step back can fly it back in. The doubled
+   class beats the base pile transform on equal footing. */
+.wd-panel--stack.wd-panel--stack-dismissed {
+  transform: translate(var(--wd-stack-dismiss-x), var(--wd-stack-dismiss-y))
+    rotate(var(--wd-stack-dismiss-rotate));
+  opacity: 0;
+}
+.wd-panels--stack[data-stack-direction="left"] {
+  --wd-stack-dismiss-x: -${STACK_DISMISS_DISTANCE};
+  --wd-stack-dismiss-y: 0;
+  --wd-stack-dismiss-rotate: -${STACK_DISMISS_ROTATE_DEG}deg;
+}
+.wd-panels--stack[data-stack-direction="right"] {
+  --wd-stack-dismiss-x: ${STACK_DISMISS_DISTANCE};
+  --wd-stack-dismiss-y: 0;
+  --wd-stack-dismiss-rotate: ${STACK_DISMISS_ROTATE_DEG}deg;
+}
+.wd-panels--stack[data-stack-direction="up"] {
+  --wd-stack-dismiss-x: 0;
+  --wd-stack-dismiss-y: -${STACK_DISMISS_DISTANCE};
+  --wd-stack-dismiss-rotate: -${STACK_DISMISS_ROTATE_DEG}deg;
+}
+.wd-panels--stack[data-stack-direction="down"] {
+  --wd-stack-dismiss-x: 0;
+  --wd-stack-dismiss-y: ${STACK_DISMISS_DISTANCE};
+  --wd-stack-dismiss-rotate: ${STACK_DISMISS_ROTATE_DEG}deg;
+}
+
 .wd-panel {
   background: var(--wd-color-panel);
   border: 1px solid var(--wd-color-border);
@@ -237,6 +324,12 @@ export const DEFAULT_CSS = `
    invisible. The class is added and removed synchronously, so
    nothing paints. */
 .wd-screen--measuring .wd-panel[hidden] { display: block; visibility: hidden; }
+/* Dismissed stack cards are translated far off the pile — an
+   up/down dismissal would otherwise inflate the screen's
+   scrollable overflow and shrink the measured font. During the
+   measurement they take no space at all: the pile height is the
+   front card's, which is what the pass measures. */
+.wd-screen--measuring .wd-panel--stack-dismissed { display: none; }
 
 /* --- Single-panel screens become a hero (§7.4). --- */
 /* The hero is the one deliberate exception to top-left: its
