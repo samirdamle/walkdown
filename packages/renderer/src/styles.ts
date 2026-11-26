@@ -63,10 +63,13 @@ export const DEFAULT_CSS = `
      controls overlay the bottom of the screen, so the last
      panel must be able to scroll up clear of them. The reserve
      is the controls' height + clearance, measured by the
-     renderer (--wd-reserve-bottom); 64px is the fallback
-     (56px smallest controls height + 8px clearance) before
-     layout runs. */
-  padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, 64px));
+     renderer (--wd-reserve-bottom); the fallback derives it
+     from the tokens instead of hardcoding 64px — control size
+     + top/bottom padding (2× space) + half-space clearance
+     (C12), i.e. the same height the end note uses below. At
+     minimum (44px buttons, 8px space) it is 64px, as before;
+     --wd-space falls back to 8px before layout runs. */
+  padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));
   display: flex;
   flex-direction: column;
   scrollbar-width: thin;
@@ -347,12 +350,11 @@ export const DEFAULT_CSS = `
    is half the space unit (C12) — so the note clears the band at
    every width. At 360px: 44 + 2.5×8 = 64px above controls 60px
    tall; at 1440px: 51.2 + 2.5×16 = 91.2px above controls 83.2px
-   tall. Deliberately NOT var(--wd-reserve-bottom, 64px): that
-   variable does not exist on main yet (it arrives with PR #24),
-   and its 64px fallback would still collide on desktop, where
-   the controls are 72–88px tall. When PR #24 lands, the note
-   can switch to the measured reserve — both compute the same
-   height (button + padding + clearance). --- */
+   tall. Deliberately NOT var(--wd-reserve-bottom): the calc
+   is pure CSS and always correct, while the measured reserve
+   only exists after layout runs — both compute the same height
+   (button + padding + clearance), so the note never needs the
+   variable. --- */
 .wd-end-note {
   position: absolute;
   left: 50%;

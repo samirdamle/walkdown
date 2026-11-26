@@ -25,6 +25,7 @@ export {
   countFactor,
   titleFactor,
   clampPx,
+  spaceUnitPx,
   fitFontSize,
   estimateScreenHeight,
   FONT_BODY_MAX_PX,

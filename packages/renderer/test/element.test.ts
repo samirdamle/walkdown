@@ -398,7 +398,8 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     const el = createDeck('# Short\n\n- One short bullet.\n');
     const styleEl = el.shadowRoot?.querySelector('#wd-default') as HTMLStyleElement;
     const css = styleEl.textContent ?? '';
-    expect(css).toContain('padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, 64px));');
+    expect(css).toContain('padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));');
+    expect(css).not.toContain('var(--wd-reserve-bottom, 64px)');
     expect(css).toContain('.wd-screen--measuring .wd-panel[hidden]');
     expect(css).toContain('display: block; visibility: hidden;');
   });
@@ -477,6 +478,28 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
     expect(css).not.toContain('bottom: 56px;');
     expect(css).toContain('padding: calc(var(--wd-space) * 0.5) var(--wd-space);');
     expect(css).not.toContain('padding: 4px 12px;');
+  });
+
+  it('bottom-controls clearance is half the space unit (C12)', () => {
+    // jsdom has no layout, so the controls measure 0 and the
+    // reserve is the 56px fallback + clearance: 4px at phone
+    // width (space 8px), 8px at desktop (space 16px). The
+    // clearance is space/2 at both widths — it scales with
+    // the screen instead of a fixed 8px — and the reserve
+    // still reaches the smallest real controls height (60px)
+    // at phone width and past it at desktop.
+    for (const [w, h, reserve] of [
+      [360, 640, 60],
+      [1440, 900, 64],
+    ] as const) {
+      const el = createDeck('# T\n\n- One.\n');
+      el.setContainerSize(w, h);
+      const space = parseFloat(varOf(el, '--wd-space'));
+      const got = parseFloat(varOf(el, '--wd-reserve-bottom'));
+      expect(got).toBe(reserve);
+      expect(got - 56).toBeCloseTo(space / 2, 5);
+      expect(got).toBeGreaterThanOrEqual(60);
+    }
   });
 
   it('end-note clearance beats the controls height at phone and desktop widths (C8, C10, C12)', () => {

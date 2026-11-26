@@ -47,6 +47,7 @@ import {
   nextState,
   parseDeck,
   prevState,
+  spaceUnitPx,
   startState,
   stateFromHash,
   stepsForScreen,
@@ -66,16 +67,20 @@ const TAP_MAX_MOVE_PX = 8;
 const IDLE_HIDE_MS = 2500;
 const SCROLL_STEP_FRACTION = 0.4;
 /**
- * Bottom-controls reserve (§7.2): the controls are 40px buttons
- * with `--wd-space` padding top and bottom, so their height is
- * 40px + 2× space (8–16px) = 56–72px. When the element has no
- * layout yet (jsdom, or not yet painted) the height measures 0 —
- * fall back to the smallest real height, 56px. The clearance
- * keeps the lowest panel a small margin clear of the controls
- * even when the fit is exact.
+ * Bottom-controls reserve (§7.2): the controls are
+ * `--wd-control-size` buttons (44–56px) with `--wd-space`
+ * padding top and bottom, so their height is button + 2×
+ * space (60–88px). When the element has no layout yet
+ * (jsdom, or not yet painted) the height measures 0 — fall
+ * back to 56px. (That is the pre-C8 smallest height; the true
+ * minimum is 60px now that buttons are 44px — the fallback
+ * only matters before first paint, and is left as is.) The
+ * clearance keeps the lowest panel a small margin clear of
+ * the controls even when the fit is exact — half the space
+ * unit (C12), so it scales with the screen: 4px at phone
+ * width, 8px at desktop.
  */
 const CONTROLS_HEIGHT_FALLBACK_PX = 56;
-const CONTROLS_CLEARANCE_PX = 8;
 
 /** A tap that starts a scroll/drag, or on an interactive element, is not navigation (§6.3). */
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -418,10 +423,14 @@ export class WalkdownDeckElement extends HTMLElement {
    * currently visible or idle-hidden — they can reappear at
    * any moment, and the layout must already clear them.
    */
-  private _controlsReservePx(): number {
+  private _controlsReservePx(containerWidth: number): number {
     const measured = this.controlsEl?.offsetHeight ?? 0;
     const height = measured > 0 ? measured : CONTROLS_HEIGHT_FALLBACK_PX;
-    return height + CONTROLS_CLEARANCE_PX;
+    // Clearance (C12): half the space unit, computed from the
+    // container width with the same formula as `--wd-space` —
+    // the reserve is an input to computeLayout, so it cannot
+    // be read back from the layout result.
+    return height + spaceUnitPx(containerWidth) / 2;
   }
 
   /** Re-run the layout engine for the current screen (spec §7.2). Debounced by ResizeObserver's own cadence. */
@@ -444,7 +453,7 @@ export class WalkdownDeckElement extends HTMLElement {
       containerHeight: height,
       panelCount: screen.panels.length,
       contentLengths: screen.panels.map((p) => p.text.length),
-      reservedBottomPx: this._controlsReservePx(),
+      reservedBottomPx: this._controlsReservePx(width),
       zoom: this._state.zoom,
       theme: this.theme,
     });

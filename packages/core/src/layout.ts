@@ -205,6 +205,20 @@ function px(n: number): string {
   return `${round1(n)}px`;
 }
 
+/**
+ * Base spacing unit (design-policies §3.1, `--wd-space`):
+ * `clamp(8px, 1vw + 4px, 16px)` — the unit every other
+ * spacing value is a multiple of, including the bottom-controls
+ * clearance (half a space unit, C12). Exported so the renderer
+ * can compute the clearance from the container width: the
+ * reserve is an input to computeLayout, not one of its
+ * outputs, so the element cannot read `--wd-space` back from
+ * the result — it computes the same value from the width.
+ */
+export function spaceUnitPx(containerWidth: number): number {
+  return round1(clampPx(8, containerWidth / 100 + 4, 16));
+}
+
 export function computeLayout(input: LayoutInput): LayoutResult {
   const width = Math.max(1, input.containerWidth);
   const height = Math.max(1, input.containerHeight);
@@ -237,7 +251,7 @@ export function computeLayout(input: LayoutInput): LayoutResult {
 
   const gapPanelPx = round1(clampPx(12, 2 * vw + 4, 28));
   const padPanelPx = round1(clampPx(16, 2 * vw + 8, 32));
-  const spacePx = round1(clampPx(8, 1 * vw + 4, 16));
+  const spacePx = spaceUnitPx(width);
   const gapTitlePx = round1(clampPx(16, 2.5 * vw + 6, 36));
   const radiusPx = round1(clampPx(RADIUS_MIN_PX, 0.8 * vw + 4, RADIUS_MAX_PX));
   const screenPadXPx = round1(clampPx(16, 4 * vw + 4, 48));
