@@ -332,11 +332,11 @@ function parsePanels(lines: string[]): Panel[] {
    */
   let pendingEffect: RevealEffect | undefined;
   let pendingDurationMs: number | undefined;
-  const push = (block: Block, kindLines: string[]) => {
-    const text = block.text;
+  const push = (blocks: Block[], kindLines: string[]) => {
+    const text = blocks.map((b) => b.text).join('\n');
     panels.push({
-      kind: panelKindFor(kindLines, block.type),
-      blocks: [block],
+      kind: panelKindFor(kindLines, blocks[0]?.type ?? 'paragraph'),
+      blocks,
       classNames: [],
       ...(pendingEffect !== undefined ? { effect: pendingEffect } : {}),
       ...(pendingDurationMs !== undefined ? { durationMs: pendingDurationMs } : {}),
@@ -344,6 +344,38 @@ function parsePanels(lines: string[]): Panel[] {
     });
     pendingEffect = undefined;
     pendingDurationMs = undefined;
+  };
+
+  /**
+   * Collect a paragraph starting at block `from`: its lines plus
+   * the continuation blocks a paragraph accepts (further text
+   * blocks, indented list-marker lines, thematic breaks).
+   * Returns the lines and the index of the first block past it.
+   */
+  const readParagraph = (from: number): { lines: string[]; next: number } => {
+    const para: string[] = [...(blocks[from]?.lines ?? [])];
+    let k = from + 1;
+    while (k < blocks.length) {
+      const after = blocks[k];
+      if (after === undefined) break;
+      if (after.type === 'text') {
+        para.push(...after.lines);
+        k++;
+        continue;
+      }
+      if (after.type === 'list-marker' && indentOf(after.lines[0] ?? '') > 0) {
+        para.push(...after.lines);
+        k++;
+        continue;
+      }
+      if (after.type === 'thematic-break') {
+        para.push(...after.lines);
+        k++;
+        continue;
+      }
+      break;
+    }
+    return { lines: para, next: k };
   };
 
   while (b < blocks.length) {
@@ -380,7 +412,7 @@ function parsePanels(lines: string[]): Panel[] {
         b++;
         if (next.type === 'fence' && next.close) break;
       }
-      push(makeBlock('code', fenceLines.join('\n')), fenceLines);
+      push([makeBlock('code', fenceLines.join('\n'))], fenceLines);
       continue;
     }
     if (block.type === 'quote') {
@@ -392,7 +424,7 @@ function parsePanels(lines: string[]): Panel[] {
         quoteLines.push(...(blocks[b]?.lines ?? []));
         b++;
       }
-      push(makeBlock('quote', quoteLines.join('\n')), quoteLines);
+      push([makeBlock('quote', quoteLines.join('\n'))], quoteLines);
       continue;
     }
     if (block.type === 'list-marker' && indentOf(block.lines[0] ?? '') === 0) {
@@ -428,45 +460,42 @@ function parsePanels(lines: string[]): Panel[] {
       // Dedent: the item's content was indented under its marker.
       const dedented = itemLines.map((l) => l.replace(/^  /, ''));
       const markdown = dedented.join('\n');
-      push(makeBlock('list', markdown), itemLines);
+      push([makeBlock('list', markdown)], itemLines);
       continue;
     }
     if (block.type === 'image') {
-      push(makeBlock('image', (block.lines[0] ?? '').trim()), block.lines);
+      push([makeBlock('image', (block.lines[0] ?? '').trim())], block.lines);
       b++;
       continue;
     }
     if (block.type === 'heading') {
-      push(makeBlock('heading', (block.lines[0] ?? '').trim()), block.lines);
+      const headingBlock = makeBlock('heading', (block.lines[0] ?? '').trim());
+      // A heading immediately followed by a paragraph (blank
+      // lines allowed, no other block between) is ONE panel:
+      // the heading is the panel's lead-in, the paragraph its
+      // body (§2.5). A comment between them breaks the grouping,
+      // so a per-panel reveal marker there still addresses the
+      // paragraph's own panel.
+      let j = b + 1;
+      while (blocks[j]?.type === 'blank') j++;
+      const next = blocks[j];
+      if (next !== undefined && next.type === 'text') {
+        const { lines: paraLines, next: after } = readParagraph(j);
+        const paraBlock = makeBlock('paragraph', paraLines.join('\n'));
+        push([headingBlock, paraBlock], [...block.lines, ...paraLines]);
+        b = after;
+        continue;
+      }
+      push([headingBlock], block.lines);
       b++;
       continue;
     }
     // Paragraph: consecutive lines until a blank line or another
     // block. A text block, an indented list-marker line, or a
     // thematic break continues it; anything else ends it.
-    const para: string[] = [...block.lines];
-    b++;
-    while (b < blocks.length) {
-      const next = blocks[b];
-      if (next === undefined) break;
-      if (next.type === 'text') {
-        para.push(...next.lines);
-        b++;
-        continue;
-      }
-      if (next.type === 'list-marker' && indentOf(next.lines[0] ?? '') > 0) {
-        para.push(...next.lines);
-        b++;
-        continue;
-      }
-      if (next.type === 'thematic-break') {
-        para.push(...next.lines);
-        b++;
-        continue;
-      }
-      break;
-    }
-    push(makeBlock('paragraph', para.join('\n')), para);
+    const { lines: para, next } = readParagraph(b);
+    push([makeBlock('paragraph', para.join('\n'))], para);
+    b = next;
   }
   return panels;
 }

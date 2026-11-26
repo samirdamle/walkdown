@@ -95,6 +95,23 @@ describe('<walkdown-deck> with the sample deck', () => {
     expect(progressText(el)).toBe('1 / 47');
   });
 
+  it('the hero panel holds a bold h2 Walkdown above its line, in one panel', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const panel = panels(el)[0] as HTMLElement;
+    expect(panels(el)).toHaveLength(1);
+    const h2 = panel.querySelector('h2') as HTMLElement;
+    expect(h2).not.toBeNull();
+    expect(h2.textContent).toBe('Walkdown');
+    // Bold from the browser default: no author rule sets a
+    // weight on panel headings, so the h2 keeps its bold.
+    // (jsdom reports the same 'bold' from its UA stylesheet.)
+    expect(window.getComputedStyle(h2).fontWeight).toBe('bold');
+    expect(panel.textContent).toContain('Simple, magical presentation from Markdown');
+    // The added h2 line does not shrink the hero fit: the
+    // estimator still lands on the 32px ceiling at desktop.
+    expect(varOf(el, '--wd-font-body')).toBe('32px');
+  });
+
   it('reveals panels in sequence order on the sequence screen', () => {
     const el = createDeck(SAMPLE_DECK);
     const seqIndex = el.screens.findIndex((s) => s.title === 'The punchline first');
@@ -229,6 +246,37 @@ describe('Start over button and zoom-in effect', () => {
     expect(restart.disabled).toBe(false);
   });
 
+  it('the end note carries no border of its own: the button is the single pill', () => {
+    // The note used to be a pill too (border + background +
+    // padding) around the button's own pill border — a double
+    // border. Now it is unstyled positioning only; the button
+    // carries the one border, and its dead margin-left from the
+    // label era is gone, so it sits centred in the note.
+    const rule = (selector: string): string => {
+      const m = new RegExp(`${selector} \\{([^}]*)\\}`).exec(DEFAULT_CSS);
+      expect(m).not.toBeNull();
+      return m?.[1] ?? '';
+    };
+    const note = rule('\\.wd-end-note');
+    expect(note).not.toContain('border');
+    expect(note).not.toContain('background');
+    expect(note).not.toContain('padding');
+    expect(note).toContain('position: absolute;');
+    expect(note).toContain('left: 50%;');
+    expect(note).toContain('transform: translateX(-50%);');
+    const button = rule('\\.wd-end-note button');
+    expect(button).toContain('border: 1px solid var(--wd-color-border);');
+    expect(button).toContain('border-radius: 999px;');
+    expect(button).not.toContain('margin-left');
+    // And the button is still centred and clickable at the end.
+    const el = createDeck(SAMPLE_DECK);
+    el.goToEnd();
+    const restart = el.shadowRoot?.querySelector('.wd-restart') as HTMLButtonElement;
+    expect(restart.textContent).toBe('Start over');
+    restart.click();
+    expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
+  });
+
   it('the end note sits at the measured bottom reserve, not a fixed height', () => {
     expect(DEFAULT_CSS).toContain('bottom: var(--wd-reserve-bottom,');
   });
@@ -295,6 +343,26 @@ describe('themes and stylesheets', () => {
     expect(varOf(el, '--wd-color-ink')).toBe('#1B1B18');
     expect(varOf(el, '--wd-color-accent')).toBe('#B45309');
     expect(varOf(el, '--wd-font-family-title')).toContain('Georgia');
+  });
+
+  it('the sample deck overrides its fonts to Open Sans via its inline CSS', async () => {
+    const el = createDeck(SAMPLE_DECK);
+    // The Google Fonts stylesheet 404s under the test fetch
+    // stub, so the deck degrades to the system stack — but the
+    // inline override itself must survive sanitising and land
+    // in the shadow DOM, ready for when the font does load.
+    const inline = el.shadowRoot?.querySelector('#wd-inline') as HTMLStyleElement;
+    expect(inline.textContent).toContain('.wd-deck');
+    expect(inline.textContent).toContain("--wd-font-family-body: 'Open Sans'");
+    expect(inline.textContent).toContain("--wd-font-family-title: 'Open Sans'");
+    expect(inline.textContent).toContain('!important');
+    // The hero text is left-aligned by the same block.
+    expect(inline.textContent).toContain('.hero');
+    expect(inline.textContent).toContain('text-align: left;');
+    expect(inline.textContent).not.toContain('text-align: center;');
+    // The deck still renders with the default theme underneath.
+    expect(varOf(el, '--wd-font-family-title')).toContain('Georgia');
+    expect(panelVisible(el, 0)).toBe(true);
   });
 
   it('switches to the dark palette from frontmatter theme:', () => {
@@ -535,7 +603,7 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
     expect(DEFAULT_CSS).not.toContain('padding: 2px 10px;');
   });
 
-  it('end note clears the controls band and its padding is token-based (C10, C11)', () => {
+  it('end note clears the controls band; the button keeps token-based padding (C10, C11)', () => {
     const el = createDeck('# T\n\n- One.\n');
     const css = cssOf(el);
     // The note sits at the measured bottom reserve; the fallback
@@ -543,7 +611,12 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
     expect(css).toContain('bottom: var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5));');
     expect(varOf(el, '--wd-reserve-bottom')).not.toBe('');
     expect(css).not.toContain('bottom: 56px;');
-    expect(css).toContain('padding: calc(var(--wd-space) * 0.5) var(--wd-space);');
+    // The note itself is unstyled positioning only — no pill
+    // padding of its own — while the button keeps its
+    // token-based padding (a quarter space unit vertically).
+    const note = /\.wd-end-note \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(note).not.toContain('padding');
+    expect(css).toContain('padding: calc(var(--wd-space) * 0.25) var(--wd-space);');
     expect(css).not.toContain('padding: 4px 12px;');
   });
 

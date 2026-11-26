@@ -56,6 +56,19 @@ describe('sanitizeCss', () => {
     warn.mockRestore();
   });
 
+  it('keeps an !important font override on .wd-deck (deck font theming)', () => {
+    // The sample deck sets Open Sans this way: the renderer
+    // sets the theme vars as inline style on .wd-deck, so only
+    // an !important rule beats them. The sanitiser must not
+    // strip the priority — it is not a hiding declaration and
+    // has no external url().
+    const out = sanitizeCss(
+      ".wd-deck { --wd-font-family-body: 'Open Sans', system-ui, sans-serif !important; --wd-font-family-title: 'Open Sans', system-ui, sans-serif !important; }",
+    );
+    expect(out).toContain("--wd-font-family-body: 'Open Sans', system-ui, sans-serif !important");
+    expect(out).toContain("--wd-font-family-title: 'Open Sans', system-ui, sans-serif !important");
+  });
+
   it('returns empty string for unparseable input instead of throwing', () => {
     expect(() => sanitizeCss('.a { color: red;')).not.toThrow();
   });

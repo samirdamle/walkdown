@@ -51,7 +51,10 @@ describe('examples/walkdown-itself.md', () => {
     expect(deck.title).toBe('Walkdown');
     expect(deck.author).toBe('Samir Damle');
     expect(deck.theme).toBe('light');
-    expect(deck.stylesheets).toEqual(['./walkdown-theme.css']);
+    expect(deck.stylesheets).toEqual([
+      'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap',
+      './walkdown-theme.css',
+    ]);
     // Screen 2 has no marker: deck defaults apply (step, fade-in, 500ms).
     expect(screens[1]?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2], effect: 'fade-in', durationMs: 500 });
   });
@@ -60,7 +63,16 @@ describe('examples/walkdown-itself.md', () => {
     expect(screens[0]?.reveal.mode).toBe('all');
     expect(screens[0]?.classNames).toEqual(['hero']);
     expect(screens[0]?.panels).toHaveLength(1);
-    expect(screens[0]?.panels[0]?.blocks[0]?.html).toContain('Simple, magical presentation from Markdown');
+    // The hero panel is one grouped panel: an h2 lead-in plus
+    // the paragraph (§2.5) — the screen stays a 1-panel hero.
+    const panel = screens[0]?.panels[0];
+    expect(panel?.blocks).toHaveLength(2);
+    expect(panel?.blocks[0]?.type).toBe('heading');
+    expect(panel?.blocks[0]?.html).toBe('<h2>Walkdown</h2>');
+    expect(panel?.blocks[1]?.type).toBe('paragraph');
+    expect(panel?.blocks[1]?.html).toContain('Simple, magical presentation from Markdown');
+    expect(panel?.text).toContain('Walkdown');
+    expect(panel?.text).toContain('Simple, magical presentation from Markdown');
   });
 
   it('the punchline screen reveals in sequence 3, 1, 2', () => {
@@ -110,5 +122,18 @@ describe('examples/walkdown-itself.md', () => {
     expect(deck.styles).toContain('.accent');
     expect(deck.styles).toContain('.big');
     expect(deck.styles).toContain('#eeaa3d');
+  });
+
+  it('the deck stylesheet left-aligns the hero and sets Open Sans on .wd-deck', () => {
+    expect(deck.styles).toContain('.hero');
+    expect(deck.styles).toContain('text-align: left;');
+    expect(deck.styles).not.toContain('text-align: center;');
+    // Open Sans overrides the theme vars on .wd-deck itself,
+    // with !important — the renderer sets those vars as inline
+    // style, which only an !important rule beats.
+    expect(deck.styles).toContain('.wd-deck');
+    expect(deck.styles).toContain("--wd-font-family-body: 'Open Sans'");
+    expect(deck.styles).toContain("--wd-font-family-title: 'Open Sans'");
+    expect(deck.styles).toContain('!important');
   });
 });

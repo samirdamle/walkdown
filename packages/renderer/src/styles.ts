@@ -459,15 +459,14 @@ export const DEFAULT_CSS = `
   transform: translateX(-50%);
   font-size: var(--wd-font-small);
   color: var(--wd-color-muted);
-  background: var(--wd-color-panel);
-  border: 1px solid var(--wd-color-border);
-  border-radius: 999px;
-  padding: calc(var(--wd-space) * 0.5) var(--wd-space);
   z-index: 3;
   pointer-events: none;
 }
 /* The Start over button reuses the controls' button styling, as a
-   text pill rather than a round chevron. The note itself ignores
+   text pill rather than a round chevron — it carries the single
+   pill border itself. The note is unstyled positioning only: it
+   used to be a pill too (border + background + padding), which
+   put a second border around the button. The note itself ignores
    pointer events, so the button re-enables them. */
 .wd-end-note button {
   pointer-events: auto;
@@ -479,7 +478,6 @@ export const DEFAULT_CSS = `
   border: 1px solid var(--wd-color-border);
   border-radius: 999px;
   padding: calc(var(--wd-space) * 0.25) var(--wd-space);
-  margin-left: calc(var(--wd-space) * 0.5);
   cursor: pointer;
 }
 .wd-end-note button:hover { border-color: var(--wd-color-accent); }
