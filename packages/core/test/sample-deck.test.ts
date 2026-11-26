@@ -13,20 +13,20 @@ describe('examples/walkdown-itself.md', () => {
   const deck = parseDeck(SAMPLE_DECK);
   const screens = flatScreens(deck);
 
-  it('parses to 12 screens in 4 Sections', () => {
-    expect(screens).toHaveLength(12);
+  it('parses to 13 screens in 4 Sections', () => {
+    expect(screens).toHaveLength(13);
     expect(deck.sections.map((s) => s.title)).toEqual(['Walkdown', 'How it works', 'Walking', 'Make it yours']);
-    expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 3]);
+    expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 4]);
   });
 
-  it('parses to 42 panels and 42 steps', () => {
+  it('parses to 46 panels and 46 steps', () => {
     const panelCount = screens.reduce((sum, s) => sum + s.panels.length, 0);
-    expect(panelCount).toBe(42);
-    expect(totalSteps(deck)).toBe(42);
+    expect(panelCount).toBe(46);
+    expect(totalSteps(deck)).toBe(46);
   });
 
   it('has the right panel counts per screen', () => {
-    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 4, 3, 3, 3]);
+    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 4, 3, 3, 4, 3]);
   });
 
   it('has the right screen titles', () => {
@@ -42,6 +42,7 @@ describe('examples/walkdown-itself.md', () => {
       'Scroll or advance, never both',
       'Defaults, then overrides',
       'Make it look like yours',
+      'Make it move',
       'Your first deck',
     ]);
   });
@@ -88,6 +89,19 @@ describe('examples/walkdown-itself.md', () => {
     // …and carries the accent class, with big on every panel.
     expect(screens[10]?.classNames).toEqual(['accent']);
     expect(screens[10]?.panels.every((p) => p.classNames.includes('big'))).toBe(true);
+  });
+
+  it('the effects screen gives each panel its own effect', () => {
+    const screen = screens[11];
+    expect(screen?.title).toBe('Make it move');
+    expect(screen?.panels).toHaveLength(4);
+    // fade-in, slide-in, zoom-in on the first three panels; the
+    // fourth carries no marker and inherits the Section's slide-in.
+    expect(screen?.panels.map((p) => p.effect)).toEqual(['fade-in', 'slide-in', 'zoom-in', undefined]);
+    expect(screen?.panels.every((p) => p.durationMs === undefined)).toBe(true);
+    // The screen itself keeps the Section override (slide-in, 250ms).
+    expect(screen?.reveal.effect).toBe('slide-in');
+    expect(screen?.reveal.durationMs).toBe(250);
   });
 
   it('extracts the trailing CSS block as the deck stylesheet', () => {

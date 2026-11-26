@@ -393,8 +393,16 @@ Rules:
   case-sensitive where they are durations or numbers.
 - A screen MUST have at most one reveal marker; if two appear,
   the first wins and the second is ignored.
-- A marker anywhere other than the top of a screen (after the
-  first panel) is ignored.
+- A `reveal:` comment line anywhere else in a screen — after
+  the title, or between panels — is a **panel marker**: it
+  applies to the next panel only, and only its `effect` and
+  `duration` take effect. `mode`, `sequence`, `class`, and
+  `panel-class` in a panel marker are ignored: they are
+  screen-level settings. A panel marker before the first panel
+  of a screen is the screen's marker instead (it sits at the
+  top of the screen), so a panel marker for the first panel
+  goes after the screen title. A panel with no marker inherits
+  the screen's effect and duration.
 
 ### 4.2 Parameters
 
@@ -402,7 +410,7 @@ Rules:
 | --------- | ------ | ------- |
 | mode (bare first value) | `step` \| `all` | `all` (no marker) |
 | `sequence` | list of 1-based panel indices, e.g. `2, 1, 3` | document order (`1, 2, 3, …`) |
-| `effect` | `fade-in` \| `slide-in` \| `none` | `fade-in` |
+| `effect` | `fade-in` \| `slide-in` \| `zoom-in` \| `none` | `fade-in` |
 | `duration` | CSS time, e.g. `1s`, `250ms` | `300ms` |
 | `class` | space-separated class names, e.g. `hero dark` | none |
 | `panel-class` | space-separated class names, applied to every panel on this screen | none |
@@ -415,7 +423,9 @@ Rules:
   Example: `<!-- reveal: step; sequence: 3, 1, 2; effect: fade-in; duration: 1s -->`
   reveals panel 3 first, then panel 1, then panel 2.
 - `effect` names the enter animation (§8). `none` means panels
-  appear instantly; steps still advance.
+  appear instantly; steps still advance. A single panel can
+  override the effect (and the duration) with its own reveal
+  marker (§4.1); the screen's effect is the fallback.
 - `duration` is the enter animation duration for each panel.
   Values outside 0–2000ms MUST be clamped into that range.
   A malformed duration is ignored and the default used.
@@ -711,6 +721,9 @@ cannot be met, go one rung down.
 - **Enter (`slide-in`):** the panel slides in from the right
   on a forward step, from the left on a backward step, with a
   short fade. Distance: ~24px.
+- **Enter (`zoom-in`):** the panel grows from slightly smaller
+  (scale ~0.92) with a fade. Transform + opacity only, like
+  the other effects.
 - **Enter (`none`):** the panel appears instantly.
 - **Exit:** the reverse of entry on Previous — the panel plays
   its enter animation backwards. Screens cross-fade / slide a

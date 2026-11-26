@@ -121,6 +121,20 @@ Markdown in. A presentation that walks.
 
 ---
 
+<!-- reveal: step -->
+
+# Make it move
+
+<!-- reveal: effect: fade-in -->
+- Fade in is the default: a panel fades and rises a short distance, gentle enough to disappear into the reading. Set it with `effect: fade-in` — or set nothing at all.
+<!-- reveal: effect: slide-in -->
+- Slide in glides a panel in from the side — from the right going forward, from the left going back. Set it with `effect: slide-in`.
+<!-- reveal: effect: zoom-in -->
+- Zoom in grows a panel from slightly smaller, with a fade. Set it with `effect: zoom-in` — for a moment you want to land.
+- Pick one with the `effect:` key in a reveal marker: on the deck in frontmatter, on a Section, on a screen — or on a single panel, the way this screen does.
+
+---
+
 # Your first deck
 
 - Write a Markdown file. Split it with three dashes. Put a bullet on each idea.

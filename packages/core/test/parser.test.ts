@@ -250,7 +250,7 @@ describe('reveal markers', () => {
     expect(screen?.panels[1]?.classNames).toEqual(['big']);
   });
 
-  it('a marker after the first panel is ignored', () => {
+  it('a panel marker with no effect or duration changes nothing', () => {
     const deck = parseDeck(`# Late marker
 
 - One
@@ -259,10 +259,68 @@ describe('reveal markers', () => {
 
 - Two
 `);
-    // The second bullet is still a panel; the late marker changed nothing.
+    // The second bullet is still a panel; the marker sets no
+    // per-panel effect or duration, and `step` is screen-level,
+    // so the screen reveal is unchanged.
     const screen = flatScreens(deck)[0];
     expect(screen?.panels).toHaveLength(2);
     expect(screen?.reveal.mode).toBe('all');
+    expect(screen?.panels[1]?.effect).toBeUndefined();
+  });
+
+  it('a reveal marker before a panel sets that panel’s effect and duration only', () => {
+    const deck = parseDeck(`# Moves
+
+<!-- reveal: effect: zoom-in -->
+- Big
+
+<!-- reveal: effect: slide-in; duration: 250ms -->
+- Glider
+
+- Plain
+`);
+    const screen = flatScreens(deck)[0];
+    // The screen itself keeps its defaults; only the panels change.
+    expect(screen?.reveal.effect).toBe('fade-in');
+    expect(screen?.reveal.durationMs).toBe(300);
+    expect(screen?.panels[0]?.effect).toBe('zoom-in');
+    expect(screen?.panels[0]?.durationMs).toBeUndefined();
+    expect(screen?.panels[1]?.effect).toBe('slide-in');
+    expect(screen?.panels[1]?.durationMs).toBe(250);
+    expect(screen?.panels[2]?.effect).toBeUndefined();
+    expect(screen?.panels[2]?.durationMs).toBeUndefined();
+  });
+
+  it('a panel marker with only class sets no panel effect', () => {
+    const deck = parseDeck(`# Styled panel
+
+<!-- reveal: class: accent -->
+
+- One
+`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.panels[0]?.effect).toBeUndefined();
+  });
+
+  it('an unknown effect in a panel marker is ignored', () => {
+    const deck = parseDeck(`# Unknown
+
+<!-- reveal: effect: spin -->
+
+- One
+`);
+    expect(flatScreens(deck)[0]?.panels[0]?.effect).toBeUndefined();
+  });
+
+  it('a reveal marker before the first panel is the screen marker, not a panel marker', () => {
+    const deck = parseDeck(`<!-- reveal: effect: zoom-in -->
+
+- One
+- Two
+`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.reveal.effect).toBe('zoom-in');
+    expect(screen?.panels[0]?.effect).toBeUndefined();
   });
 
   it('a malformed marker is ignored and the rest parses normally', () => {

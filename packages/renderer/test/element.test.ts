@@ -85,14 +85,14 @@ afterEach(() => {
 });
 
 describe('<walkdown-deck> with the sample deck', () => {
-  it('renders 12 screens / 42 steps, starting at the hero', () => {
+  it('renders 13 screens / 46 steps, starting at the hero', () => {
     const el = createDeck(SAMPLE_DECK);
-    expect(el.screens).toHaveLength(12);
-    expect(el.stepsTotal).toBe(42);
+    expect(el.screens).toHaveLength(13);
+    expect(el.stepsTotal).toBe(46);
     expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
     expect(screenEl(el).querySelector('.wd-title')?.textContent).toBe('Walkdown');
     expect(screenEl(el).classList.contains('wd-screen--hero')).toBe(true);
-    expect(progressText(el)).toBe('1 / 42');
+    expect(progressText(el)).toBe('1 / 46');
   });
 
   it('reveals panels in sequence order on the sequence screen', () => {
@@ -116,15 +116,15 @@ describe('<walkdown-deck> with the sample deck', () => {
     el.prev();
     expect(el.state.screenIndex).toBe(0);
     expect(el.state.stepIndex).toBe(0);
-    for (let i = 0; i < 42; i++) el.next();
-    expect(el.state.screenIndex).toBe(11);
+    for (let i = 0; i < 46; i++) el.next();
+    expect(el.state.screenIndex).toBe(12);
     expect(el.state.stepIndex).toBe(2); // last screen has 3 panels, all stepped
     el.next();
-    expect(el.state.screenIndex).toBe(11);
+    expect(el.state.screenIndex).toBe(12);
     el.goToStart();
     expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
     el.goToEnd();
-    expect(el.state.screenIndex).toBe(11);
+    expect(el.state.screenIndex).toBe(12);
     expect(el.state.stepIndex).toBe(2);
     expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(false);
   });
@@ -140,7 +140,7 @@ describe('<walkdown-deck> with the sample deck', () => {
     key(el, ' ');
     expect(el.state.screenIndex).toBe(1);
     key(el, 'End');
-    expect(el.state.screenIndex).toBe(11);
+    expect(el.state.screenIndex).toBe(12);
     key(el, 'Home');
     expect(el.state.screenIndex).toBe(0);
     key(el, '+');
@@ -161,7 +161,7 @@ describe('<walkdown-deck> with the sample deck', () => {
   it('clamps an out-of-range deep link to the last step', () => {
     window.location.hash = '#/99/99';
     const el = createDeck(SAMPLE_DECK);
-    expect(el.state.screenIndex).toBe(11);
+    expect(el.state.screenIndex).toBe(12);
     expect(el.state.stepIndex).toBe(2);
   });
 
@@ -198,6 +198,63 @@ describe('<walkdown-deck> with the sample deck', () => {
     link.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, clientX: 700, clientY: 300 }));
     link.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true, clientX: 700, clientY: 300 }));
     expect(el.state.stepIndex).toBe(0);
+  });
+});
+
+describe('Restart button and zoom-in effect', () => {
+  it('shows a Restart button only at the end, and it returns to the start', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const restart = el.shadowRoot?.querySelector('.wd-restart') as HTMLButtonElement;
+    expect(restart.tagName).toBe('BUTTON');
+    expect(restart.type).toBe('button');
+    expect(restart.textContent).toBe('Restart');
+    // Hidden mid-deck: the end note is hidden until the last step.
+    expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(true);
+    el.goToEnd();
+    expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(false);
+    restart.click();
+    expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
+    expect((el.shadowRoot?.querySelector('.wd-end-note') as HTMLElement).hidden).toBe(true);
+    expect(progressText(el)).toBe('1 / 46');
+  });
+
+  it('the Restart button is a native keyboard-operable button', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const restart = el.shadowRoot?.querySelector('.wd-restart') as HTMLButtonElement;
+    // A native <button> is focusable and fires click on Enter/Space
+    // with no extra wiring; tabIndex is the default 0.
+    expect(restart.tabIndex).toBe(0);
+    expect(restart.disabled).toBe(false);
+  });
+
+  it('the end note sits at the measured bottom reserve, not a fixed height', () => {
+    expect(DEFAULT_CSS).toContain('bottom: var(--wd-reserve-bottom,');
+  });
+
+  it('a panel with a zoom-in marker enters with the zoom-in animation', () => {
+    const el = createDeck(`# One\n\n- A\n\n---\n\n<!-- reveal: step; effect: slide-in -->\n\n# Two\n\n<!-- reveal: effect: zoom-in -->\n- Big\n\n- Plain\n`);
+    expect(DEFAULT_CSS).toContain('@keyframes wd-zoom-in');
+    el.next(); // screen 1, step 0: panel 0 enters with its own zoom-in, not the screen's slide-in
+    expect(panels(el)[0]?.classList.contains('wd-enter--zoom-in')).toBe(true);
+    expect(panels(el)[0]?.classList.contains('wd-enter--slide-in-forward')).toBe(false);
+    el.next(); // panel 1 inherits the screen's slide-in
+    expect(panels(el)[1]?.classList.contains('wd-enter--slide-in-forward')).toBe(true);
+  });
+
+  it('the Make it move screen reveals each panel with its own effect', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const idx = el.screens.findIndex((s) => s.title === 'Make it move');
+    expect(idx).toBe(11);
+    const screen = el.screens[idx];
+    expect(screen?.panels.map((p) => p.effect)).toEqual(['fade-in', 'slide-in', 'zoom-in', undefined]);
+    el.jumpTo(idx);
+    el.next(); // panel 1: slide-in, at the Section's 250ms
+    expect(panels(el)[1]?.classList.contains('wd-enter--slide-in-forward')).toBe(true);
+    el.next(); // panel 2: zoom-in, duration inherited from the screen
+    expect(panels(el)[2]?.classList.contains('wd-enter--zoom-in')).toBe(true);
+    expect(panels(el)[2]?.style.getPropertyValue('--wd-anim-duration')).toBe('250ms');
+    el.next(); // panel 3: no marker, inherits the Section's slide-in
+    expect(panels(el)[3]?.classList.contains('wd-enter--slide-in-forward')).toBe(true);
   });
 });
 
@@ -474,7 +531,10 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
   it('end note clears the controls band and its padding is token-based (C10, C11)', () => {
     const el = createDeck('# T\n\n- One.\n');
     const css = cssOf(el);
-    expect(css).toContain('bottom: calc(var(--wd-control-size) + var(--wd-space) * 2.5);');
+    // The note sits at the measured bottom reserve; the fallback
+    // is the same height computed from tokens (button + 2.5× space).
+    expect(css).toContain('bottom: var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5));');
+    expect(varOf(el, '--wd-reserve-bottom')).not.toBe('');
     expect(css).not.toContain('bottom: 56px;');
     expect(css).toContain('padding: calc(var(--wd-space) * 0.5) var(--wd-space);');
     expect(css).not.toContain('padding: 4px 12px;');

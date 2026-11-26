@@ -5,7 +5,7 @@
  * the renderer must not re-resolve defaults.
  */
 
-export type RevealEffect = 'fade-in' | 'slide-in' | 'none';
+export type RevealEffect = 'fade-in' | 'slide-in' | 'zoom-in' | 'none';
 export type RevealMode = 'step' | 'all';
 export type Theme = 'light' | 'dark';
 export type PanelKind = 'text' | 'image' | 'code' | 'quote';
@@ -39,6 +39,14 @@ export interface Panel {
   blocks: Block[];
   /** Class names from the screen marker's `panel-class:` (§4.2) — every panel on the screen carries them. */
   classNames: string[];
+  /**
+   * A panel's own enter animation, from a `reveal:` comment line
+   * immediately before it (§4.1). Absent = inherit the screen's
+   * reveal effect; the renderer falls back to `Screen.reveal`.
+   */
+  effect?: RevealEffect;
+  /** A panel's own enter duration, ms (clamped 0–2000), from the same marker. Absent = the screen's duration. */
+  durationMs?: number;
   /** Plain text of the whole panel, for layout estimation. */
   text: string;
 }

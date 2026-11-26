@@ -58,7 +58,7 @@ import {
   zoomIn,
   zoomOut,
 } from '@walkdown/core';
-import type { Deck, Theme, WalkState } from '@walkdown/core';
+import type { Deck, Panel, Screen, Theme, WalkState } from '@walkdown/core';
 import { loadStylesheets } from './loader.js';
 import { deckClassesOf, sanitizeCss } from './sanitize.js';
 import { DEFAULT_CSS } from './styles.js';
@@ -104,6 +104,7 @@ export class WalkdownDeckElement extends HTMLElement {
   private scrollCueEl!: HTMLDivElement;
   private controlsEl!: HTMLDivElement;
   private endNoteEl!: HTMLDivElement;
+  private restartBtn!: HTMLButtonElement;
   private emptyEl!: HTMLDivElement;
   private externalStyleEl!: HTMLStyleElement;
   private inlineStyleEl!: HTMLStyleElement;
@@ -137,7 +138,7 @@ export class WalkdownDeckElement extends HTMLElement {
           <div class="wd-panels"></div>
         </div>
         <div class="wd-scroll-cue" aria-hidden="true"><span>Scroll for more ↓</span></div>
-        <div class="wd-end-note" hidden>End of deck</div>
+        <div class="wd-end-note" hidden>End of deck <button class="wd-restart" type="button">Restart</button></div>
         <div class="wd-controls">
           <button class="wd-prev" type="button" aria-label="Previous step">‹</button>
           <span class="wd-progress-text" aria-live="polite"></span>
@@ -157,6 +158,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.scrollCueEl = this.shadow.querySelector('.wd-scroll-cue') as HTMLDivElement;
     this.controlsEl = this.shadow.querySelector('.wd-controls') as HTMLDivElement;
     this.endNoteEl = this.shadow.querySelector('.wd-end-note') as HTMLDivElement;
+    this.restartBtn = this.shadow.querySelector('.wd-restart') as HTMLButtonElement;
     this.emptyEl = this.shadow.querySelector('.wd-empty') as HTMLDivElement;
     this.externalStyleEl = this.shadow.querySelector('#wd-external') as HTMLStyleElement;
     this.inlineStyleEl = this.shadow.querySelector('#wd-inline') as HTMLStyleElement;
@@ -299,6 +301,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.addEventListener('pointermove', this._onHostPointerMove);
     this.prevBtn.addEventListener('click', this._onPrevClick);
     this.nextBtn.addEventListener('click', this._onNextClick);
+    this.restartBtn.addEventListener('click', this._onRestartClick);
     window.addEventListener('hashchange', this._onHashChange);
     if (typeof ResizeObserver !== 'undefined') {
       this._resizeObserver = new ResizeObserver(() => this._applyLayout());
@@ -323,6 +326,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.removeEventListener('pointermove', this._onHostPointerMove);
     this.prevBtn.removeEventListener('click', this._onPrevClick);
     this.nextBtn.removeEventListener('click', this._onNextClick);
+    this.restartBtn.removeEventListener('click', this._onRestartClick);
     window.removeEventListener('hashchange', this._onHashChange);
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
@@ -534,6 +538,28 @@ export class WalkdownDeckElement extends HTMLElement {
     this._applyLayout();
   }
 
+  /**
+   * Play a panel's enter animation (§8). The panel's own effect
+   * (§4.1) wins over the screen's; its own duration wins over the
+   * screen's. `zoom-in` is first-class, like `slide-in` — never a
+   * fallback. `none` plays nothing.
+   */
+  private _animatePanelIn(el: HTMLElement, panel: Panel, screen: Screen, forward: boolean): void {
+    const effect = panel.effect ?? screen.reveal.effect;
+    if (effect === 'none') return;
+    const cls =
+      effect === 'slide-in'
+        ? forward
+          ? 'wd-enter--slide-in-forward'
+          : 'wd-enter--slide-in-backward'
+        : effect === 'zoom-in'
+          ? 'wd-enter--zoom-in'
+          : 'wd-enter--fade-in';
+    el.style.setProperty('--wd-anim-duration', `${panel.durationMs ?? screen.reveal.durationMs}ms`);
+    el.classList.add(cls);
+    el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+  }
+
   private _render(opts: { animate: boolean; jump?: boolean; prev?: WalkState }): void {
     const deck = this._deck;
     const empty = deck === null || isEmptyDeck(deck) || this.screens.length === 0;
@@ -602,29 +628,17 @@ export class WalkdownDeckElement extends HTMLElement {
         const el = this.panelsEl.querySelector(`[data-panel="${newly}"]`);
         if (el instanceof HTMLElement) {
           const forward = this._state.stepIndex > (prev?.stepIndex ?? -1);
-          const effect = screen.reveal.effect;
-          if (effect !== 'none') {
-            const cls =
-              effect === 'slide-in'
-                ? forward
-                  ? 'wd-enter--slide-in-forward'
-                  : 'wd-enter--slide-in-backward'
-                : 'wd-enter--fade-in';
-            el.style.setProperty('--wd-anim-duration', `${screen.reveal.durationMs}ms`);
-            el.classList.add(cls);
-            el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
-          }
+          this._animatePanelIn(el, screen.panels[newly] as Panel, screen, forward);
         }
       }
     } else if (opts.animate && !opts.jump && screenChanged) {
-      // First panel of a newly entered screen reveals with the screen's effect.
+      // First panel of a newly entered screen reveals with its own effect (§8).
       const first = screen.reveal.sequence[0];
-      if (first !== undefined && screen.reveal.effect !== 'none') {
+      if (first !== undefined) {
         const el = this.panelsEl.querySelector(`[data-panel="${first}"]`);
         if (el instanceof HTMLElement) {
-          el.style.setProperty('--wd-anim-duration', `${screen.reveal.durationMs}ms`);
-          el.classList.add('wd-enter--fade-in');
-          el.addEventListener('animationend', () => el.classList.remove('wd-enter--fade-in'), { once: true });
+          const forward = this._state.screenIndex > (prev?.screenIndex ?? 0);
+          this._animatePanelIn(el, screen.panels[first] as Panel, screen, forward);
         }
       }
     }
@@ -724,6 +738,11 @@ export class WalkdownDeckElement extends HTMLElement {
 
   private _onNextClick = (): void => {
     this.next();
+  };
+
+  /** Restart: back to the first step of the first screen, same as Start (§6.2). */
+  private _onRestartClick = (): void => {
+    this.goToStart();
   };
 
   private _onHostPointerMove = (): void => {
