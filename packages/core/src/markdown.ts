@@ -7,7 +7,16 @@
  *
  * These functions render Markdown to HTML strings. They run
  * with no DOM (the parser is a pure function, §3.1).
+ *
+ * Block classification lives in scan.ts: renderBlocks walks
+ * scanner blocks instead of re-testing fence / heading / list
+ * regexes over lines. renderList still walks lines — a list
+ * item's continuation rules are line-level — but over lines the
+ * scanner already grouped into a list run, and it uses the
+ * scanner's single LIST_MARKER definition.
  */
+
+import { indentWidth, LIST_MARKER, scanBlocks, stripIndent, type ScannedBlock } from './scan.js';
 
 export function escapeHtml(text: string): string {
   return text
@@ -55,14 +64,8 @@ interface Line {
 }
 
 function toLines(markdown: string): Line[] {
-  return markdown.split('\n').map((raw) => {
-    const m = /^(\s*)(.*)$/.exec(raw);
-    return { indent: (m?.[1] ?? '').replace(/\t/g, '  ').length, text: m?.[2] ?? '' };
-  });
+  return markdown.split('\n').map((raw) => ({ indent: indentWidth(raw), text: stripIndent(raw) }));
 }
-
-const LIST_MARKER = /^(?:[-*+]|\d+[.)])\s+/;
-const FENCE = /^```(\w*)\s*$/;
 
 function renderList(lines: Line[], start: number, baseIndent: number): { html: string; next: number } {
   let html = '<ul>';
@@ -114,76 +117,102 @@ function renderList(lines: Line[], start: number, baseIndent: number): { html: s
 
 /** Block Markdown → HTML. Handles headings, lists (nested), blockquotes, fenced code, images, paragraphs. */
 export function renderBlocks(markdown: string): string {
-  const lines = toLines(markdown);
+  const blocks = scanBlocks(markdown.split('\n'));
   const out: string[] = [];
   let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (line === undefined) break;
-    const text = line.text;
-    if (text.trim() === '') {
+  while (i < blocks.length) {
+    const block = blocks[i];
+    if (block === undefined) break;
+    if (block.type === 'blank') {
       i++;
       continue;
     }
-    const fence = FENCE.exec(text.trim());
-    if (fence) {
-      const lang = fence[1] ?? '';
+    if (block.type === 'fence' && block.strictOpen) {
+      // Strict fence only (M3): a non-strict ``` line is not a
+      // fence here — it falls through to the paragraph below.
+      const lang = block.lang ?? '';
       const code: string[] = [];
       i++;
-      while (i < lines.length && lines[i]?.text.trim() !== '```') {
-        code.push(lines[i]?.text ?? '');
+      while (i < blocks.length) {
+        const next = blocks[i];
+        if (next === undefined) break;
+        if (next.type === 'fence' && next.close) {
+          i++;
+          break;
+        }
+        for (const line of next.lines) code.push(stripIndent(line));
         i++;
       }
-      i++; // closing fence
       out.push(
         `<pre><code${lang ? ` class="language-${escapeHtml(lang)}"` : ''}>${escapeHtml(code.join('\n'))}</code></pre>`,
       );
       continue;
     }
-    const heading = /^(#{1,6})\s+(.*)$/.exec(text);
-    if (heading) {
-      const level = heading[1]?.length ?? 1;
-      out.push(`<h${level}>${renderInline(heading[2] ?? '')}</h${level}>`);
+    if (block.type === 'heading') {
+      const level = block.level ?? 1;
+      const text = stripIndent(block.lines[0] ?? '').replace(/^#{1,6}\s+/, '');
+      out.push(`<h${level}>${renderInline(text)}</h${level}>`);
       i++;
       continue;
     }
-    if (text.startsWith('>')) {
-      const quote: string[] = [];
-      while (i < lines.length && (lines[i]?.text.startsWith('>') ?? false)) {
-        quote.push((lines[i]?.text ?? '').replace(/^>\s?/, ''));
+    if (block.type === 'quote') {
+      // Consecutive quote blocks are one quote; the scanner
+      // split the run only where its indent changes.
+      const quoteLines: string[] = [...block.lines];
+      i++;
+      while (i < blocks.length && blocks[i]?.type === 'quote') {
+        quoteLines.push(...(blocks[i]?.lines ?? []));
         i++;
       }
-      out.push(`<blockquote>${renderBlocks(quote.join('\n'))}</blockquote>`);
+      const stripped = quoteLines.map((l) => stripIndent(l).replace(/^>\s?/, ''));
+      out.push(`<blockquote>${renderBlocks(stripped.join('\n'))}</blockquote>`);
       continue;
     }
-    if (LIST_MARKER.test(text)) {
-      const { html, next } = renderList(lines, i, line.indent);
-      out.push(html);
-      i = next;
-      continue;
-    }
-    if (/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/.test(text.trim())) {
-      out.push(`<p>${renderInline(text.trim())}</p>`);
-      i++;
-      continue;
-    }
-    // Paragraph: consecutive non-blank lines that start no other block.
-    const para: string[] = [text];
-    i++;
-    while (i < lines.length) {
-      const next = lines[i];
-      if (
-        next === undefined ||
-        next.text.trim() === '' ||
-        FENCE.test(next.text.trim()) ||
-        /^(#{1,6})\s+/.test(next.text) ||
-        next.text.startsWith('>') ||
-        LIST_MARKER.test(next.text)
-      ) {
-        break;
+    if (block.type === 'list-marker') {
+      const baseIndent = block.indent ?? 0;
+      // The list run: blocks from here while their first line
+      // sits at or below the base indent. A blank or a shallower
+      // line ends it; renderList consumes the whole run, so the
+      // walk advances past the span.
+      let j = i;
+      const span: ScannedBlock[] = [];
+      while (j < blocks.length) {
+        const next = blocks[j];
+        if (next === undefined || next.type === 'blank') break;
+        if (indentWidth(next.lines[0] ?? '') < baseIndent) break;
+        span.push(next);
+        j++;
       }
-      para.push(next.text);
+      const { html } = renderList(toLines(span.flatMap((b) => b.lines).join('\n')), 0, baseIndent);
+      out.push(html);
+      i = j;
+      continue;
+    }
+    if (block.type === 'image') {
+      out.push(`<p>${renderInline((block.lines[0] ?? '').trim())}</p>`);
       i++;
+      continue;
+    }
+    // Paragraph: consecutive lines that start no other block. A
+    // comment, an image, a thematic break, or a non-strict fence
+    // line inside it is absorbed; a strict fence, heading, quote,
+    // list marker, or blank ends it.
+    const para: string[] = [];
+    while (i < blocks.length) {
+      const next = blocks[i];
+      if (next === undefined) break;
+      if (
+        next.type === 'text' ||
+        next.type === 'comment' ||
+        next.type === 'image' ||
+        next.type === 'thematic-break' ||
+        (next.type === 'fence' && !next.strictOpen)
+      ) {
+        for (const line of next.lines) para.push(stripIndent(line));
+        i++;
+        continue;
+      }
+      break;
     }
     out.push(`<p>${renderInline(para.join(' '))}</p>`);
   }

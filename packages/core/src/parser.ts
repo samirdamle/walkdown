@@ -17,6 +17,7 @@
  *   → Deck model (§1.1)
  */
 import { plainText, renderBlocks } from './markdown.js';
+import { scanBlocks, type ScannedBlock } from './scan.js';
 import type {
   Block,
   Deck,
@@ -138,25 +139,34 @@ interface FenceBlock {
 }
 
 function findFences(lines: string[]): FenceBlock[] {
+  // Strict fences only (M3): a line matching FENCE opens, the
+  // first ```-only line closes; an unclosed fence is not recorded.
+  const blocks = scanBlocks(lines);
   const fences: FenceBlock[] = [];
   let i = 0;
-  while (i < lines.length) {
-    const m = /^```(\w*)\s*$/.exec((lines[i] ?? '').trim());
-    if (m) {
-      const start = i;
-      const content: string[] = [];
+  while (i < blocks.length) {
+    const block = blocks[i];
+    if (block === undefined || block.type !== 'fence' || !block.strictOpen) {
       i++;
-      while (i < lines.length && (lines[i] ?? '').trim() !== '```') {
-        content.push(lines[i] ?? '');
-        i++;
-      }
-      if (i < lines.length) {
-        fences.push({ start, end: i, lang: (m[1] ?? '').toLowerCase(), text: content.join('\n') });
-      }
-      i++;
-    } else {
-      i++;
+      continue;
     }
+    const start = block.start;
+    const lang = (block.lang ?? '').toLowerCase();
+    const content: string[] = [];
+    let j = i + 1;
+    let end = -1;
+    while (j < blocks.length) {
+      const next = blocks[j];
+      if (next === undefined) break;
+      if (next.type === 'fence' && next.close) {
+        end = next.start;
+        break;
+      }
+      content.push(...next.lines);
+      j++;
+    }
+    if (end !== -1) fences.push({ start, end, lang, text: content.join('\n') });
+    i = end !== -1 ? j + 1 : blocks.length;
   }
   return fences;
 }
@@ -177,19 +187,16 @@ function extractInlineCss(lines: string[]): { styles: string; lines: string[] } 
   return { styles: last.text, lines: kept };
 }
 
-/** Split into screens on `---` lines outside fenced code blocks (§2.2). */
+/** Split into screens on `---` lines outside fenced code blocks (§2.2). A `---` splits only when the scanner says it sits outside a loose fence (M1). */
 function splitScreens(lines: string[]): string[][] {
   const screens: string[][] = [];
   let current: string[] = [];
-  let inFence = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (/^```/.test(trimmed)) inFence = !inFence;
-    if (!inFence && trimmed === '---') {
+  for (const block of scanBlocks(lines)) {
+    if (block.type === 'thematic-break' && !block.inLooseFence) {
       screens.push(current);
       current = [];
     } else {
-      current.push(line);
+      current.push(...block.lines);
     }
   }
   screens.push(current);
@@ -303,9 +310,6 @@ function parseSectionMarker(inside: string): SectionMarker | undefined {
   return { title, params };
 }
 
-const COMMENT_LINE = /^\s*<!--(.*?)-->\s*$/;
-const LIST_MARKER = /^(?:[-*+]|\d+[.)])\s+/;
-
 function indentOf(line: string): number {
   return (line.match(/^ */)?.[0].length ?? 0) + (line.match(/^\t+/)?.[0].length ?? 0) * 2;
 }
@@ -333,10 +337,19 @@ function panelKindFor(lines: string[], blockType: Block['type']): PanelKind {
  * are consumed by the caller; this walks the remaining blocks
  * in document order (§2.5). Nested lists stay inside their
  * parent panel (§2.6).
+ *
+ * The walk is over scanner blocks, not lines: the scanner owns
+ * what counts as a fence, a heading, a list marker, and so on.
+ * List items and paragraphs are still assembled here — their
+ * boundary rules legitimately differ from the renderer's — but
+ * they assemble from blocks, and a block is taken whole only
+ * when its lines share one indent (the scanner guarantees that),
+ * so a per-line indent check and a per-block check agree.
  */
 function parsePanels(lines: string[]): Panel[] {
+  const blocks = scanBlocks(lines);
   const panels: Panel[] = [];
-  let i = 0;
+  let b = 0;
   /**
    * Per-panel reveal settings (§4.1): a `reveal:` comment line
    * immediately before a panel sets that panel's `effect` /
@@ -360,17 +373,17 @@ function parsePanels(lines: string[]): Panel[] {
     pendingDurationMs = undefined;
   };
 
-  while (i < lines.length) {
-    const line = lines[i] ?? '';
-    const trimmed = line.trim();
-    if (trimmed === '') {
-      i++;
+  while (b < blocks.length) {
+    const block = blocks[b];
+    if (block === undefined) break;
+    if (block.type === 'blank') {
+      b++;
       continue;
     }
-    if (COMMENT_LINE.test(line)) {
+    if (block.type === 'comment') {
       // A `reveal:` comment here is a per-panel marker (§4.1);
       // any other HTML comment is ignored.
-      const inside = (COMMENT_LINE.exec(line)?.[1] ?? '').trim();
+      const inside = (block.inside ?? '').trim();
       if (/^reveal\s*:/i.test(inside)) {
         const marker = parseRevealMarker(inside);
         if (marker !== undefined) {
@@ -378,56 +391,63 @@ function parsePanels(lines: string[]): Panel[] {
           pendingDurationMs = marker.durationMs;
         }
       }
-      i++;
+      b++;
       continue;
     }
-    if (/^```/.test(trimmed)) {
-      const fenceLines = [line];
-      i++;
-      while (i < lines.length && (lines[i] ?? '').trim() !== '```') {
-        fenceLines.push(lines[i] ?? '');
-        i++;
-      }
-      if (i < lines.length) {
-        fenceLines.push(lines[i] ?? '');
-        i++;
+    if (block.type === 'fence') {
+      // M2 fence: any ```-starting line opens, the first
+      // ```-only line closes; an unclosed fence still becomes a
+      // code panel, running to the end of the screen (§3.3).
+      const fenceLines = [...block.lines];
+      b++;
+      while (b < blocks.length) {
+        const next = blocks[b];
+        if (next === undefined) break;
+        fenceLines.push(...next.lines);
+        b++;
+        if (next.type === 'fence' && next.close) break;
       }
       push(makeBlock('code', fenceLines.join('\n')), fenceLines);
       continue;
     }
-    if (trimmed.startsWith('>')) {
-      const quoteLines: string[] = [];
-      while (i < lines.length && (lines[i] ?? '').trim().startsWith('>')) {
-        quoteLines.push(lines[i] ?? '');
-        i++;
+    if (block.type === 'quote') {
+      // Consecutive quote blocks are one quote panel; the
+      // scanner split the run only where its indent changes.
+      const quoteLines = [...block.lines];
+      b++;
+      while (b < blocks.length && blocks[b]?.type === 'quote') {
+        quoteLines.push(...(blocks[b]?.lines ?? []));
+        b++;
       }
       push(makeBlock('quote', quoteLines.join('\n')), quoteLines);
       continue;
     }
-    const listMatch = LIST_MARKER.exec(trimmed);
-    if (listMatch && indentOf(line) === 0) {
+    if (block.type === 'list-marker' && indentOf(block.lines[0] ?? '') === 0) {
       // One top-level list item: its lines plus indented
       // continuation / nested-list lines (§2.6).
-      const itemLines: string[] = [];
-      const markerWidth = listMatch[0].length;
-      // The first line's marker is stripped: the panel holds the
-      // item's content, not a one-item list.
-      itemLines.push(line.slice(indentOf(line) + markerWidth).trimStart());
-      i++;
-      while (i < lines.length) {
-        const next = lines[i] ?? '';
-        if (next.trim() === '') {
+      const firstLine = block.lines[0] ?? '';
+      const itemLines: string[] = [firstLine.slice(indentOf(firstLine) + (block.markerWidth ?? 0)).trimStart()];
+      b++;
+      while (b < blocks.length) {
+        const next = blocks[b];
+        if (next === undefined) break;
+        if (next.type === 'blank') {
           // A blank line ends the item unless an indented line follows.
-          const after = lines[i + 1];
-          if (after !== undefined && after.trim() !== '' && indentOf(after) > 0) {
-            i++;
+          // The blank peek looks at exactly the next line: a blank
+          // block holds one line, so the next block's first line is it.
+          const after = blocks[b + 1];
+          if (after !== undefined && after.lines[0] !== undefined && after.lines[0].trim() !== '' && indentOf(after.lines[0]) > 0) {
+            b++;
             continue;
           }
           break;
         }
-        if (indentOf(next) > 0) {
-          itemLines.push(next);
-          i++;
+        // A block is taken whole only when its first line is
+        // indented — its lines share one indent, so the check
+        // agrees with the old per-line check.
+        if (indentOf(next.lines[0] ?? '') > 0) {
+          itemLines.push(...next.lines);
+          b++;
         } else {
           break;
         }
@@ -438,36 +458,40 @@ function parsePanels(lines: string[]): Panel[] {
       push(makeBlock('list', markdown), itemLines);
       continue;
     }
-    if (/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/.test(trimmed)) {
-      push(makeBlock('image', trimmed), [line]);
-      i++;
+    if (block.type === 'image') {
+      push(makeBlock('image', (block.lines[0] ?? '').trim()), block.lines);
+      b++;
       continue;
     }
-    const heading = /^(#{1,6})\s+(.*)$/.exec(trimmed);
-    if (heading) {
-      push(makeBlock('heading', trimmed), [line]);
-      i++;
+    if (block.type === 'heading') {
+      push(makeBlock('heading', (block.lines[0] ?? '').trim()), block.lines);
+      b++;
       continue;
     }
-    // Paragraph: consecutive lines until a blank line or another block.
-    const para: string[] = [line];
-    i++;
-    while (i < lines.length) {
-      const next = lines[i] ?? '';
-      const nt = next.trim();
-      if (
-        nt === '' ||
-        /^```/.test(nt) ||
-        /^(#{1,6})\s+/.test(nt) ||
-        nt.startsWith('>') ||
-        COMMENT_LINE.test(next) ||
-        (LIST_MARKER.test(nt) && indentOf(next) === 0) ||
-        /^!\[.*\]\(.*\)$/.test(nt)
-      ) {
-        break;
+    // Paragraph: consecutive lines until a blank line or another
+    // block. A text block, an indented list-marker line, or a
+    // thematic break continues it; anything else ends it.
+    const para: string[] = [...block.lines];
+    b++;
+    while (b < blocks.length) {
+      const next = blocks[b];
+      if (next === undefined) break;
+      if (next.type === 'text') {
+        para.push(...next.lines);
+        b++;
+        continue;
       }
-      para.push(next);
-      i++;
+      if (next.type === 'list-marker' && indentOf(next.lines[0] ?? '') > 0) {
+        para.push(...next.lines);
+        b++;
+        continue;
+      }
+      if (next.type === 'thematic-break') {
+        para.push(...next.lines);
+        b++;
+        continue;
+      }
+      break;
     }
     push(makeBlock('paragraph', para.join('\n')), para);
   }
@@ -521,18 +545,19 @@ export function parseDeck(text: string): Deck {
 
   for (const group of screenLineGroups) {
     // Top-of-screen markers: section + reveal, before any content (§2.4, §4.1).
-    let idx = 0;
+    const markerBlocks = scanBlocks(group);
+    let b = 0;
     let sectionMarker: SectionMarker | undefined;
     let revealMarker: ScreenMarker | undefined;
-    while (idx < group.length) {
-      const line = group[idx] ?? '';
-      if (line.trim() === '') {
-        idx++;
+    while (b < markerBlocks.length) {
+      const block = markerBlocks[b];
+      if (block === undefined) break;
+      if (block.type === 'blank') {
+        b++;
         continue;
       }
-      const comment = COMMENT_LINE.exec(line);
-      if (!comment) break; // content begins — markers after this are ignored
-      const inside = (comment[1] ?? '').trim();
+      if (block.type !== 'comment') break; // content begins — markers after this are ignored
+      const inside = (block.inside ?? '').trim();
       if (/^section\s*:/i.test(inside)) {
         const parsed = parseSectionMarker(inside);
         if (parsed) sectionMarker = parsed; // a second marker wins (§2.4)
@@ -543,9 +568,10 @@ export function parseDeck(text: string): Deck {
         }
       }
       // Any other comment is ignored; it does not end the marker scan.
-      idx++;
+      b++;
     }
-    const contentLines = group.slice(idx);
+    const contentStart = b < markerBlocks.length ? (markerBlocks[b]?.start ?? group.length) : group.length;
+    const contentLines = group.slice(contentStart);
 
     // Screen title: the first `#` / `##` heading, removed from the panel flow (§2.3).
     let title: string | undefined;
