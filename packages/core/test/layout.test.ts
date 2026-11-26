@@ -175,6 +175,40 @@ describe('content-fit font sizing (design-policies §2.2)', () => {
     ).toBeGreaterThan(900);
     expect(FONT_BODY_MAX_PX).toBe(32);
   });
+
+  it('the fit reserves the bottom controls (§7.2)', () => {
+    const geo = {
+      containerHeight: 900,
+      columns: 1,
+      columnWidth: 1200,
+      screenPadYPx: 35,
+      titlePx: 56,
+      gapTitlePx: 36,
+      padPanelPx: 32,
+      gapPanelPx: 28,
+    };
+    // 950 characters in one panel fits the full 900px viewport
+    // at the 32px ceiling — but not once the controls' height +
+    // clearance (64px) is reserved from the available height.
+    const noReserve = fitFontSize({ ...geo, contentLengths: [950] });
+    expect(noReserve).toBe(32);
+    const reserved = fitFontSize({ ...geo, contentLengths: [950], reservedBottomPx: 64 });
+    expect(reserved).toBeLessThan(32);
+    expect(reserved).toBeGreaterThan(12);
+    // The reserved fit really fits the reduced height.
+    expect(estimateScreenHeight({ ...geo, contentLengths: [950], fontBodyPx: reserved })).toBeLessThanOrEqual(900 - 64);
+    // No reserve is the default: omitting it changes nothing.
+    expect(fitFontSize({ ...geo, contentLengths: [950] })).toBe(noReserve);
+  });
+
+  it('computeLayout passes the reserve through and reports it', () => {
+    const base = { containerWidth: 1440, containerHeight: 900, panelCount: 6, contentLengths: [200, 200, 200, 200, 200, 200] };
+    const noReserve = computeLayout(base);
+    const reserved = computeLayout({ ...base, reservedBottomPx: 64 });
+    expect(reserved.fontBodyPx).toBeLessThan(noReserve.fontBodyPx);
+    expect(reserved.vars['--wd-reserve-bottom']).toBe('64px');
+    expect(noReserve.vars['--wd-reserve-bottom']).toBe('0px');
+  });
 });
 
 describe('scroll (§7.4)', () => {

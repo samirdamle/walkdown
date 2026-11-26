@@ -613,19 +613,33 @@ lengths, container size) → CSS variables + column count. It MUST:
    1 column on narrow. 6 panels → 3×2 on wide, 2×3 on medium,
    1×6 on narrow.
 4. Choose a type scale: the largest body size that fits the
-   *visible* content in the container (content-fit — the fit
-   runs on the panels visible at the current step, between the
-   12px floor in §7.3 and the 32px ceiling), then measure real
-   overflow after rendering and shrink further if the estimate
-   was optimistic. The renderer MUST NOT grow type past the
-   fit; growing is the fit's job, on the next layout pass.
+   *total* content of the screen — all panels, visible or not
+   yet revealed — in the container (content-fit — the fit is
+   computed once per screen from the total text of all its
+   panels, between the 12px floor in §7.3 and the 32px
+   ceiling), then measure real overflow of the full content
+   after rendering and shrink further if the estimate was
+   optimistic. The fitted size is FIXED for the screen: it
+   MUST NOT change as steps reveal more panels. The renderer
+   MUST NOT grow type past the fit; growing is the fit's job,
+   on the next layout pass.
 5. Emit layout as CSS variables (`--wd-cols`, `--wd-font`,
    `--wd-gap`, …); CSS does the distribution. No JS measuring
    per frame.
 6. Re-run on resize / orientation change / container change
-   (`ResizeObserver`), debounced, and on every step change —
-   a step that reveals another panel can shrink the type.
-   No layout shift after the first paint if the first measurement happens before paint.
+   (`ResizeObserver`), debounced, on screen change, and on
+   zoom change. NEVER on step change. No layout shift after
+   the first paint if the first measurement happens before paint.
+7. Reserve the bottom controls: the navigation controls
+   (progress bar + step count + Previous/Next) overlay the
+   bottom of the screen, so the fit MUST subtract their height
+   plus a small clearance from the available height before
+   sizing, and the screen's bottom padding MUST clear them, so
+   panels never sit underneath the controls — including when
+   scrolled to the bottom. If the controls' height varies
+   (e.g. auto-hide on idle), use their visible height when
+   shown and keep the clearance when they reappear; re-check
+   the fit when the controls show or hide.
 
 ### 7.3 Type floor and zoom
 

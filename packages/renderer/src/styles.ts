@@ -51,6 +51,14 @@ export const DEFAULT_CSS = `
   /* Vertical gestures scroll natively; horizontal ones reach JS (§6.4). */
   touch-action: pan-y;
   padding: var(--wd-space-screen-y) var(--wd-space-screen-x);
+  /* Bottom padding clears the bottom controls (§7.2): the
+     controls overlay the bottom of the screen, so the last
+     panel must be able to scroll up clear of them. The reserve
+     is the controls' height + clearance, measured by the
+     renderer (--wd-reserve-bottom); 64px is the fallback
+     (56px smallest controls height + 8px clearance) before
+     layout runs. */
+  padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, 64px));
   display: flex;
   flex-direction: column;
   scrollbar-width: thin;
@@ -163,6 +171,12 @@ export const DEFAULT_CSS = `
 
 /* Hidden panels take no space and are not focusable (§5). */
 .wd-panel[hidden] { display: none; }
+
+/* Measuring pass (§7.2): while the renderer measures the full
+   screen's overflow, hidden panels take layout space but stay
+   invisible. The class is added and removed synchronously, so
+   nothing paints. */
+.wd-screen--measuring .wd-panel[hidden] { display: block; visibility: hidden; }
 
 /* --- Single-panel screens become a hero (§7.4). --- */
 /* The hero is the one deliberate exception to top-left: its

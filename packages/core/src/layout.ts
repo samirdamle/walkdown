@@ -7,16 +7,20 @@
  * embedded), chooses columns and a type scale, and emits
  * layout as CSS variables; CSS does the distribution. No JS
  * measuring per frame. Re-run on resize (Phase 3, via
- * ResizeObserver, debounced), and on every step change — the
- * fit follows the *visible* panels, so a later step that adds
- * panels can shrink the type (never below the floor).
+ * ResizeObserver, debounced), on screen change, and on zoom
+ * change — never on step change: the fit is computed once per
+ * screen from the TOTAL content of all its panels, and the
+ * fitted size is fixed for that screen, so revealing another
+ * panel never changes the type size.
  *
  * Body type is content-fit (§2.2): the engine chooses the
  * largest body size whose estimated screen height fits the
- * container, between the 12px floor and the 32px ceiling.
- * The estimate is conservative (average glyph ≈ 0.5em,
- * line-height 1.55); the renderer measures for real and
- * shrinks further if the estimate was optimistic.
+ * container, between the 12px floor and the 32px ceiling,
+ * after reserving the bottom controls' height plus clearance
+ * (see `reservedBottomPx`). The estimate is conservative
+ * (average glyph ≈ 0.5em, line-height 1.55); the renderer
+ * measures for real and shrinks further if the estimate was
+ * optimistic.
  *
  * Degradation (§7.3, §7.5): type never goes below the 12px
  * floor — when even the floor does not fit, the floor wins
@@ -60,7 +64,7 @@ const LINE_HEIGHT_BODY = 1.55;
 
 export interface ScreenHeightEstimate {
   fontBodyPx: number;
-  /** Plain-text lengths of the panels being fitted (usually the visible ones). */
+  /** Plain-text lengths of the panels being fitted (all panels on the screen). */
   contentLengths: number[];
   columns: number;
   columnWidth: number;
@@ -97,8 +101,15 @@ export function estimateScreenHeight(e: ScreenHeightEstimate): number {
 
 export interface FitFontSizeInput {
   containerHeight: number;
-  /** Plain-text lengths of the panels being fitted (usually the visible ones). */
+  /** Plain-text lengths of the panels being fitted (all panels on the screen). */
   contentLengths: number[];
+  /**
+   * Height (CSS px) reserved at the bottom of the screen for the
+   * navigation controls plus a small clearance (§7.2). Subtracted
+   * from the container height before fitting, so the fitted text
+   * never runs underneath the bottom controls. Default 0.
+   */
+  reservedBottomPx?: number;
   columns: number;
   columnWidth: number;
   screenPadYPx: number;
@@ -111,14 +122,18 @@ export interface FitFontSizeInput {
 /**
  * Content-fit body size (design-policies §2.2): the largest
  * body size in [12px floor, 32px ceiling] whose estimated
- * screen height fits the container. Binary search over a
- * non-decreasing step function — as the size grows, lines
- * only get longer and taller, so the estimate never shrinks.
- * Returns the floor when even the floor does not fit; the
- * caller then scrolls instead of shrinking further.
+ * screen height fits the container — after reserving
+ * `reservedBottomPx` at the bottom for the navigation controls
+ * plus clearance (§7.2), so the fitted text never runs
+ * underneath them. Binary search over a non-decreasing step
+ * function — as the size grows, lines only get longer and
+ * taller, so the estimate never shrinks. Returns the floor
+ * when even the floor does not fit; the caller then scrolls
+ * instead of shrinking further.
  */
 export function fitFontSize(input: FitFontSizeInput): number {
-  const height = Math.max(1, input.containerHeight);
+  const reserved = Math.max(0, input.reservedBottomPx ?? 0);
+  const height = Math.max(1, input.containerHeight - reserved);
   const fits = (f: number): boolean =>
     estimateScreenHeight({ ...input, fontBodyPx: f }) <= height;
   // Binary search approaches the boundary from below and never
@@ -204,9 +219,13 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   // Type scale (§2.1/§2.2): the title keeps its viewport
   // clamp (the title factor scales preferred + ceiling, never
   // the floor); the body is content-fit — the largest size
-  // that fits the visible content, 12px floor to 32px ceiling.
-  // Zoom multiplies the computed size after the fit (§2.4),
-  // then the absolute 12px floor applies — zooming out can never take text below 12px.
+  // that fits the screen's TOTAL content, 12px floor to 32px
+  // ceiling, after reserving the bottom controls' height plus
+  // clearance. Zoom multiplies the computed size after the fit
+  // (§2.4), then the absolute 12px floor applies — zooming out
+  // can never take text below 12px.
+  const reserved = Math.max(0, input.reservedBottomPx ?? 0);
+  const availHeight = Math.max(1, height - reserved);
   const applyZoom = (size: number): number => Math.max(FONT_FLOOR_PX, size * zoomFactor(zoom));
   const titleBasePx = clampPx(24, (3.2 * vw + 10) * tf, 56 * tf);
   const fontTitlePx = round1(applyZoom(titleBasePx));
@@ -227,13 +246,15 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   const contentWidth = Math.min(width - 2 * screenPadXPx, CONTENT_MAX_WIDTH_PX);
   const columnWidth = Math.max(1, (contentWidth - (columns - 1) * gapPanelPx) / columns);
 
-  // Content-fit body size (§2.2): the fit runs on the
-  // *visible* panels' lengths (the renderer passes only those),
-  // so a step that reveals more panels can shrink the type.
-  // Columns come from the total panel count, so the grid — and
-  // every visible panel's position in it — stays put across steps.
+  // Content-fit body size (§2.2): the fit runs on ALL panels'
+  // lengths (the renderer passes the whole screen's content),
+  // so the fitted size is fixed for the screen across steps —
+  // revealing another panel never changes the type. Columns
+  // come from the total panel count, so the grid — and every
+  // visible panel's position in it — stays put across steps.
   const fitBodyPx = fitFontSize({
     containerHeight: height,
+    reservedBottomPx: reserved,
     contentLengths: input.contentLengths,
     columns,
     columnWidth,
@@ -246,7 +267,8 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   const fontBodyPx = floor1(applyZoom(fitBodyPx));
 
   // Scroll estimation (§7.4): the same estimate, at the final
-  // (zoomed) body size. True when even the floor does not fit —
+  // (zoomed) body size, against the height available above the
+  // bottom controls. True when even the floor does not fit —
   // the screen then scrolls internally instead of shrinking.
   const scroll =
     estimateScreenHeight({
@@ -259,7 +281,7 @@ export function computeLayout(input: LayoutInput): LayoutResult {
       gapTitlePx,
       padPanelPx,
       gapPanelPx,
-    }) > height;
+    }) > availHeight;
 
   const vars: Record<string, string> = {
     ...themeVars(theme),
@@ -276,6 +298,7 @@ export function computeLayout(input: LayoutInput): LayoutResult {
     '--wd-space-screen-y': px(screenPadYPx),
     '--wd-gap-panel': px(gapPanelPx),
     '--wd-gap-title': px(gapTitlePx),
+    '--wd-reserve-bottom': px(reserved),
     '--wd-pad-panel': px(padPanelPx),
     '--wd-radius-panel': px(radiusPx),
     '--wd-content-max-width': px(CONTENT_MAX_WIDTH_PX),

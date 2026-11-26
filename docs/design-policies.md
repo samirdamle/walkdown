@@ -94,7 +94,7 @@ container or the panel count changes.
 | Role | Formula (preferred) | Min | Max |
 | ---- | ------------------- | --- | --- |
 | Screen title | `clamp(24px, 3.2vw + 10px, 56px)` × title factor | 24px | 56px |
-| Panel body | content-fit: largest size that fits the visible content (§2.2) | 12px **[Proposal]** | 32px **[Proposal]** |
+| Panel body | content-fit: largest size that fits the screen's total content (§2.2), less the bottom-controls reserve | 12px **[Proposal]** | 32px **[Proposal]** |
 | Panel code | `clamp(13px, 1.1vw + 6px, 18px)` | 13px | 18px |
 | Caption / small text | `clamp(12px, 0.85vw + 7px, 14px)` | 12px | 14px |
 
@@ -166,10 +166,15 @@ estimated screen height fits the container (line-height 1.55,
 average glyph 0.5em wide, 60ch line-length cap, column count
 from the panel total). The renderer then measures the real
 overflow and shrinks further if the estimate was optimistic.
-The fit runs on the panels *visible* at the current step, so
-revealing another panel can shrink the type — the grid, and
-every visible panel's position in it, stays put; only the
-type size changes. Examples, 120 characters per panel:
+The fit runs on the TOTAL content of all panels on the screen
+and is fixed for the screen — revealing another panel never
+changes the type size; the grid, and every visible panel's
+position in it, stays put. The fit also reserves the bottom
+controls' height plus a small clearance from the available
+height, so panels never sit underneath the controls; the table
+below is the core fit before that reserve, so where content is
+near the boundary the rendered size is a touch smaller.
+Examples, 120 characters per panel:
 
 | Panels | 360 px | 768 px | 1440 px |
 | ------ | ------ | ------ | ------- |
@@ -710,7 +715,7 @@ needs rewriting, not a row to skip.
 | Token | Property | Min | Preferred | Max | Units | Status | Enforcement |
 | ----- | -------- | --- | --------- | --- | ----- | ------ | ----------- |
 | `--wd-font-title` | Screen title size | 24px | `3.2vw + 10px` × title factor | 56px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
-| `--wd-font-body` | Panel body size | 12px | largest size that fits visible content (content-fit, §2.2) | 32px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
+| `--wd-font-body` | Panel body size | 12px | largest size that fits total screen content (content-fit, §2.2), less bottom-controls reserve | 32px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
 | `--wd-font-code` | Panel code size | 13px | `1.1vw + 6px` | 18px | px / vw | Proposal | CSS var + clamp |
 | `--wd-font-small` | Caption / small size | 12px | `0.85vw + 7px` | 14px | px / vw | Proposal | CSS var + clamp |
 | `--wd-font-floor` | Absolute type floor | 12px | — | — | px | **Settled** | Layout-engine check; validator rule |

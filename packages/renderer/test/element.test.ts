@@ -349,6 +349,9 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     expect(varOf(el, '--wd-font-body')).toBe('12px');
     expect(screen.classList.contains('wd-screen--scrolling')).toBe(true);
     expect((el.shadowRoot?.querySelector('.wd-scroll-cue') as HTMLElement).classList.contains('wd-scroll-cue--visible')).toBe(true);
+    // The measuring class is removed again after the pass — it
+    // must never leak into the rendered screen.
+    expect(screen.classList.contains('wd-screen--measuring')).toBe(false);
   });
 
   it('the measurement pass leaves a fitting screen at its fitted size', () => {
@@ -361,22 +364,42 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     expect(varOf(el, '--wd-font-body')).toBe('32px');
   });
 
-  it('revealing another panel refits the type smaller, and the first panel stays visible', () => {
+  it('the fitted size is fixed for the screen: total content sets it from the first step', () => {
     const long = 'word '.repeat(120);
     // The reveal marker goes at the top of the screen, before
     // the title (spec §4.1: top-of-screen markers only).
     const el = createDeck(`<!-- reveal: step -->\n\n# Mixed\n\n- Short.\n\n- ${long}\n`);
-    // Step 0: only the short panel is visible — the ceiling.
-    expect(varOf(el, '--wd-font-body')).toBe('32px');
+    // The fit is computed from the TOTAL content (short + long),
+    // once, at the first step — 27.2px, not the 32px ceiling
+    // the first panel alone would allow. Revealing the long
+    // panel must not change it.
+    expect(varOf(el, '--wd-font-body')).toBe('27.2px');
     expect(panelVisible(el, 0)).toBe(true);
     expect(panelVisible(el, 1)).toBe(false);
-    // Step 1: the long panel appears, so the fit shrinks — but
-    // the first panel is still there, in place.
     el.next();
-    const after = parseFloat(varOf(el, '--wd-font-body'));
-    expect(after).toBeLessThan(32);
-    expect(after).toBeGreaterThan(12);
+    expect(varOf(el, '--wd-font-body')).toBe('27.2px');
     expect(panelVisible(el, 0)).toBe(true);
     expect(panelVisible(el, 1)).toBe(true);
+  });
+
+  it('the fit reserves the bottom controls: a screen that fits the full viewport fits smaller with the reserve', () => {
+    // ~950 characters in one panel fits the 900px viewport at
+    // the 32px ceiling without the reserve — but not once the
+    // controls' height + clearance (64px in jsdom, where the
+    // controls have no layout to measure) is reserved.
+    const el = createDeck(`# One\n\n- ${'word '.repeat(190)}\n`);
+    expect(varOf(el, '--wd-reserve-bottom')).toBe('64px');
+    const size = parseFloat(varOf(el, '--wd-font-body'));
+    expect(size).toBeLessThan(32);
+    expect(size).toBeGreaterThan(12);
+  });
+
+  it('the screen clears the bottom controls and the measurement sees the full screen', () => {
+    const el = createDeck('# Short\n\n- One short bullet.\n');
+    const styleEl = el.shadowRoot?.querySelector('#wd-default') as HTMLStyleElement;
+    const css = styleEl.textContent ?? '';
+    expect(css).toContain('padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, 64px));');
+    expect(css).toContain('.wd-screen--measuring .wd-panel[hidden]');
+    expect(css).toContain('display: block; visibility: hidden;');
   });
 });
