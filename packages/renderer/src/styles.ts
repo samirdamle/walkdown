@@ -227,6 +227,10 @@ export const DEFAULT_CSS = `
   from { opacity: 0; transform: translateX(-1em); }
   to { opacity: 1; transform: translateX(0); }
 }
+@keyframes wd-zoom-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
 @keyframes wd-screen-in-forward {
   from { opacity: 0; transform: translateX(0.75em); }
   to { opacity: 1; transform: translateX(0); }
@@ -239,6 +243,7 @@ export const DEFAULT_CSS = `
 .wd-panel.wd-enter--fade-in { animation: wd-fade-in var(--wd-anim-duration, 300ms) ease-out; }
 .wd-panel.wd-enter--slide-in-forward { animation: wd-slide-in-forward var(--wd-anim-duration, 300ms) ease-out; }
 .wd-panel.wd-enter--slide-in-backward { animation: wd-slide-in-backward var(--wd-anim-duration, 300ms) ease-out; }
+.wd-panel.wd-enter--zoom-in { animation: wd-zoom-in var(--wd-anim-duration, 300ms) ease-out; }
 .wd-screen.wd-screen-enter--forward { animation: wd-screen-in-forward 200ms ease-out; }
 .wd-screen.wd-screen-enter--backward { animation: wd-screen-in-backward 200ms ease-out; }
 
@@ -344,21 +349,19 @@ export const DEFAULT_CSS = `
 }
 
 /* --- End state (§6.2): a subtle indication, not a dead end.
-   The note sits above the controls band, not at a fixed height:
-   controls height is the button size plus the controls' top and
-   bottom padding (both --wd-space), and the clearance above them
-   is half the space unit (C12) — so the note clears the band at
-   every width. At 360px: 44 + 2.5×8 = 64px above controls 60px
-   tall; at 1440px: 51.2 + 2.5×16 = 91.2px above controls 83.2px
-   tall. Deliberately NOT var(--wd-reserve-bottom): the calc
-   is pure CSS and always correct, while the measured reserve
-   only exists after layout runs — both compute the same height
-   (button + padding + clearance), so the note never needs the
-   variable. --- */
+   The note sits above the controls band, at the measured bottom
+   reserve (--wd-reserve-bottom): controls height is the button
+   size plus the controls' top and bottom padding (both
+   --wd-space), and the clearance above them is half the space
+   unit (C12). The fallback is the same height computed from
+   tokens, so the note clears the band at every width even before
+   the first layout pass. At 360px: 44 + 2.5×8 = 64px above
+   controls 60px tall; at 1440px: 51.2 + 2.5×16 = 91.2px above
+   controls 83.2px tall. --- */
 .wd-end-note {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--wd-control-size) + var(--wd-space) * 2.5);
+  bottom: var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5));
   transform: translateX(-50%);
   font-size: var(--wd-font-small);
   color: var(--wd-color-muted);
@@ -368,6 +371,27 @@ export const DEFAULT_CSS = `
   padding: calc(var(--wd-space) * 0.5) var(--wd-space);
   z-index: 3;
   pointer-events: none;
+}
+/* The Restart button reuses the controls' button styling, as a
+   text pill rather than a round chevron. The note itself ignores
+   pointer events, so the button re-enables them. */
+.wd-end-note button {
+  pointer-events: auto;
+  font-family: var(--wd-font-family-body);
+  font-size: var(--wd-font-small);
+  line-height: 1;
+  color: var(--wd-color-ink);
+  background: var(--wd-color-panel);
+  border: 1px solid var(--wd-color-border);
+  border-radius: 999px;
+  padding: calc(var(--wd-space) * 0.25) var(--wd-space);
+  margin-left: calc(var(--wd-space) * 0.5);
+  cursor: pointer;
+}
+.wd-end-note button:hover { border-color: var(--wd-color-accent); }
+.wd-end-note button:focus-visible {
+  outline: 2px solid var(--wd-color-accent);
+  outline-offset: 2px;
 }
 .wd-end-note[hidden] { display: none; }
 

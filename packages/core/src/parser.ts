@@ -33,7 +33,7 @@ import type {
 export const DURATION_DEFAULT_MS = 300;
 export const DURATION_MIN_MS = 0;
 export const DURATION_MAX_MS = 2000;
-export const EFFECTS: readonly RevealEffect[] = ['fade-in', 'slide-in', 'none'];
+export const EFFECTS: readonly RevealEffect[] = ['fade-in', 'slide-in', 'zoom-in', 'none'];
 
 interface DeckDefaults {
   mode?: RevealMode;
@@ -337,9 +337,27 @@ function panelKindFor(lines: string[], blockType: Block['type']): PanelKind {
 function parsePanels(lines: string[]): Panel[] {
   const panels: Panel[] = [];
   let i = 0;
+  /**
+   * Per-panel reveal settings (§4.1): a `reveal:` comment line
+   * immediately before a panel sets that panel's `effect` /
+   * `duration` only — mode, sequence, class, and panel-class are
+   * screen-level and are ignored here. Consumed by the next
+   * panel pushed, then cleared.
+   */
+  let pendingEffect: RevealEffect | undefined;
+  let pendingDurationMs: number | undefined;
   const push = (block: Block, kindLines: string[]) => {
     const text = block.text;
-    panels.push({ kind: panelKindFor(kindLines, block.type), blocks: [block], classNames: [], text });
+    panels.push({
+      kind: panelKindFor(kindLines, block.type),
+      blocks: [block],
+      classNames: [],
+      ...(pendingEffect !== undefined ? { effect: pendingEffect } : {}),
+      ...(pendingDurationMs !== undefined ? { durationMs: pendingDurationMs } : {}),
+      text,
+    });
+    pendingEffect = undefined;
+    pendingDurationMs = undefined;
   };
 
   while (i < lines.length) {
@@ -350,7 +368,16 @@ function parsePanels(lines: string[]): Panel[] {
       continue;
     }
     if (COMMENT_LINE.test(line)) {
-      // An HTML comment that is not a top-of-screen marker is ignored (§4.1).
+      // A `reveal:` comment here is a per-panel marker (§4.1);
+      // any other HTML comment is ignored.
+      const inside = (COMMENT_LINE.exec(line)?.[1] ?? '').trim();
+      if (/^reveal\s*:/i.test(inside)) {
+        const marker = parseRevealMarker(inside);
+        if (marker !== undefined) {
+          pendingEffect = marker.effect;
+          pendingDurationMs = marker.durationMs;
+        }
+      }
       i++;
       continue;
     }
