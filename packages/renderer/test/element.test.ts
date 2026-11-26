@@ -625,18 +625,44 @@ describe('navigation menu (§6.6)', () => {
     expect(indicator(el).getAttribute('aria-expanded')).toBe('true');
     expect(menuLabels(el)).toEqual([
       'First screen',
-      'Walkdown',
+      'Intro',
       'How it works',
       'Walking',
-      'Make it yours',
+      'Customize',
       'Last screen',
     ]);
     for (const item of menuItems(el)) {
       expect(item.tagName).toBe('BUTTON');
       expect(item.getAttribute('role')).toBe('menuitem');
     }
-    // At the start the current Section is "Walkdown", and focus moved to it.
-    expect(shadowActive(el)?.textContent).toBe('Walkdown');
+    // At the start the current Section is "Intro", and focus moved to it.
+    expect(shadowActive(el)?.textContent).toBe('Intro');
+  });
+
+  it('items are finger-sized, and the current item is a background highlight only — no border, ocean-green tint', () => {
+    // Type clearly above the 12–14px small size; at least 48px
+    // tall, a touch above the settled 44px touch floor (C8);
+    // both viewport-relative clamps, never a fixed px size.
+    expect(DEFAULT_CSS).toContain('font-size: clamp(16px, 1.2vw + 10px, 20px);');
+    expect(DEFAULT_CSS).toContain('min-height: clamp(48px, 3vw + 12px, 56px);');
+    // The current item keeps its bold, but the old treatment —
+    // amber left border, rounded corners, peach background —
+    // is gone; only the ocean-green tint remains.
+    expect(DEFAULT_CSS).toContain('background: color-mix(in srgb, #2E7D6B 20%, var(--wd-color-panel));');
+    expect(DEFAULT_CSS).not.toContain('border-left-color: var(--wd-color-accent);');
+    expect(DEFAULT_CSS).not.toContain('color-mix(in srgb, var(--wd-color-accent) 12%, transparent);');
+    // No border or radius in the item rules themselves (a global
+    // assertion cannot be used: border-radius appears on other
+    // elements, and the item keeps its `border: none` reset).
+    // Comments are stripped first — the rules' own comments
+    // mention the removed border.
+    const stripComments = (rule: string): string => rule.replace(/\/\*[\s\S]*?\*\//g, '');
+    const itemRule = stripComments(/\.wd-nav-menu-item \{[^}]*\}/.exec(DEFAULT_CSS)?.[0] ?? '');
+    const currentRule = stripComments(/\.wd-nav-menu-item--current \{[^}]*\}/.exec(DEFAULT_CSS)?.[0] ?? '');
+    expect(itemRule).not.toContain('border-left');
+    expect(itemRule).not.toContain('border-radius');
+    expect(currentRule).not.toContain('border');
+    expect(currentRule).not.toContain('border-radius');
   });
 
   it('clicking a Section jumps to its first screen at step 0 and closes the menu', () => {

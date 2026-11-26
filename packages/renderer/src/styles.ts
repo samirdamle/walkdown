@@ -391,18 +391,22 @@ export const DEFAULT_CSS = `
   z-index: 4;
 }
 .wd-nav-menu[hidden] { display: none; }
+/* Menu items are finger targets, not captions (§6.6): type at
+   clamp(16px, 1.2vw + 10px, 20px) — clearly above the 12–14px
+   small size — and at least 48px tall, a touch above the
+   settled 44px touch floor (C8), with the same 56px cap as
+   the controls. Padding comes from --wd-space. */
 .wd-nav-menu-item {
   display: block;
   width: 100%;
+  min-height: clamp(48px, 3vw + 12px, 56px);
   text-align: left;
   font-family: var(--wd-font-family-body);
-  font-size: var(--wd-font-small);
+  font-size: clamp(16px, 1.2vw + 10px, 20px);
   line-height: 1.4;
   color: var(--wd-color-ink);
   background: transparent;
   border: none;
-  border-left: 3px solid transparent;
-  border-radius: calc(var(--wd-radius-panel) / 2);
   padding: calc(var(--wd-space) * 0.5) var(--wd-space);
   cursor: pointer;
 }
@@ -412,8 +416,12 @@ export const DEFAULT_CSS = `
   outline-offset: -2px;
 }
 .wd-nav-menu-item--current {
-  border-left-color: var(--wd-color-accent);
-  background: color-mix(in srgb, var(--wd-color-accent) 12%, transparent);
+  /* Background highlight only — no left border, no rounded
+     corners. The tint mixes a fixed ocean green with the
+     panel colour, so it reads in both themes: light #D5E5E1
+     (ink 13.3:1 AAA), dark #233332 (ink 12.1:1 AAA).
+     Font-weight stays bold. */
+  background: color-mix(in srgb, #2E7D6B 20%, var(--wd-color-panel));
   font-weight: 700;
 }
 
