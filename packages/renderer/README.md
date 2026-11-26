@@ -37,7 +37,7 @@ el.markdown = await (await fetch('deck.md')).text();
   `swipeThreshold()` helper, deep links `#/<screen>/<step>`,
   progress in steps, scroll cue, end state, empty-deck state.
   Layout comes from the core's `computeLayout()` on every
-  resize (ResizeObserver) and zoom change; the 12px type floor
+  resize (ResizeObserver) and zoom change; the 14px type floor
   is enforced by the layout engine.
 - `src/loader.ts` — external stylesheet fetching (§11.4):
   relative URLs resolve against the deck URL, remote URLs must

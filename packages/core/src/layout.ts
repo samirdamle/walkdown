@@ -15,14 +15,14 @@
  *
  * Body type is content-fit (§2.2): the engine chooses the
  * largest body size whose estimated screen height fits the
- * container, between the 12px floor and the 32px ceiling,
+ * container, between the 14px floor and the 32px ceiling,
  * after reserving the bottom controls' height plus clearance
  * (see `reservedBottomPx`). The estimate is conservative
  * (average glyph ≈ 0.5em, line-height 1.55); the renderer
  * measures for real and shrinks further if the estimate was
  * optimistic.
  *
- * Degradation (§7.3, §7.5): type never goes below the 12px
+ * Degradation (§7.3, §7.5): type never goes below the 14px
  * floor — when even the floor does not fit, the floor wins
  * and the screen scrolls. That is correct behaviour, not a bug.
  */
@@ -121,7 +121,7 @@ export interface FitFontSizeInput {
 
 /**
  * Content-fit body size (design-policies §2.2): the largest
- * body size in [12px floor, 32px ceiling] whose estimated
+ * body size in [14px floor, 32px ceiling] whose estimated
  * screen height fits the container — after reserving
  * `reservedBottomPx` at the bottom for the navigation controls
  * plus clearance (§7.2), so the fitted text never runs
@@ -217,17 +217,21 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   // Type scale (§2.1/§2.2): the title keeps its viewport
   // clamp (the title factor scales preferred + ceiling, never
   // the floor); the body is content-fit — the largest size
-  // that fits the screen's TOTAL content, 12px floor to 32px
+  // that fits the screen's TOTAL content, 14px floor to 32px
   // ceiling, after reserving the bottom controls' height plus
   // clearance. Zoom multiplies the computed size after the fit
-  // (§2.4), then the absolute 12px floor applies — zooming out
-  // can never take text below 12px.
+  // (§2.4), then the absolute 14px floor applies — zooming out
+  // can never take text below 14px.
   const reserved = Math.max(0, input.reservedBottomPx ?? 0);
   const applyZoom = (size: number): number => Math.max(FONT_FLOOR_PX, size * zoomFactor(zoom));
   const titleBasePx = clampPx(24, (3.2 * vw + 10) * tf, 56 * tf);
   const fontTitlePx = round1(applyZoom(titleBasePx));
-  const fontCodePx = round1(applyZoom(clampPx(13, 1.1 * vw + 6, 18)));
-  const fontSmallPx = round1(applyZoom(clampPx(12, 0.85 * vw + 7, 14)));
+  const fontCodePx = round1(applyZoom(clampPx(14, 1.1 * vw + 6, 18)));
+  // Small text is a fixed 14px: the floor raise makes its min
+  // and max coincide, so the old `0.85vw + 7px` preferred term
+  // can never apply — it is gone, not clamped. Zoom still
+  // multiplies it (and the floor still bounds it below).
+  const fontSmallPx = round1(applyZoom(14));
 
   const columns = columnCount(width, panelCount);
 

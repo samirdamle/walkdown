@@ -25,7 +25,8 @@ Two labels appear throughout:
 
 - **[Settled]** — a decision Samir has already made, in the brief
   §15 or in the spec. A policy here MUST NOT contradict it. The
-  settled numbers are: the 12px type floor on mobiles, `+` / `-`
+  settled numbers are: the 14px type floor (Samir's decision
+  2026-11-26, superseding brief §15.6's 12px), `+` / `-`
   zoom, fluid re-layout with no fixed breakpoints as the primary
   mechanism, internal scroll within a screen, the degradation
   ladder, a minimum readable column width of roughly 240–280 CSS
@@ -94,9 +95,9 @@ container or the panel count changes.
 | Role | Formula (preferred) | Min | Max |
 | ---- | ------------------- | --- | --- |
 | Screen title | `clamp(24px, 3.2vw + 10px, 56px)` × title factor | 24px | 56px |
-| Panel body | content-fit: largest size that fits the screen's total content (§2.2), less the bottom-controls reserve | 12px **[Proposal]** | 32px **[Proposal]** |
-| Panel code | `clamp(13px, 1.1vw + 6px, 18px)` | 13px | 18px |
-| Caption / small text | `clamp(12px, 0.85vw + 7px, 14px)` | 12px | 14px |
+| Panel body | content-fit: largest size that fits the screen's total content (§2.2), less the bottom-controls reserve | 14px **[Proposal]** | 32px **[Proposal]** |
+| Panel code | `clamp(14px, 1.1vw + 6px, 18px)` | 14px | 18px |
+| Caption / small text | `14px` (fixed — the floor raise makes its min and max coincide, so the old `0.85vw + 7px` preferred term can never apply) | 14px | 14px |
 
 Why these shapes: the preferred term grows with the container
 (`vw`), so type grows as the screen grows; the floor stops it
@@ -105,13 +106,15 @@ absurdly large on a wide monitor. A linear `vw` term (rather than
 a stepped breakpoint scale) is what makes the growth feel
 continuous — the reader never sees type jump.
 
-**The 12px floor [Settled].** No text anywhere renders below
-12px — that is the settled absolute floor (brief §15.6, spec
-§7.3). The floor in the table above is stricter than that for
-code (13px), because 12px code is legible but tiring. Body
-text may reach the 12px floor when the content is dense — the
+**The 14px floor [Settled].** No text anywhere renders below
+14px — that is the settled absolute floor (Samir's decision
+2026-11-26, superseding brief §15.6's 12px; spec §7.3). The
+table's minima coincide with the floor now: code's old 13px
+minimum is gone, because a 13px token would be a lie under a
+14px absolute floor, and small text is a fixed 14px. Body
+text may reach the 14px floor when the content is dense — the
 fit only goes there when nothing bigger fits, and a dense
-screen then scrolls at 12px rather than shrinking further.
+screen then scrolls at 14px rather than shrinking further.
 A policy floor may be stricter than the settled floor,
 never looser.
 
@@ -161,7 +164,7 @@ looks wrong, the formula is wrong — say so in review.
 | 7–8 | 24 | 29.4 | 47.6 |
 
 **Panel body** (px) — content-fit **[Proposal]**. The engine
-chooses the largest size, 12px floor to 32px ceiling, whose
+chooses the largest size, 14px floor to 32px ceiling, whose
 estimated screen height fits the container (line-height 1.55,
 average glyph 0.5em wide, 60ch line-length cap, column count
 from the panel total). The renderer then measures the real
@@ -186,15 +189,15 @@ Examples, 120 characters per panel:
 And by amount of content, at 1440×900: one panel of 30
 characters → 32px (the ceiling); four panels of 200 characters
 each → 26.2px; eight panels of 900 characters at 360×640 →
-12px, scrolling. Read the 360 px column as the fit doing its
+14px, scrolling. Read the 360 px column as the fit doing its
 job: on a phone a sparse screen grows to the ceiling, and only
-a dense screen reaches the floor — the old 14px body floor is
-gone, because a sparse phone screen has no reason to sit at
-14px when 32px fits.
+a dense screen reaches the floor — a sparse phone screen has
+no reason to sit at 14px when 32px fits.
 
-**Panel code** (px): 13 at 360 px, 14.4 at 768 px, 18 at 1440 px.
-**Caption / small text** (px): 12 at 360 px, 13.5 at 768 px,
-14 at 1440 px.
+**Panel code** (px): 14 at 360 px, 14.4 at 768 px, 18 at 1440 px.
+**Caption / small text** (px): 14 at every width — the floor
+raise makes its min and max coincide, so small text is a
+fixed 14px.
 
 ### 2.3 Line-height, line length, letter-spacing
 
@@ -236,8 +239,8 @@ has been applied:
 - Bounded at ±4 steps from default **[Settled]** (spec §7.3:
   "at least ±4 steps"). Zoom persists across screens within a
   session.
-- The zoomed size is clamped below by the absolute 12px floor
-  — zooming out can never take any text below 12px — and has
+- The zoomed size is clamped below by the absolute 14px floor
+  — zooming out can never take any text below 14px — and has
   no upper clamp except the layout itself: zooming in re-runs
   layout and may push a screen into internal scroll. That is
   correct behaviour, not a bug (§6.3).
@@ -530,9 +533,9 @@ scroll affordance (§6.2) must say so.
 ### 6.2 Very small and very large screens
 
 - **Very small (container width < 320px) [Proposal].** One
-  column, always. Body text at its 14px floor — and if even
-  that does not fit, at the settled 12px absolute floor, never
-  below it. Gaps at their minimums. Internal scroll is
+  column, always. Body text at its 14px floor — the settled
+  absolute floor — and if even that does not fit, the screen
+  scrolls at 14px, never below it. Gaps at their minimums. Internal scroll is
   expected, not exceptional. The deck must still walk: steps,
   navigation, and deep links all keep working. A 320px-wide
   deck that walks is a success; a 320px-wide deck that clips
@@ -556,8 +559,8 @@ order; each rung MUST still look designed:
 2. **Fewer columns** (§4.2). Three columns become two, two
    become one. The panels get wider as they get fewer, so
    readability improves as density falls.
-3. **Type to its floor** (§2.1). Down to 14px body, never
-   below the 12px absolute floor.
+3. **Type to its floor** (§2.1). Down to the 14px absolute
+   floor, never below it.
 4. **Stacked, one column, internal scroll.** The phone
    default, not a failure (spec §7.5).
 5. **Static.** `prefers-reduced-motion`, or no animation
@@ -570,7 +573,7 @@ order; each rung MUST still look designed:
 
 **What never gives way, at any rung:**
 
-- Readability: no text below 12px, anywhere.
+- Readability: no text below 14px, anywhere.
 - No clipped text, no overlapping panels, no dropped panel.
 - No horizontal scrollbar on the screen.
 - Steps still work: Next / Previous / Start / End and deep
@@ -677,7 +680,7 @@ A class — Walkdown's or the author's — MUST NOT:
 - hide a panel (`display: none`, `visibility: hidden`, zero
   size) or change the step count (spec §11.3);
 - create a horizontal scrollbar on a screen;
-- take type below the 12px floor, or remove the scroll
+- take type below the 14px floor, or remove the scroll
   affordance on a scrollable screen;
 - change the meaning of a step (a class is styling, never
   behaviour — spec §11.1).
@@ -716,10 +719,10 @@ needs rewriting, not a row to skip.
 | Token | Property | Min | Preferred | Max | Units | Status | Enforcement |
 | ----- | -------- | --- | --------- | --- | ----- | ------ | ----------- |
 | `--wd-font-title` | Screen title size | 24px | `3.2vw + 10px` × title factor | 56px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
-| `--wd-font-body` | Panel body size | 12px | largest size that fits total screen content (content-fit, §2.2), less bottom-controls reserve | 32px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
-| `--wd-font-code` | Panel code size | 13px | `1.1vw + 6px` | 18px | px / vw | Proposal | CSS var + clamp |
-| `--wd-font-small` | Caption / small size | 12px | `0.85vw + 7px` | 14px | px / vw | Proposal | CSS var + clamp |
-| `--wd-font-floor` | Absolute type floor | 12px | — | — | px | **Settled** | Layout-engine check; validator rule |
+| `--wd-font-body` | Panel body size | 14px | largest size that fits total screen content (content-fit, §2.2), less bottom-controls reserve | 32px | px / vw | Proposal | CSS var + clamp; fixture screenshot |
+| `--wd-font-code` | Panel code size | 14px | `1.1vw + 6px` | 18px | px / vw | Proposal | CSS var + clamp |
+| `--wd-font-small` | Caption / small size | 14px | — | 14px | px / vw | Proposal | CSS var + clamp |
+| `--wd-font-floor` | Absolute type floor | 14px | — | — | px | **Settled** | Layout-engine check; validator rule |
 | `--wd-line-height-body` | Body line-height | 1.5 | 1.55 | 1.6 | unitless | Proposal | CSS var |
 | `--wd-line-height-title` | Title line-height | 1.05 | 1.1 | 1.15 | unitless | Proposal | CSS var |
 | `--wd-line-length` | Line length, hero / single column | 45ch | 60ch | 75ch | ch | Settled 2026-11-25 | Layout-engine check |

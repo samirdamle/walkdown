@@ -471,7 +471,7 @@ export class WalkdownDeckElement extends HTMLElement {
    * Measurement is the authority (§7.4): the fit is an
    * estimate (average glyph ≈ 0.5em, uniform line-height), so
    * after layout, shrink the body size 1px at a time while the
-   * screen still overflows, down to the 12px floor. At the
+   * screen still overflows, down to the 14px floor. At the
    * floor the screen scrolls internally and the scroll cue
    * shows. This pass only ever shrinks — growing is the fit's
    * job, on the next layout pass (resize, screen change, zoom
