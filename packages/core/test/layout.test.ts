@@ -58,6 +58,10 @@ describe('type scale (design-policies §2.2 computed values)', () => {
     // 7–8 → 12 / — / 25.4. Sparse screens grow to the 32px
     // ceiling at every width; only dense screens shrink.
     expect(layout(360, 800, 1).fontBodyPx).toBe(32);
+    // The hero tagline is 42 chars: it still fits at the 32px
+    // ceiling at desktop and phone widths.
+    expect(layout(1440, 900, 1, 42).fontBodyPx).toBe(32);
+    expect(layout(360, 800, 1, 42).fontBodyPx).toBe(32);
     expect(layout(768, 800, 1).fontBodyPx).toBe(32);
     expect(layout(1440, 900, 1).fontBodyPx).toBe(32);
     expect(layout(360, 800, 3).fontBodyPx).toBeCloseTo(24.6, 0);

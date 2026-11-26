@@ -619,6 +619,12 @@ through it — the way Start and End are reached on screen.
   `--wd-nav-menu-max-height` (`min(50vh, 420px)`) and it
   scrolls within itself (`overflow-y: auto`), so a deck with
   many Sections never grows the menu past the screen.
+- **Item size and current highlight:** each item is a touch
+  target at least 48px tall — a touch above the 44px floor
+  (§7.3) — with type at 16–20px, both scaling with the
+  viewport. The current item is distinguished by its
+  background highlight only, an ocean-green tint in both
+  themes: no border, no rounded corners.
 - **Closing:** Escape closes the menu and returns focus to
   the indicator; clicking or tapping outside the deck closes
   it; tapping the screen while the menu is open only closes

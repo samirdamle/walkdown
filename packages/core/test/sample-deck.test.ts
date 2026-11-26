@@ -15,7 +15,7 @@ describe('examples/walkdown-itself.md', () => {
 
   it('parses to 13 screens in 4 Sections', () => {
     expect(screens).toHaveLength(13);
-    expect(deck.sections.map((s) => s.title)).toEqual(['Walkdown', 'How it works', 'Walking', 'Make it yours']);
+    expect(deck.sections.map((s) => s.title)).toEqual(['Intro', 'How it works', 'Walking', 'Customize']);
     expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 4]);
   });
 
@@ -60,6 +60,7 @@ describe('examples/walkdown-itself.md', () => {
     expect(screens[0]?.reveal.mode).toBe('all');
     expect(screens[0]?.classNames).toEqual(['hero']);
     expect(screens[0]?.panels).toHaveLength(1);
+    expect(screens[0]?.panels[0]?.blocks[0]?.html).toContain('Simple, magical presentation from Markdown');
   });
 
   it('the punchline screen reveals in sequence 3, 1, 2', () => {

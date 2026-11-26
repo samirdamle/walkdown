@@ -10,13 +10,13 @@ stylesheets:
   - ./walkdown-theme.css
 ---
 
-<!-- section: Walkdown -->
+<!-- section: Intro -->
 
 <!-- reveal: all; class: hero -->
 
 # Walkdown
 
-Markdown in. A presentation that walks.
+Simple, magical presentation from Markdown
 
 ---
 
@@ -102,7 +102,7 @@ Markdown in. A presentation that walks.
 
 ---
 
-<!-- section: Make it yours; reveal: step; effect: slide-in; duration: 250ms; class: dark -->
+<!-- section: Customize; reveal: step; effect: slide-in; duration: 250ms; class: dark -->
 
 # Defaults, then overrides
 
