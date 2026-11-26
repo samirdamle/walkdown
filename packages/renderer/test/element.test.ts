@@ -791,6 +791,16 @@ describe('navigation menu (§6.6)', () => {
   function shadowActive(el: WalkdownDeckElement): Element | null {
     return el.shadowRoot?.activeElement ?? null;
   }
+  function nextBtn(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-next') as HTMLButtonElement;
+  }
+  function focusIn(target: Element): void {
+    // jsdom's .focus() does not dispatch focusin, so dispatch the
+    // composed event the browser delivers (same pattern as the
+    // F1/F6 tests: bubbles + composed, so it crosses the shadow
+    // boundary and reaches the document listener).
+    target.dispatchEvent(new window.FocusEvent('focusin', { bubbles: true, composed: true }));
+  }
 
   // Dispatch a keydown on the focused menu item (or the menu itself),
   // composed so the event crosses the shadow boundary to the host's walk
@@ -1001,6 +1011,59 @@ describe('navigation menu (§6.6)', () => {
     document.body.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true }));
     expect(menu(el).hidden).toBe(true);
     expect(shadowActive(el)).toBe(indicator(el));
+  });
+
+  it('Tab past the last menu item closes the menu and returns focus to the indicator', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(false);
+    const items = menuItems(el);
+    const last = items[items.length - 1] as HTMLButtonElement;
+    // Focus moving between items keeps the menu open.
+    focusIn(last);
+    expect(menu(el).hidden).toBe(false);
+    // Tab past the last item: focus lands on the Next button,
+    // outside the menu and outside the indicator.
+    focusIn(nextBtn(el));
+    expect(menu(el).hidden).toBe(true);
+    expect(indicator(el).getAttribute('aria-expanded')).toBe('false');
+    expect(shadowActive(el)).toBe(indicator(el));
+  });
+
+  it('focus inside the menu — or on the indicator — keeps it open', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    const items = menuItems(el);
+    focusIn(items[0] as HTMLButtonElement);
+    expect(menu(el).hidden).toBe(false);
+    focusIn(items[items.length - 1] as HTMLButtonElement);
+    expect(menu(el).hidden).toBe(false);
+    // The trigger is part of the menu system, not outside it.
+    focusIn(indicator(el));
+    expect(menu(el).hidden).toBe(false);
+  });
+
+  it('focus landing outside the deck closes the menu', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.appendChild(outside);
+    focusIn(outside);
+    expect(menu(el).hidden).toBe(true);
+    expect(indicator(el).getAttribute('aria-expanded')).toBe('false');
+    expect(shadowActive(el)).toBe(indicator(el));
+    outside.remove();
+  });
+
+  it('after a focus-leave close, the indicator still opens the menu', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicator(el).click();
+    focusIn(nextBtn(el));
+    expect(menu(el).hidden).toBe(true);
+    indicator(el).click();
+    expect(menu(el).hidden).toBe(false);
+    expect(indicator(el).getAttribute('aria-expanded')).toBe('true');
   });
 
   it('a tap on the screen while the menu is open only closes it — it does not navigate', () => {
