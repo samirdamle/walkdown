@@ -669,9 +669,8 @@ Notes on the table:
   keeps the element working.
 - **The sample deck** (`examples/walkdown-itself.md`) uses this
   inventory as written: `hero` on the first screen, `dark` on
-  a Section, `accent` on a screen, `big` as a `panel-class:`.
-  Those are user classes; the elements carrying them also
-  carry their `.wd-` classes.
+  a Section. Those are user classes; the elements carrying them
+  also carry their `.wd-` classes.
 
 ### 7.3 What a class MUST NOT do
 
