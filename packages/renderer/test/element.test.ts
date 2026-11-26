@@ -511,14 +511,16 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     // the title (spec §4.1: top-of-screen markers only).
     const el = createDeck(`<!-- reveal: step -->\n\n# Mixed\n\n- Short.\n\n- ${long}\n`);
     // The fit is computed from the TOTAL content (short + long),
-    // once, at the first step — 27.2px, not the 32px ceiling
-    // the first panel alone would allow. Revealing the long
-    // panel must not change it.
-    expect(varOf(el, '--wd-font-body')).toBe('27.2px');
+    // once, at the first step — 26.7px, not the 32px ceiling
+    // the first panel alone would allow. (It was 27.2px before
+    // the width-aware reserve fallback: the jsdom reserve is
+    // 91.2px now, not 68px, so the fit has less height.)
+    // Revealing the long panel must not change it.
+    expect(varOf(el, '--wd-font-body')).toBe('26.7px');
     expect(panelVisible(el, 0)).toBe(true);
     expect(panelVisible(el, 1)).toBe(false);
     el.next();
-    expect(varOf(el, '--wd-font-body')).toBe('27.2px');
+    expect(varOf(el, '--wd-font-body')).toBe('26.7px');
     expect(panelVisible(el, 0)).toBe(true);
     expect(panelVisible(el, 1)).toBe(true);
   });
@@ -526,12 +528,12 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
   it('the fit reserves the bottom controls: a screen that fits the full viewport fits smaller with the reserve', () => {
     // ~950 characters in one panel fits the 900px viewport at
     // the 32px ceiling without the reserve — but not once the
-    // controls' height + clearance is reserved (68px in jsdom,
-    // where the controls have no layout to measure: the 60px
-    // fallback height + 8px half-space at the 1440px fallback
-    // width).
+    // controls' height + clearance is reserved (91.2px in
+    // jsdom, where the controls have no layout to measure:
+    // the width-aware fallback height, 83.2px at the 1440px
+    // fallback width, + 8px half-space).
     const el = createDeck(`# One\n\n- ${'word '.repeat(190)}\n`);
-    expect(varOf(el, '--wd-reserve-bottom')).toBe('68px');
+    expect(varOf(el, '--wd-reserve-bottom')).toBe('91.2px');
     const size = parseFloat(varOf(el, '--wd-font-body'));
     expect(size).toBeLessThan(32);
     expect(size).toBeGreaterThan(14);
@@ -639,23 +641,25 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
 
   it('bottom-controls clearance is half the space unit (C12)', () => {
     // jsdom has no layout, so the controls measure 0 and the
-    // reserve is the 60px fallback + clearance: 4px at phone
-    // width (space 8px), 8px at desktop (space 16px). The
-    // clearance is space/2 at both widths — it scales with
-    // the screen instead of a fixed 8px — and the reserve
-    // clears the smallest real controls height (60px) at
-    // phone width and past it at desktop.
-    for (const [w, h, reserve] of [
-      [360, 640, 64],
-      [1440, 900, 68],
+    // reserve is the width-aware fallback controls height +
+    // clearance: 60px + 4px at phone width (space 8px),
+    // 83.2px + 8px at desktop (space 16px). The clearance is
+    // space/2 at both widths — it scales with the screen
+    // instead of a fixed 8px — and the reserve clears the
+    // fallback controls height at each width (the old flat
+    // 60px fallback under-cleared above 400px; the width-aware
+    // fallback is the same formula as the CSS one).
+    for (const [w, h, reserve, controlsHeight] of [
+      [360, 640, 64, 60],
+      [1440, 900, 91.2, 83.2],
     ] as const) {
       const el = createDeck('# T\n\n- One.\n');
       el.setContainerSize(w, h);
       const space = parseFloat(varOf(el, '--wd-space'));
       const got = parseFloat(varOf(el, '--wd-reserve-bottom'));
       expect(got).toBe(reserve);
-      expect(got - 60).toBeCloseTo(space / 2, 5);
-      expect(got).toBeGreaterThanOrEqual(60);
+      expect(got - controlsHeight).toBeCloseTo(space / 2, 5);
+      expect(got).toBeGreaterThanOrEqual(controlsHeight);
     }
   });
 
@@ -927,30 +931,35 @@ describe('reveal auto-scroll (§7.4)', () => {
 
   const LONG_DECK = `<!-- reveal: step -->\n\n# Long\n\n- One\n\n- Two\n\n- Three\n\n- Four\n`;
   // Panel content tops (200px panels): 100 / 320 / 540 / 760.
-  // The reserve is 68px in jsdom (60px fallback + space/2 at
-  // 1440px), so the visible window ends at scrollTop + 532.
+  // The reserve is 91.2px in jsdom (83.2px width-aware fallback
+  // controls height + 8px half-space at 1440px), so the visible
+  // window ends at scrollTop + 508.8.
   const PANEL_TOPS = [100, 320, 540, 760];
 
   it('scrolls just enough to bring a newly revealed panel below the fold into view', () => {
     const el = createDeck(LONG_DECK);
     const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
-    el.next(); // panel 1: bottom 520, inside the window — no scroll
-    expect(scrollTo).not.toHaveBeenCalled();
-    expect(screenEl(el).scrollTop).toBe(0);
-    el.next(); // panel 2: bottom 740 — scrolls so its bottom clears the controls
+    el.next(); // panel 1: bottom 520, 11.2px past the window — nudges just enough
     expect(scrollTo).toHaveBeenCalledTimes(1);
-    expect(scrollTo).toHaveBeenCalledWith({ top: 208, behavior: 'smooth' });
-    expect(screenEl(el).scrollTop).toBe(208);
-    el.next(); // panel 3: bottom 960 — scrolls again, from the new position
+    expect(scrollTo).toHaveBeenCalledWith({ top: 11.2, behavior: 'smooth' });
+    expect(screenEl(el).scrollTop).toBe(11.2);
+    el.next(); // panel 2: bottom 740 — scrolls so its bottom clears the controls
     expect(scrollTo).toHaveBeenCalledTimes(2);
-    expect(scrollTo).toHaveBeenLastCalledWith({ top: 428, behavior: 'smooth' });
-    expect(screenEl(el).scrollTop).toBe(428);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 231.2, behavior: 'smooth' });
+    expect(screenEl(el).scrollTop).toBe(231.2);
+    el.next(); // panel 3: bottom 960 — scrolls again, from the new position
+    expect(scrollTo).toHaveBeenCalledTimes(3);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 451.2, behavior: 'smooth' });
+    expect(screenEl(el).scrollTop).toBe(451.2);
   });
 
   it('does not move the scroll when the newly revealed panel is already fully visible', () => {
     const el = createDeck(LONG_DECK);
-    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
-    el.next(); // panel 1: bottom 520 ≤ 532 — fully visible
+    // Panel 1 sits higher in this variant (top 300, bottom 500),
+    // so it is fully inside the 508.8px window — the standard
+    // tops put its bottom 11.2px past the fold.
+    const { scrollTo } = mockScrollingScreen(el, [100, 300, 540, 760]);
+    el.next(); // panel 1: bottom 500 ≤ 508.8 — fully visible
     expect(scrollTo).not.toHaveBeenCalled();
     expect(screenEl(el).scrollTop).toBe(0);
   });
@@ -966,7 +975,7 @@ describe('reveal auto-scroll (§7.4)', () => {
     screenEl(el).classList.remove('wd-screen--measuring');
     el.next(); // panel 3, measuring over — scrolls normally
     expect(scrollTo).toHaveBeenCalledTimes(1);
-    expect(scrollTo).toHaveBeenCalledWith({ top: 428, behavior: 'smooth' });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 451.2, behavior: 'smooth' });
   });
 
   it('scrolls instantly under prefers-reduced-motion', () => {
@@ -988,7 +997,7 @@ describe('reveal auto-scroll (§7.4)', () => {
     el.next();
     el.next(); // panel 2 below the fold — instant, not smooth
     expect(scrollTo).not.toHaveBeenCalled();
-    expect(screenEl(el).scrollTop).toBe(208);
+    expect(screenEl(el).scrollTop).toBe(231.2);
   });
 
   it('scrolls up to a newly revealed panel above the fold on a sequence screen', () => {
@@ -1005,14 +1014,17 @@ describe('reveal auto-scroll (§7.4)', () => {
 
   it('does not scroll for the first panel of a newly entered screen', () => {
     const el = createDeck(`# One\n\n- Only.\n\n---\n\n<!-- reveal: step -->\n\n# Long\n\n- One\n\n- Two\n\n- Three\n\n- Four\n`);
-    const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
+    // Panel 1 sits higher in this variant (top 300, bottom 500),
+    // so it is fully inside the 508.8px window — the standard
+    // tops put its bottom 11.2px past the fold.
+    const { scrollTo } = mockScrollingScreen(el, [100, 300, 540, 760]);
     el.next(); // enters screen 2 at step 0 — first panel is at the top
     expect(el.state.screenIndex).toBe(1);
     expect(scrollTo).not.toHaveBeenCalled();
-    el.next(); // panel 1: bottom 520 — fully visible
+    el.next(); // panel 1: bottom 500 — fully visible
     expect(scrollTo).not.toHaveBeenCalled();
     el.next(); // panel 2: below the fold — scrolls
-    expect(scrollTo).toHaveBeenCalledWith({ top: 208, behavior: 'smooth' });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 231.2, behavior: 'smooth' });
   });
 });
 

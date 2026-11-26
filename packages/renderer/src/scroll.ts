@@ -56,7 +56,11 @@ export function scrollPanelIntoView(
     target = rect.top;
   }
   if (target === null) return; // already fully visible — do not move at all
-  target = Math.min(Math.max(0, target), maxScroll);
+  // Round to 0.1px (the layout engine's own precision): the reserve
+  // is a float (91.2px at desktop), so the raw target carries
+  // float dust (11.200000000000003 for an 11.2px nudge) — and a
+  // scroll position finer than a tenth of a pixel is meaningless.
+  target = Math.round(Math.min(Math.max(0, target), maxScroll) * 10) / 10;
   if (target === container.scrollTop) return;
   if (prefersReducedMotion()) {
     container.scrollTop = target;

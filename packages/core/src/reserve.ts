@@ -7,7 +7,7 @@
  *
  * The formula lives here and nowhere else. The renderer
  * measures the controls for real when it has layout and
- * falls back to CONTROLS_HEIGHT_FALLBACK_PX before first
+ * falls back to `controlsHeightFallbackPx` before first
  * paint (or in jsdom, where there is no layout to measure);
  * the stylesheet's pre-paint default for --wd-reserve-bottom
  * is the same formula in CSS terms (control size + 2.5×
@@ -25,7 +25,7 @@
  * carries comes from this module — the mechanism and the
  * value are separate, and only the value lives here.
  */
-import { spaceUnitPx } from './layout.js';
+import { clampPx, spaceUnitPx } from './layout.js';
 
 /**
  * Pre-paint fallback controls height (px): the smallest the
@@ -33,11 +33,54 @@ import { spaceUnitPx } from './layout.js';
  * floor, the 44px minimum touch target, C8) plus top and
  * bottom padding of one space unit each (8px at the space
  * floor), i.e. 44 + 2×8 = 60. The previous value, 56, was
- * the pre-C8 smallest height and is stale; the fallback only
- * matters before first paint (or in jsdom), and the measured
- * height replaces it as soon as the element has layout.
+ * the pre-C8 smallest height and is stale. This constant is
+ * the MINIMUM — the width-aware `controlsHeightFallbackPx`
+ * below — and it is kept exported so existing importers keep
+ * working; new callers should use the width-aware function.
  */
 export const CONTROLS_HEIGHT_FALLBACK_PX = 60;
+
+/**
+ * Control-button size (§6.5, `styles.ts` `--wd-control-size`):
+ * `clamp(44px, 3vw + 8px, 56px)` — 44px is the minimum touch
+ * target (C8), ~51px at 1440px, capped at 56px. This is chrome,
+ * not a §8 token, so it is NOT generated from the JSON — it is
+ * a small function sharing the CSS breakpoints, and the
+ * renderer test pins it against the CSS rule itself, so the
+ * two cannot drift apart silently.
+ */
+export function controlSizePx(containerWidth: number): number {
+  return clampPx(44, (3 * containerWidth) / 100 + 8, 56);
+}
+
+/**
+ * Pre-paint fallback controls height at a container width:
+ * the button size plus top and bottom padding of one space
+ * unit each (the space unit comes from the `--wd-space` token
+ * via `spaceUnitPx`). Width-aware (this step): the old flat
+ * 60 was the value at the floor widths only, so above 400px
+ * the TS fallback under-cleared the CSS fallback (control
+ * size + 2.5× space) — 68px against 91.2px at 1440px. Now the
+ * two are the same formula in two languages at every width:
+ * 60px at the floor widths, 83.2px at 1440px, 88px at 1920px.
+ * The measured reserve in a real browser is unchanged — the
+ * measured height replaces this as soon as the element has
+ * layout; this only matters before first paint (or in jsdom).
+ */
+export function controlsHeightFallbackPx(containerWidth: number): number {
+  return controlSizePx(containerWidth) + 2 * spaceUnitPx(containerWidth);
+}
+
+/**
+ * The fallback bottom reserve at a container width (§7.2):
+ * the width-aware fallback controls height plus half-space
+ * clearance — the TS side of the CSS `--wd-reserve-bottom`
+ * fallback. 64px at 360px, 91.2px at 1440px, 96px at 1920px —
+ * exactly the CSS fallback at every width.
+ */
+export function fallbackReservePx(containerWidth: number): number {
+  return bottomReservePx(controlsHeightFallbackPx(containerWidth), containerWidth);
+}
 
 /**
  * Bottom reserve (§7.2): the controls' height plus half the

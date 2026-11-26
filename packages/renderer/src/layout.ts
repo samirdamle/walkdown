@@ -7,7 +7,7 @@
  * only tells it the current facts, state, and theme; the fitted
  * body size lives here, never in the element.
  */
-import { bottomReservePx, computeLayout, CONTROLS_HEIGHT_FALLBACK_PX, FONT_FLOOR_PX } from '@walkdown/core';
+import { bottomReservePx, computeLayout, controlsHeightFallbackPx, FONT_FLOOR_PX } from '@walkdown/core';
 import type { Theme, WalkState } from '@walkdown/core';
 import type { DeckFacts } from './facts.js';
 
@@ -32,7 +32,10 @@ export function measureContainer(
  * Bottom reserve (§7.2): the height the bottom controls
  * occupy, plus a small clearance, so panels never sit
  * underneath them. Measured for real when the element has
- * layout; the fallback covers jsdom / not-yet-painted.
+ * layout; the fallback is the width-aware
+ * `controlsHeightFallbackPx` (control size + 2× space at the
+ * container width — the TS side of the CSS `--wd-reserve-bottom`
+ * fallback), which covers jsdom / not-yet-painted.
  * Auto-hide only changes the controls' opacity, never their
  * height, so the reserve is the same whether they are
  * currently visible or idle-hidden — they can reappear at
@@ -42,7 +45,7 @@ export function measureContainer(
  */
 export function controlsReservePx(controlsEl: HTMLElement, containerWidth: number): number {
   const measured = controlsEl?.offsetHeight ?? 0;
-  return bottomReservePx(measured > 0 ? measured : CONTROLS_HEIGHT_FALLBACK_PX, containerWidth);
+  return bottomReservePx(measured > 0 ? measured : controlsHeightFallbackPx(containerWidth), containerWidth);
 }
 
 export class LayoutController {
