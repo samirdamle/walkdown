@@ -6,6 +6,7 @@ import {
   countFactor,
   estimateScreenHeight,
   fitFontSize,
+  spaceUnitPx,
   titleFactor,
 } from '../src/layout.js';
 
@@ -247,5 +248,30 @@ describe('CSS variables', () => {
     expect(dark.vars['--wd-color-bg']).toBe('#18181C');
     expect(dark.vars['--wd-color-ink']).toBe('#F5F5F0');
     expect(dark.vars['--wd-color-accent']).toBe('#F0D45D');
+  });
+});
+
+describe('space unit (design-policies §3.1, C12)', () => {
+  it('spaceUnitPx is clamp(8px, 1vw + 4px, 16px)', () => {
+    expect(spaceUnitPx(200)).toBe(8); // 2 + 4 floored
+    expect(spaceUnitPx(360)).toBe(8); // 3.6 + 4 floored
+    expect(spaceUnitPx(768)).toBeCloseTo(11.7, 1); // 7.68 + 4
+    expect(spaceUnitPx(1200)).toBe(16); // 12 + 4 capped
+    expect(spaceUnitPx(1440)).toBe(16);
+    expect(spaceUnitPx(1920)).toBe(16);
+  });
+
+  it('computeLayout emits --wd-space equal to spaceUnitPx (no drift)', () => {
+    for (const w of [200, 360, 768, 1200, 1440, 1920]) {
+      expect(layout(w, 900, 3).vars['--wd-space']).toBe(`${spaceUnitPx(w)}px`);
+    }
+  });
+
+  it('half the space unit is the bottom-controls clearance (C12)', () => {
+    // The renderer's reserve is controls height + space/2:
+    // 4px at phone width, 8px at desktop — it scales with
+    // the screen instead of a fixed 8px.
+    expect(spaceUnitPx(360) / 2).toBe(4);
+    expect(spaceUnitPx(1440) / 2).toBe(8);
   });
 });
