@@ -139,6 +139,20 @@ Simple, magical presentation from Markdown
 
 ---
 
+<!-- reveal: step -->
+
+# Make it yours
+
+- Style and motion are both yours to change. The look comes from CSS, the movement from a comment.
+- Inline code gets a highlighted background, so a phrase like `custom styling using CSS` stands out. Your own stylesheet can highlight anything else — and a comment can move a panel, like this:
+```html
+<!-- reveal: effect: zoom-in; duration: 1s -->
+```
+<!-- reveal: effect: zoom-in; duration: 1s -->
+- This panel zooms in slowly, over a full second — because the comment above it says so.
+
+---
+
 # Your first deck
 
 - Write a Markdown file. Split it with three dashes. Put a bullet on each idea.

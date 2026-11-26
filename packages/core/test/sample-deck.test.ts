@@ -13,20 +13,20 @@ describe('examples/walkdown-itself.md', () => {
   const deck = parseDeck(SAMPLE_DECK);
   const screens = flatScreens(deck);
 
-  it('parses to 13 screens in 4 Sections', () => {
-    expect(screens).toHaveLength(13);
+  it('parses to 14 screens in 4 Sections', () => {
+    expect(screens).toHaveLength(14);
     expect(deck.sections.map((s) => s.title)).toEqual(['Intro', 'How it works', 'Walking', 'Customize']);
-    expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 4]);
+    expect(deck.sections.map((s) => s.screens.length)).toEqual([3, 4, 2, 5]);
   });
 
-  it('parses to 47 panels and 47 steps', () => {
+  it('parses to 51 panels and 51 steps', () => {
     const panelCount = screens.reduce((sum, s) => sum + s.panels.length, 0);
-    expect(panelCount).toBe(47);
-    expect(totalSteps(deck)).toBe(47);
+    expect(panelCount).toBe(51);
+    expect(totalSteps(deck)).toBe(51);
   });
 
   it('has the right panel counts per screen', () => {
-    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 5, 3, 3, 4, 3]);
+    expect(screens.map((s) => s.panels.length)).toEqual([1, 3, 3, 6, 3, 2, 8, 3, 5, 3, 3, 4, 4, 3]);
   });
 
   it('has the right screen titles', () => {
@@ -43,6 +43,7 @@ describe('examples/walkdown-itself.md', () => {
       'Defaults, then overrides',
       'Make it look like yours',
       'Make it move',
+      'Make it yours',
       'Your first deck',
     ]);
   });
@@ -115,6 +116,33 @@ describe('examples/walkdown-itself.md', () => {
     // The screen itself keeps the Section override (slide-in, 250ms).
     expect(screen?.reveal.effect).toBe('slide-in');
     expect(screen?.reveal.durationMs).toBe(250);
+  });
+
+  it('the customization screen shows a styling sample and a live animation sample', () => {
+    const screen = screens[12];
+    expect(screen?.title).toBe('Make it yours');
+    expect(screen?.panels).toHaveLength(4);
+    // The screen keeps the Section override (step, slide-in, 250ms).
+    expect(screen?.reveal).toEqual({ mode: 'step', sequence: [0, 1, 2, 3], effect: 'slide-in', durationMs: 250 });
+    const panels = screen?.panels ?? [];
+    // Styling sample: the backticked phrase renders as inline code,
+    // which carries the highlighted background — no deck CSS needed.
+    expect(panels[1]?.blocks[0]?.html).toContain('<code>custom styling using CSS</code>');
+    // Animation sample as code: the comment is fenced, so it is
+    // DISPLAYED as a code panel, not consumed as a marker — the
+    // screen still has exactly 4 panels and its reveal is untouched.
+    const code = panels[2]?.blocks[0];
+    expect(code?.type).toBe('code');
+    expect(code?.markdown).toContain('<!-- reveal: effect: zoom-in; duration: 1s -->');
+    expect(code?.html).toContain('&lt;!-- reveal: effect: zoom-in; duration: 1s --&gt;');
+    // Animation sample live: the same marker, for real, on the last
+    // panel — a slow (1s) zoom-in, noticeably slower than the 500ms
+    // deck default and the 250ms Section override.
+    expect(panels[3]?.effect).toBe('zoom-in');
+    expect(panels[3]?.durationMs).toBe(1000);
+    // The first three panels carry no per-panel marker.
+    expect(panels.slice(0, 3).map((p) => p.effect)).toEqual([undefined, undefined, undefined]);
+    expect(panels.slice(0, 3).every((p) => p.durationMs === undefined)).toBe(true);
   });
 
   it('extracts the trailing CSS block as the deck stylesheet', () => {
