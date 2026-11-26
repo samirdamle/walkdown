@@ -344,7 +344,7 @@ describe('themes and stylesheets', () => {
     const el = createDeck(SAMPLE_DECK);
     expect(varOf(el, '--wd-color-bg')).toBe('#FAFAF7');
     expect(varOf(el, '--wd-color-ink')).toBe('#1B1B18');
-    expect(varOf(el, '--wd-color-accent')).toBe('#B45309');
+    expect(varOf(el, '--wd-color-accent')).toBe('#2E7D6B');
     expect(varOf(el, '--wd-font-family-title')).toContain('Georgia');
   });
 
@@ -372,7 +372,7 @@ describe('themes and stylesheets', () => {
     const el = createDeck('---\ntheme: dark\n---\n\n# Dark deck\n\n- One panel.\n');
     expect(varOf(el, '--wd-color-bg')).toBe('#18181C');
     expect(varOf(el, '--wd-color-ink')).toBe('#F5F5F0');
-    expect(varOf(el, '--wd-color-accent')).toBe('#F0D45D');
+    expect(varOf(el, '--wd-color-accent')).toBe('#7FC8B8');
   });
 
   it('lets the theme attribute override the deck theme', () => {
@@ -733,10 +733,15 @@ describe('navigation menu (§6.6)', () => {
     expect(DEFAULT_CSS).toContain('min-height: clamp(48px, 3vw + 12px, 56px);');
     // The current item keeps its bold, but the old treatment —
     // amber left border, rounded corners, peach background —
-    // is gone; only the ocean-green tint remains.
-    expect(DEFAULT_CSS).toContain('background: color-mix(in srgb, #2E7D6B 20%, var(--wd-color-panel));');
-    expect(DEFAULT_CSS).not.toContain('border-left-color: var(--wd-color-accent);');
-    expect(DEFAULT_CSS).not.toContain('color-mix(in srgb, var(--wd-color-accent) 12%, transparent);');
+    // is gone; only the ocean-green tint remains. The tint now
+    // derives from the accent var: when the whole theme went
+    // ocean green, the accent BECAME the tint's green, so the
+    // hardcoded value is gone and the tint follows the theme.
+    // (The two negative assertions that used to sit here kept
+    // the amber accent out of the tint; they are retired now
+    // the accent IS the ocean green.)
+    expect(DEFAULT_CSS).toContain('background: color-mix(in srgb, var(--wd-color-accent) 20%, var(--wd-color-panel));');
+    expect(DEFAULT_CSS).not.toContain('#2E7D6B');
     // No border or radius in the item rules themselves (a global
     // assertion cannot be used: border-radius appears on other
     // elements, and the item keeps its `border: none` reset).

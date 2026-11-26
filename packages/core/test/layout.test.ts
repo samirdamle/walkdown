@@ -235,7 +235,7 @@ describe('CSS variables', () => {
     expect(light.vars['--wd-cols']).toBe('3');
     expect(light.vars['--wd-color-bg']).toBe('#FAFAF7');
     expect(light.vars['--wd-color-ink']).toBe('#1B1B18');
-    expect(light.vars['--wd-color-accent']).toBe('#B45309');
+    expect(light.vars['--wd-color-accent']).toBe('#2E7D6B');
     expect(light.vars['--wd-font-family-body']).toContain('system-ui');
     expect(light.vars['--wd-font-family-title']).toContain('Georgia');
     expect(light.vars['--wd-content-max-width']).toBe('1200px');
@@ -251,7 +251,7 @@ describe('CSS variables', () => {
     });
     expect(dark.vars['--wd-color-bg']).toBe('#18181C');
     expect(dark.vars['--wd-color-ink']).toBe('#F5F5F0');
-    expect(dark.vars['--wd-color-accent']).toBe('#F0D45D');
+    expect(dark.vars['--wd-color-accent']).toBe('#7FC8B8');
   });
 });
 

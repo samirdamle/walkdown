@@ -449,11 +449,11 @@ export const DEFAULT_CSS = `
 }
 .wd-nav-menu-item--current {
   /* Background highlight only — no left border, no rounded
-     corners. The tint mixes a fixed ocean green with the
-     panel colour, so it reads in both themes: light #D5E5E1
-     (ink 13.3:1 AAA), dark #233332 (ink 12.1:1 AAA).
+     corners. The tint mixes the theme accent with the panel
+     colour, so it follows the theme: light #D5E5E1 (ink
+     13.3:1 AAA), dark #334242 (ink 9.6:1 AAA).
      Font-weight stays bold. */
-  background: color-mix(in srgb, #2E7D6B 20%, var(--wd-color-panel));
+  background: color-mix(in srgb, var(--wd-color-accent) 20%, var(--wd-color-panel));
   font-weight: 700;
 }
 

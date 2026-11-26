@@ -671,12 +671,12 @@
       "contrast": {
         "dark": {
           "against": "--wd-color-bg",
-          "ratio": "12.0:1",
+          "ratio": "9.2:1",
           "wcag": "AAA"
         },
         "light": {
           "against": "--wd-color-bg",
-          "ratio": "4.8:1",
+          "ratio": "4.7:1",
           "wcag": "AA"
         }
       },
@@ -687,18 +687,18 @@
       "max": null,
       "min": null,
       "name": "--wd-color-accent",
-      "notes": "One accent only: amber in light mode, gold in dark mode. It is the single accent colour for both themes.",
+      "notes": "One accent only: ocean green in both themes — #2E7D6B in light mode, #7FC8B8 (a lighter seafoam) in dark mode. It is the single accent colour for both themes.",
       "preferred": null,
       "property": "Accent (one accent only)",
-      "settled_date": "2026-11-25",
-      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25",
+      "settled_date": "2026-11-26",
+      "settled_source": "Samir chose whole-theme ocean green 2026-11-26 (replaces amber/gold adopted 2026-11-25)",
       "status": "settled",
       "units": [
         "hex"
       ],
       "values": {
-        "dark": "#F0D45D",
-        "light": "#B45309"
+        "dark": "#7FC8B8",
+        "light": "#2E7D6B"
       }
     }
   ]
