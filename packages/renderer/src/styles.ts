@@ -13,7 +13,15 @@
  *
  * The host element fills its container; a deck can be embedded
  * in a page, a card, or an iframe and still adapt (§7.2).
+ *
+ * Two values in this stylesheet are generated from
+ * `policies/design-tokens.json` (via `@walkdown/core`) rather
+ * than hard-coded: the nav-menu cap (`--wd-nav-menu-max-height`,
+ * a Proposal token) and the space-unit floor used in the
+ * bottom-reserve fallback (`--wd-space` min). Everything else
+ * here is hand-written chrome.
  */
+import { NAV_MENU_MAX_HEIGHT_CSS, SPACE_MIN_PX } from '@walkdown/core';
 
 export const DEFAULT_CSS = `
 :host {
@@ -44,8 +52,11 @@ export const DEFAULT_CSS = `
      1440px desktop, capped at 56px. */
   --wd-control-size: clamp(44px, 3vw + 8px, 56px);
   /* Nav menu cap (§6.6, token --wd-nav-menu-max-height):
-     half the viewport, at most 420px like the image cap. */
-  --wd-nav-menu-max-height: min(50vh, 420px);
+     half the viewport, at most 420px like the image cap.
+     Generated from the token (a Proposal — see
+     NAV_MENU_MAX_HEIGHT_CSS); do not hard-code a new value
+     here, change the token and re-run npm run tokens. */
+  --wd-nav-menu-max-height: ${NAV_MENU_MAX_HEIGHT_CSS};
   /* Bottom reserve (§7.2): the ONE pre-paint fallback
      definition of --wd-reserve-bottom — the controls'
      height plus half-space clearance (C12), derived from the
@@ -59,8 +70,10 @@ export const DEFAULT_CSS = `
      .wd-deck on every layout pass and overrides it; before
      the first layout pass this default is what clears the
      controls. The TS side of the same formula is
-     bottomReservePx (core reserve.ts). */
-  --wd-reserve-bottom: calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5);
+     bottomReservePx (core reserve.ts), with the width-aware
+     fallback controlsHeightFallbackPx. The space floor
+     below is the generated --wd-space min. */
+  --wd-reserve-bottom: calc(var(--wd-control-size) + var(--wd-space, ${SPACE_MIN_PX}px) * 2.5);
 }
 
 .wd-deck *,
@@ -413,7 +426,7 @@ export const DEFAULT_CSS = `
   transform: translateX(-50%);
   bottom: calc(var(--wd-reserve-bottom) + var(--wd-space, 8px) / 2);
   width: min(84vw, 24em);
-  max-height: var(--wd-nav-menu-max-height, min(50vh, 420px));
+  max-height: var(--wd-nav-menu-max-height, ${NAV_MENU_MAX_HEIGHT_CSS});
   overflow-y: auto;
   background: var(--wd-color-panel);
   border: 1px solid var(--wd-color-border);

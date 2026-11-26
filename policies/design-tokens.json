@@ -9,7 +9,7 @@
   },
   "issue": 13,
   "notes": [
-    "\u00a78 is described as 25 tokens in tracking (issues #9/#11, PRs #10/#12), but its table actually contains 26 rows. This file includes all 26; nothing was dropped to match the count. Samir's call if the count matters.",
+    "\u00a78 is described as 25 tokens in tracking (issues #9/#11, PRs #10/#12), but its table actually contains 27 rows. This file includes all 27; nothing was dropped to match the count. Samir's call if the count matters.",
     "Font-family and colour tokens are SETTLED (Samir adopted Neo's palette recommendation 2026-11-25). System font stacks only \u2014 no webfont download for the default theme. All six text contrast ratios were verified by computation against the stated backgrounds and match exactly. Light muted (#5C5C57) is AA and secondary-text only.",
     "Settled \u00a79 decisions that are not \u00a78 tokens (root font size 16px; fluid layout as the primary mechanism; centre-crop for images in v0.1) are recorded in design-policies.md \u00a79, not as tokens here. If \u00a78 gains tokens for them, this file gains matching entries.",
     "Formulas are written in vw/vh for the full-screen case; the renderer MUST use container query units (cqw/cqh) when the deck is embedded in a page, card or iframe (design-policies \u00a70, spec \u00a77.2). Read vw as 1% of container width and vh as 1% of container height throughout.",

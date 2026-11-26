@@ -1,10 +1,12 @@
 # Walkdown — Structured Policies
 
 This folder is the machine-readable form of the design policies.
-The human-readable source of truth is `docs/design-policies.md`
-(§8 is the token table this file was converted from, §9 is the
-settled decisions). If this file and §8 ever disagree, §8 wins
-until both are updated together in one PR.
+The source of truth for token values is `design-tokens.json`
+in this folder. `docs/design-policies.md` §8 is the
+human-readable form of the same tokens (its table mirrors
+this file, and `tokens.test.ts` proves the two agree). If
+this file and §8 ever disagree, the JSON wins until both
+are updated together in one PR.
 
 ## Files
 
@@ -135,18 +137,57 @@ or clamps; it never blanks the screen.
 
 ## Keeping it in sync
 
-- Change a policy in `docs/design-policies.md` §8 first,
-  then update this file in the same PR. Never edit a value
-  here alone.
-- A check (manual for now, CI later) must prove: the JSON
-  parses; its token names match §8 exactly; min / preferred /
-  max / units / status match §8; settled tokens reproduce
-  their settled values exactly.
-- §8 is described as 25 tokens in tracking, but its table
-  actually has 26 rows. This file contains all 26, plus the
-  9 settled font/colour tokens Samir adopted on 2026-11-25,
-  for 35 tokens total. If the count matters, that is Samir's
-  call — nothing was dropped to match it.
-- Font and colour tokens live here now (settled 2026-11-25).
-  Any future palette change is a token change in this file,
-  in the same PR as its §8 update.
+The JSON is the source of truth for token values — not §8,
+not the code. The flow for any token change is:
+
+1. Change the value in `design-tokens.json` (and only there).
+2. Run `npm run tokens` to regenerate
+   `packages/core/src/tokens.generated.ts`, and commit the
+   regenerated file in the same PR.
+3. Update the human-readable form in the same PR:
+   `docs/design-policies.md` §8 for a §8 token, this README
+   for a palette/font token.
+4. If the change alters a value the code pins, update the
+   snapshot in `packages/core/test/tokens.test.ts` in the
+   same PR — a change there must be deliberate.
+
+Never edit a generated constant by hand, and never edit a
+value in the JSON without regenerating: both fail the checks
+below.
+
+The checks (automated — `tokens.test.ts`, plus
+`npm run tokens:check` for CI):
+
+- The JSON parses; `token_count` equals the number of
+  tokens; token names are unique.
+- The generated file equals a fresh regeneration from the
+  JSON (no drift, no hand edits).
+- The JSON and §8 agree: §8 has 27 rows, every §8 token is
+  in the JSON, and min / max / units / status match (the
+  body preferred is prose in both places and is compared
+  only where it is a formula).
+- Settled tokens reproduce their settled values exactly
+  (the snapshot test pins every generated constant).
+- Proposal tokens stay marked: they appear in
+  `PROPOSAL_TOKENS` and carry a `// PROPOSAL` comment on
+  every constant they produce. Settling a token means
+  changing its status in the JSON and regenerating — the
+  marker disappears with the regeneration.
+
+Counts (corrected 2026-11-26 — the old note said 26 rows /
+35 total, which was stale): §8's table has 27 rows. This
+file contains all 27, plus the 9 font/colour tokens Samir
+adopted on 2026-11-25, for 36 tokens total. Nothing was
+dropped to match any count.
+
+Scope correction (from the 2026-11-26 theme change): §8
+holds no colour values at all — its 27 rows are geometry
+and typography. The palette lives only in this file and in
+the "The palette" section above, so a colour change never
+goes through §8: change the JSON, regenerate, update this
+README in the same PR.
+
+The old rule — "change §8 first, then the JSON" — is
+reversed: the JSON is edited first and §8 follows it. §8
+remains the human-readable form and the checks above still
+prove the two agree; only the direction of the edit changed.

@@ -696,7 +696,10 @@ policies into structured policies that can be implemented in
 code and enforced. Each row is one enforceable policy: a token,
 the property it governs, its min / preferred / max, its units,
 whether it is settled or proposed, and how it would be enforced.
-The conversion step should be able to take this table almost
+The machine-readable form is `policies/design-tokens.json`;
+this table is its human-readable form — the JSON is the source
+of truth, and `tokens.test.ts` proves the two agree. The
+conversion step should be able to take this table almost
 as-is — a row that cannot be turned into a check is a row that
 needs rewriting, not a row to skip.
 

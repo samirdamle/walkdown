@@ -29,38 +29,68 @@
 import {
   COLS_MAX,
   CONTENT_MAX_WIDTH_PX,
+  FONT_BODY_MAX_PX,
+  FONT_CODE_MAX_PX,
+  FONT_CODE_MIN_PX,
+  FONT_CODE_PX,
+  FONT_CODE_VW,
   FONT_FLOOR_PX,
+  FONT_SMALL_PX,
+  FONT_TITLE_MAX_PX,
+  FONT_TITLE_MIN_PX,
+  FONT_TITLE_PX,
+  FONT_TITLE_VW,
+  GAP_PANEL_MAX_PX,
+  GAP_PANEL_MIN_PX,
+  GAP_PANEL_PX,
+  GAP_PANEL_VW,
+  GAP_TITLE_MAX_PX,
+  GAP_TITLE_MIN_PX,
+  GAP_TITLE_PX,
+  GAP_TITLE_VW,
   HERO_MAX_HEIGHT_PX,
   HERO_MAX_WIDTH_PX,
   HERO_MIN_HEIGHT_PX,
   HERO_MIN_HEIGHT_VH,
   IMAGE_MAX_HEIGHT_PX,
   IMAGE_MAX_HEIGHT_VH,
+  LINE_HEIGHT_BODY,
+  LINE_HEIGHT_TITLE,
+  PAD_PANEL_MAX_PX,
+  PAD_PANEL_MIN_PX,
+  PAD_PANEL_PX,
+  PAD_PANEL_VW,
   PANEL_MIN_WIDTH_PX,
   RADIUS_MAX_PX,
   RADIUS_MIN_PX,
+  RADIUS_PX,
+  RADIUS_VW,
+  SPACE_MAX_PX,
+  SPACE_MIN_PX,
+  SPACE_PX,
+  SPACE_SCREEN_X_MAX_PX,
+  SPACE_SCREEN_X_MIN_PX,
+  SPACE_SCREEN_X_PX,
+  SPACE_SCREEN_X_VW,
+  SPACE_SCREEN_Y_MAX_PX,
+  SPACE_SCREEN_Y_MIN_PX,
+  SPACE_SCREEN_Y_PX,
+  SPACE_SCREEN_Y_VH,
+  SPACE_VW,
   themeVars,
 } from './tokens.js';
 import { zoomFactor } from './model.js';
 import type { LayoutInput, LayoutResult } from './types.js';
 
+/** Re-exported so the public import path is unchanged (the constant now lives in tokens.generated.ts, from `--wd-font-body` max, Proposal). */
+export { FONT_BODY_MAX_PX };
+
 export function clampPx(min: number, preferred: number, max: number): number {
   return Math.min(max, Math.max(min, preferred));
 }
 
-/**
- * Content-fit body ceiling (Proposal, design-policies §2.2/§8):
- * the largest body size the fit may choose. Raised from 20px —
- * 20px is not "huge" for a single short bullet, and the fit
- * needs headroom to grow sparse screens. The ceiling is a
- * proposal, not a settled value.
- */
-export const FONT_BODY_MAX_PX = 32;
-
 /** Average glyph width, in em — the estimation constant (§7.4). */
 const AVG_CHAR_WIDTH_EM = 0.5;
-/** Body line-height used by the estimation (design-policies §2.3). */
-const LINE_HEIGHT_BODY = 1.55;
 
 export interface ScreenHeightEstimate {
   fontBodyPx: number;
@@ -191,16 +221,15 @@ function px(n: number): string {
 }
 
 /**
- * Base spacing unit (design-policies §3.1, `--wd-space`):
- * `clamp(8px, 1vw + 4px, 16px)` — the unit every other
- * spacing value is a multiple of, including the bottom-controls
- * clearance (half a space unit, C12). The bottom reserve
- * itself lives in `reserve.ts` (`bottomReservePx`), which
- * reads this function — the renderer never computes the
- * clearance directly.
+ * Base spacing unit (`--wd-space`, generated from the token):
+ * the unit every other spacing value is a multiple of,
+ * including the bottom-controls clearance (half a space unit,
+ * C12). The bottom reserve itself lives in `reserve.ts`
+ * (`bottomReservePx`), which reads this function — the renderer
+ * never computes the clearance directly.
  */
 export function spaceUnitPx(containerWidth: number): number {
-  return round1(clampPx(8, containerWidth / 100 + 4, 16));
+  return round1(clampPx(SPACE_MIN_PX, (SPACE_VW * containerWidth) / 100 + SPACE_PX, SPACE_MAX_PX));
 }
 
 export function computeLayout(input: LayoutInput): LayoutResult {
@@ -224,24 +253,24 @@ export function computeLayout(input: LayoutInput): LayoutResult {
   // can never take text below 14px.
   const reserved = Math.max(0, input.reservedBottomPx ?? 0);
   const applyZoom = (size: number): number => Math.max(FONT_FLOOR_PX, size * zoomFactor(zoom));
-  const titleBasePx = clampPx(24, (3.2 * vw + 10) * tf, 56 * tf);
+  const titleBasePx = clampPx(FONT_TITLE_MIN_PX, (FONT_TITLE_VW * vw + FONT_TITLE_PX) * tf, FONT_TITLE_MAX_PX * tf);
   const fontTitlePx = round1(applyZoom(titleBasePx));
-  const fontCodePx = round1(applyZoom(clampPx(14, 1.1 * vw + 6, 18)));
+  const fontCodePx = round1(applyZoom(clampPx(FONT_CODE_MIN_PX, FONT_CODE_VW * vw + FONT_CODE_PX, FONT_CODE_MAX_PX)));
   // Small text is a fixed 14px: the floor raise makes its min
   // and max coincide, so the old `0.85vw + 7px` preferred term
   // can never apply — it is gone, not clamped. Zoom still
   // multiplies it (and the floor still bounds it below).
-  const fontSmallPx = round1(applyZoom(14));
+  const fontSmallPx = round1(applyZoom(FONT_SMALL_PX));
 
   const columns = columnCount(width, panelCount);
 
-  const gapPanelPx = round1(clampPx(12, 2 * vw + 4, 28));
-  const padPanelPx = round1(clampPx(16, 2 * vw + 8, 32));
+  const gapPanelPx = round1(clampPx(GAP_PANEL_MIN_PX, GAP_PANEL_VW * vw + GAP_PANEL_PX, GAP_PANEL_MAX_PX));
+  const padPanelPx = round1(clampPx(PAD_PANEL_MIN_PX, PAD_PANEL_VW * vw + PAD_PANEL_PX, PAD_PANEL_MAX_PX));
   const spacePx = spaceUnitPx(width);
-  const gapTitlePx = round1(clampPx(16, 2.5 * vw + 6, 36));
-  const radiusPx = round1(clampPx(RADIUS_MIN_PX, 0.8 * vw + 4, RADIUS_MAX_PX));
-  const screenPadXPx = round1(clampPx(16, 4 * vw + 4, 48));
-  const screenPadYPx = round1(clampPx(16, 3 * vh + 8, 48));
+  const gapTitlePx = round1(clampPx(GAP_TITLE_MIN_PX, GAP_TITLE_VW * vw + GAP_TITLE_PX, GAP_TITLE_MAX_PX));
+  const radiusPx = round1(clampPx(RADIUS_MIN_PX, RADIUS_VW * vw + RADIUS_PX, RADIUS_MAX_PX));
+  const screenPadXPx = round1(clampPx(SPACE_SCREEN_X_MIN_PX, SPACE_SCREEN_X_VW * vw + SPACE_SCREEN_X_PX, SPACE_SCREEN_X_MAX_PX));
+  const screenPadYPx = round1(clampPx(SPACE_SCREEN_Y_MIN_PX, SPACE_SCREEN_Y_VH * vh + SPACE_SCREEN_Y_PX, SPACE_SCREEN_Y_MAX_PX));
 
   const contentWidth = Math.min(width - 2 * screenPadXPx, CONTENT_MAX_WIDTH_PX);
   const columnWidth = Math.max(1, (contentWidth - (columns - 1) * gapPanelPx) / columns);
@@ -275,7 +304,7 @@ export function computeLayout(input: LayoutInput): LayoutResult {
     '--wd-font-small': px(fontSmallPx),
     '--wd-font-floor': px(FONT_FLOOR_PX),
     '--wd-line-height-body': String(LINE_HEIGHT_BODY),
-    '--wd-line-height-title': '1.1',
+    '--wd-line-height-title': String(LINE_HEIGHT_TITLE),
     '--wd-space': px(spacePx),
     '--wd-space-screen-x': px(screenPadXPx),
     '--wd-space-screen-y': px(screenPadYPx),
