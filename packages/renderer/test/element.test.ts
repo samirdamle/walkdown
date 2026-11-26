@@ -278,7 +278,10 @@ describe('Start over button and zoom-in effect', () => {
   });
 
   it('the end note sits at the measured bottom reserve, not a fixed height', () => {
-    expect(DEFAULT_CSS).toContain('bottom: var(--wd-reserve-bottom,');
+    // The fallback is defined once on .wd-deck now (see the
+    // single-definition test in the #38 block below); the note
+    // only reads the var.
+    expect(DEFAULT_CSS).toContain('bottom: var(--wd-reserve-bottom);');
   });
 
   it('a panel with a zoom-in marker enters with the zoom-in animation', () => {
@@ -512,10 +515,12 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
   it('the fit reserves the bottom controls: a screen that fits the full viewport fits smaller with the reserve', () => {
     // ~950 characters in one panel fits the 900px viewport at
     // the 32px ceiling without the reserve — but not once the
-    // controls' height + clearance (64px in jsdom, where the
-    // controls have no layout to measure) is reserved.
+    // controls' height + clearance is reserved (68px in jsdom,
+    // where the controls have no layout to measure: the 60px
+    // fallback height + 8px half-space at the 1440px fallback
+    // width).
     const el = createDeck(`# One\n\n- ${'word '.repeat(190)}\n`);
-    expect(varOf(el, '--wd-reserve-bottom')).toBe('64px');
+    expect(varOf(el, '--wd-reserve-bottom')).toBe('68px');
     const size = parseFloat(varOf(el, '--wd-font-body'));
     expect(size).toBeLessThan(32);
     expect(size).toBeGreaterThan(12);
@@ -530,7 +535,7 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
     // end padding toward a flex container's scrollable
     // overflow, so padding let the last panel sit under the
     // controls at max scroll).
-    expect(css).toContain('height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));');
+    expect(css).toContain('height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom));');
     expect(css).not.toContain('var(--wd-reserve-bottom, 64px)');
     expect(css).toContain('.wd-screen--measuring .wd-panel[hidden]');
     expect(css).toContain('display: block; visibility: hidden;');
@@ -606,9 +611,10 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
   it('end note clears the controls band; the button keeps token-based padding (C10, C11)', () => {
     const el = createDeck('# T\n\n- One.\n');
     const css = cssOf(el);
-    // The note sits at the measured bottom reserve; the fallback
-    // is the same height computed from tokens (button + 2.5× space).
-    expect(css).toContain('bottom: var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5));');
+    // The note sits at the bottom reserve; the fallback is the
+    // single definition on .wd-deck (control size + 2.5× space),
+    // and the note only reads the var.
+    expect(css).toContain('bottom: var(--wd-reserve-bottom);');
     expect(varOf(el, '--wd-reserve-bottom')).not.toBe('');
     expect(css).not.toContain('bottom: 56px;');
     // The note itself is unstyled positioning only — no pill
@@ -622,22 +628,22 @@ describe('viewport-relative chrome (audit C1–C12)', () => {
 
   it('bottom-controls clearance is half the space unit (C12)', () => {
     // jsdom has no layout, so the controls measure 0 and the
-    // reserve is the 56px fallback + clearance: 4px at phone
+    // reserve is the 60px fallback + clearance: 4px at phone
     // width (space 8px), 8px at desktop (space 16px). The
     // clearance is space/2 at both widths — it scales with
     // the screen instead of a fixed 8px — and the reserve
-    // still reaches the smallest real controls height (60px)
-    // at phone width and past it at desktop.
+    // clears the smallest real controls height (60px) at
+    // phone width and past it at desktop.
     for (const [w, h, reserve] of [
-      [360, 640, 60],
-      [1440, 900, 64],
+      [360, 640, 64],
+      [1440, 900, 68],
     ] as const) {
       const el = createDeck('# T\n\n- One.\n');
       el.setContainerSize(w, h);
       const space = parseFloat(varOf(el, '--wd-space'));
       const got = parseFloat(varOf(el, '--wd-reserve-bottom'));
       expect(got).toBe(reserve);
-      expect(got - 56).toBeCloseTo(space / 2, 5);
+      expect(got - 60).toBeCloseTo(space / 2, 5);
       expect(got).toBeGreaterThanOrEqual(60);
     }
   });
@@ -831,7 +837,7 @@ describe('navigation menu (§6.6)', () => {
     expect(DEFAULT_CSS).toContain('max-height: var(--wd-nav-menu-max-height, min(50vh, 420px))');
     expect(DEFAULT_CSS).toContain('overflow-y: auto');
     expect(DEFAULT_CSS).toContain(
-      'bottom: calc(var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)) + var(--wd-space, 8px) / 2)',
+      'bottom: calc(var(--wd-reserve-bottom) + var(--wd-space, 8px) / 2)',
     );
   });
 
@@ -905,8 +911,8 @@ describe('reveal auto-scroll (§7.4)', () => {
 
   const LONG_DECK = `<!-- reveal: step -->\n\n# Long\n\n- One\n\n- Two\n\n- Three\n\n- Four\n`;
   // Panel content tops (200px panels): 100 / 320 / 540 / 760.
-  // The reserve is 64px in jsdom (56px fallback + space/2 at
-  // 1440px), so the visible window ends at scrollTop + 536.
+  // The reserve is 68px in jsdom (60px fallback + space/2 at
+  // 1440px), so the visible window ends at scrollTop + 532.
   const PANEL_TOPS = [100, 320, 540, 760];
 
   it('scrolls just enough to bring a newly revealed panel below the fold into view', () => {
@@ -917,18 +923,18 @@ describe('reveal auto-scroll (§7.4)', () => {
     expect(screenEl(el).scrollTop).toBe(0);
     el.next(); // panel 2: bottom 740 — scrolls so its bottom clears the controls
     expect(scrollTo).toHaveBeenCalledTimes(1);
-    expect(scrollTo).toHaveBeenCalledWith({ top: 204, behavior: 'smooth' });
-    expect(screenEl(el).scrollTop).toBe(204);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 208, behavior: 'smooth' });
+    expect(screenEl(el).scrollTop).toBe(208);
     el.next(); // panel 3: bottom 960 — scrolls again, from the new position
     expect(scrollTo).toHaveBeenCalledTimes(2);
-    expect(scrollTo).toHaveBeenLastCalledWith({ top: 424, behavior: 'smooth' });
-    expect(screenEl(el).scrollTop).toBe(424);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 428, behavior: 'smooth' });
+    expect(screenEl(el).scrollTop).toBe(428);
   });
 
   it('does not move the scroll when the newly revealed panel is already fully visible', () => {
     const el = createDeck(LONG_DECK);
     const { scrollTo } = mockScrollingScreen(el, PANEL_TOPS);
-    el.next(); // panel 1: bottom 520 ≤ 536 — fully visible
+    el.next(); // panel 1: bottom 520 ≤ 532 — fully visible
     expect(scrollTo).not.toHaveBeenCalled();
     expect(screenEl(el).scrollTop).toBe(0);
   });
@@ -944,7 +950,7 @@ describe('reveal auto-scroll (§7.4)', () => {
     screenEl(el).classList.remove('wd-screen--measuring');
     el.next(); // panel 3, measuring over — scrolls normally
     expect(scrollTo).toHaveBeenCalledTimes(1);
-    expect(scrollTo).toHaveBeenCalledWith({ top: 424, behavior: 'smooth' });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 428, behavior: 'smooth' });
   });
 
   it('scrolls instantly under prefers-reduced-motion', () => {
@@ -966,7 +972,7 @@ describe('reveal auto-scroll (§7.4)', () => {
     el.next();
     el.next(); // panel 2 below the fold — instant, not smooth
     expect(scrollTo).not.toHaveBeenCalled();
-    expect(screenEl(el).scrollTop).toBe(204);
+    expect(screenEl(el).scrollTop).toBe(208);
   });
 
   it('scrolls up to a newly revealed panel above the fold on a sequence screen', () => {
@@ -990,7 +996,7 @@ describe('reveal auto-scroll (§7.4)', () => {
     el.next(); // panel 1: bottom 520 — fully visible
     expect(scrollTo).not.toHaveBeenCalled();
     el.next(); // panel 2: below the fold — scrolls
-    expect(scrollTo).toHaveBeenCalledWith({ top: 204, behavior: 'smooth' });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 208, behavior: 'smooth' });
   });
 });
 
@@ -1031,9 +1037,26 @@ describe('bottom clearance is scrollable (issue #38)', () => {
     expect(rule).toContain("content: '';");
     expect(rule).toContain('flex: 0 0 auto;');
     expect(rule).toContain(
-      'height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));',
+      'height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom));',
     );
     expect(rule).not.toContain('var(--wd-reserve-bottom, 64px)');
+  });
+
+  it('the reserve fallback is defined once, on .wd-deck — the spacer, menu and end note only read the var', () => {
+    const css = cssOf(createDeck('# T\n\n- One.\n'));
+    const fallback = 'calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)';
+    // Exactly one fallback calc in the whole default stylesheet…
+    expect(css.split(fallback).length - 1).toBe(1);
+    // …and it is the default value of --wd-reserve-bottom on .wd-deck…
+    expect(ruleOf(css, '.wd-deck')).toContain(`--wd-reserve-bottom: ${fallback};`);
+    // …while the three consumers read the var with no fallback of their own.
+    expect(ruleOf(css, '.wd-screen::after')).toContain(
+      'height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom));',
+    );
+    expect(ruleOf(css, '.wd-nav-menu')).toContain(
+      'bottom: calc(var(--wd-reserve-bottom) + var(--wd-space, 8px) / 2);',
+    );
+    expect(ruleOf(css, '.wd-end-note')).toContain('bottom: var(--wd-reserve-bottom);');
   });
 
   it('the spacer clearance beats the controls height at phone and desktop widths', () => {

@@ -30,6 +30,7 @@ export {
   estimateScreenHeight,
   FONT_BODY_MAX_PX,
 } from './layout.js';
+export { bottomReservePx, CONTROLS_HEIGHT_FALLBACK_PX } from './reserve.js';
 export { renderInline, renderBlocks, plainText } from './markdown.js';
 export { themeVars, COLORS, FONT_FLOOR_PX, ZOOM_STEP, ZOOM_MIN_STEPS, ZOOM_MAX_STEPS } from './tokens.js';
 export type {

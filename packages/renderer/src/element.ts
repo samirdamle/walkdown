@@ -36,8 +36,10 @@
  */
 
 import {
+  bottomReservePx,
   clampState,
   computeLayout,
+  CONTROLS_HEIGHT_FALLBACK_PX,
   endState,
   flatScreens,
   FONT_FLOOR_PX,
@@ -47,7 +49,6 @@ import {
   nextState,
   parseDeck,
   prevState,
-  spaceUnitPx,
   startState,
   stateFromHash,
   stepsForScreen,
@@ -66,21 +67,6 @@ import { DEFAULT_CSS } from './styles.js';
 const TAP_MAX_MOVE_PX = 8;
 const IDLE_HIDE_MS = 2500;
 const SCROLL_STEP_FRACTION = 0.4;
-/**
- * Bottom-controls reserve (§7.2): the controls are
- * `--wd-control-size` buttons (44–56px) with `--wd-space`
- * padding top and bottom, so their height is button + 2×
- * space (60–88px). When the element has no layout yet
- * (jsdom, or not yet painted) the height measures 0 — fall
- * back to 56px. (That is the pre-C8 smallest height; the true
- * minimum is 60px now that buttons are 44px — the fallback
- * only matters before first paint, and is left as is.) The
- * clearance keeps the lowest panel a small margin clear of
- * the controls even when the fit is exact — half the space
- * unit (C12), so it scales with the screen: 4px at phone
- * width, 8px at desktop.
- */
-const CONTROLS_HEIGHT_FALLBACK_PX = 56;
 
 /** A tap that starts a scroll/drag, or on an interactive element, is not navigation (§6.3). */
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -441,12 +427,14 @@ export class WalkdownDeckElement extends HTMLElement {
    */
   private _controlsReservePx(containerWidth: number): number {
     const measured = this.controlsEl?.offsetHeight ?? 0;
-    const height = measured > 0 ? measured : CONTROLS_HEIGHT_FALLBACK_PX;
-    // Clearance (C12): half the space unit, computed from the
-    // container width with the same formula as `--wd-space` —
-    // the reserve is an input to computeLayout, so it cannot
-    // be read back from the layout result.
-    return height + spaceUnitPx(containerWidth) / 2;
+    // Measured for real when the element has layout; the
+    // fallback covers jsdom / not-yet-painted. The formula is
+    // the core's bottomReservePx — this method only supplies
+    // the height side of it.
+    return bottomReservePx(
+      measured > 0 ? measured : CONTROLS_HEIGHT_FALLBACK_PX,
+      containerWidth,
+    );
   }
 
   /** Re-run the layout engine for the current screen (spec §7.2). Debounced by ResizeObserver's own cadence. */

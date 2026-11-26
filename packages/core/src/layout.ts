@@ -209,11 +209,10 @@ function px(n: number): string {
  * Base spacing unit (design-policies §3.1, `--wd-space`):
  * `clamp(8px, 1vw + 4px, 16px)` — the unit every other
  * spacing value is a multiple of, including the bottom-controls
- * clearance (half a space unit, C12). Exported so the renderer
- * can compute the clearance from the container width: the
- * reserve is an input to computeLayout, not one of its
- * outputs, so the element cannot read `--wd-space` back from
- * the result — it computes the same value from the width.
+ * clearance (half a space unit, C12). The bottom reserve
+ * itself lives in `reserve.ts` (`bottomReservePx`), which
+ * reads this function — the renderer never computes the
+ * clearance directly.
  */
 export function spaceUnitPx(containerWidth: number): number {
   return round1(clampPx(8, containerWidth / 100 + 4, 16));
