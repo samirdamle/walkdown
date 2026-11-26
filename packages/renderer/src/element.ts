@@ -495,9 +495,12 @@ export class WalkdownDeckElement extends HTMLElement {
    * `wd-screen--measuring` class makes them take layout space
    * while staying invisible). The class is added and removed
    * in this same task, before any paint, so nothing flickers.
-   * The screen's bottom padding already includes the controls
-   * reserve (`--wd-reserve-bottom`), so the overflow check
-   * measures against the height available above the controls.
+   * The screen's bottom clearance is a trailing in-flow spacer
+   * carrying the controls reserve (`--wd-reserve-bottom`), so
+   * the overflow check measures against the height available
+   * above the controls. (It used to be bottom padding on the
+   * screen — Safari does not count that toward a flex
+   * container's scrollable overflow, issue #38.)
    * Skipped when there is no layout yet (jsdom, or not yet
    * painted: clientHeight is 0 and there is nothing to measure).
    */

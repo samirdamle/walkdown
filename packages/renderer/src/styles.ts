@@ -61,22 +61,39 @@ export const DEFAULT_CSS = `
   overflow-x: hidden;
   /* Vertical gestures scroll natively; horizontal ones reach JS (§6.4). */
   touch-action: pan-y;
-  padding: var(--wd-space-screen-y) var(--wd-space-screen-x);
-  /* Bottom padding clears the bottom controls (§7.2): the
-     controls overlay the bottom of the screen, so the last
-     panel must be able to scroll up clear of them. The reserve
-     is the controls' height + clearance, measured by the
-     renderer (--wd-reserve-bottom); the fallback derives it
-     from the tokens instead of hardcoding 64px — control size
-     + top/bottom padding (2× space) + half-space clearance
-     (C12), i.e. the same height the end note uses below. At
-     minimum (44px buttons, 8px space) it is 64px, as before;
-     --wd-space falls back to 8px before layout runs. */
-  padding-bottom: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));
+  /* No bottom padding: the bottom clearance lives in the
+     ::after spacer below, not in padding. */
+  padding: var(--wd-space-screen-y) var(--wd-space-screen-x) 0;
   display: flex;
   flex-direction: column;
   scrollbar-width: thin;
   scrollbar-color: var(--wd-color-border) transparent;
+}
+
+/* Bottom clearance (§7.2, issue #38): a trailing in-flow
+   spacer, NOT bottom padding on the screen. The controls
+   overlay the bottom of the screen, so the last panel must be
+   able to scroll up clear of them — and padding on a flex
+   scroll container is not scrollable in Safari/WebKit (WebKit
+   bug 318111: padding-end on a flexbox container does not add
+   to its scrollable overflow), so the old padding-bottom let
+   the last panel scroll only as far as the container's bottom
+   edge — underneath the controls. A trailing flex item IS
+   part of the scrollable overflow in every browser, so the
+   last panel can always scroll clear. Same height as the old
+   padding: the screen's vertical padding plus the reserve —
+   the controls' height + clearance, measured by the renderer
+   (--wd-reserve-bottom); the fallback derives it from the
+   tokens instead of hardcoding 64px — control size +
+   top/bottom padding (2× space) + half-space clearance
+   (C12), i.e. the same height the end note uses. At minimum
+   (44px buttons, 8px space) it is 64px, as before;
+   --wd-space falls back to 8px before layout runs. */
+.wd-screen::after {
+  content: '';
+  display: block;
+  flex: 0 0 auto;
+  height: calc(var(--wd-space-screen-y) + var(--wd-reserve-bottom, calc(var(--wd-control-size) + var(--wd-space, 8px) * 2.5)));
 }
 
 .wd-title {
