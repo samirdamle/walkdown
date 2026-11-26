@@ -587,6 +587,17 @@ export class WalkdownDeckElement extends HTMLElement {
 
   // --- Input ------------------------------------------------------------
 
+  /**
+   * Whether the real target of a key event is a native interactive
+   * element. `e.target` is retargeted to the host inside shadow DOM, so
+   * the real target is resolved from `e.composedPath()[0]` (§6.1,
+   * issue #73). Space must activate a focused control, not walk the deck.
+   */
+  private _isInteractiveTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) return false;
+    return target.closest('button, a[href], input, select, textarea, [contenteditable]') !== null;
+  }
+
   private _onKeyDown = (e: KeyboardEvent): void => {
     switch (e.key) {
       case 'ArrowRight':
@@ -606,6 +617,16 @@ export class WalkdownDeckElement extends HTMLElement {
         this.screenEl.scrollBy({ top: -this.screenEl.clientHeight * SCROLL_STEP_FRACTION });
         break;
       case ' ':
+        // Space activates a focused control (§6.1, issue #73): it only
+        // walks the deck when the target is the screen region or the
+        // host itself. `preventDefault()` on Space keydown would suppress
+        // the control's native keyup activation, so an interactive target
+        // is left alone — no preventDefault, no next().
+        if (!this._isInteractiveTarget(e.composedPath()[0] ?? null)) {
+          e.preventDefault();
+          this.next();
+        }
+        break;
       case 'PageDown':
         e.preventDefault();
         this.next();

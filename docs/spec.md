@@ -531,7 +531,8 @@ Scroll and advance are separate inputs by design (settled, brief
 | Vertical swipe / drag | Scroll within the current screen |
 | `ArrowRight` | Advance one step (Next) |
 | `ArrowLeft` | Retreat one step (Previous) |
-| `Space` / `PageDown` | Advance one step (Next) |
+| `Space` | Advance one step (Next) — only when focus is on the screen region or the deck itself; when focus is on a control (button, link, menu item, …) Space activates that control instead (issue #73) |
+| `PageDown` | Advance one step (Next) |
 | `PageUp` | Retreat one step (Previous) |
 | Click / tap, right half | Advance one step (Next) |
 | Click / tap, left half | Retreat one step (Previous) |

@@ -1195,3 +1195,110 @@ describe('bottom clearance is scrollable (issue #38)', () => {
     }
   });
 });
+
+describe('Space activates the focused control (§6.1, issue #73)', () => {
+  /** Dispatch a Space keydown on a shadow-DOM target, crossing the shadow boundary like a real keypress. */
+  function spaceOn(target: Element): KeyboardEvent {
+    const ev = new window.KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true, composed: true });
+    target.dispatchEvent(ev);
+    return ev;
+  }
+  function prevBtn(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-prev') as HTMLButtonElement;
+  }
+  function indicatorBtn(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-progress-text') as HTMLButtonElement;
+  }
+  function restartBtn(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-restart') as HTMLButtonElement;
+  }
+  function menuEl(el: WalkdownDeckElement): HTMLElement {
+    return el.shadowRoot?.querySelector('.wd-nav-menu') as HTMLElement;
+  }
+  function menuItems(el: WalkdownDeckElement): HTMLButtonElement[] {
+    return [...(el.shadowRoot?.querySelectorAll('.wd-nav-menu-item') as NodeListOf<HTMLButtonElement>)];
+  }
+
+  // jsdom does not implement native Space→click activation on buttons,
+  // so each control case pins the two halves the handler owns: the
+  // keydown is NOT prevented (which is what lets the browser activate
+  // the control on keyup) and the deck does NOT navigate; a click on
+  // the control then proves the activation path itself works.
+
+  it('Space on Prev does not go Next; clicking Prev goes back', () => {
+    const el = createDeck(SAMPLE_DECK);
+    key(el, 'ArrowRight'); // screen 1, where Prev is enabled
+    expect(el.state.screenIndex).toBe(1);
+    const btn = prevBtn(el);
+    btn.focus();
+    const ev = spaceOn(btn);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(el.state.screenIndex).toBe(1);
+    btn.click();
+    expect(el.state.screenIndex).toBe(0);
+  });
+
+  it('Space on the step-count button does not go Next; clicking it opens the menu', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const btn = indicatorBtn(el);
+    btn.focus();
+    const ev = spaceOn(btn);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(menuEl(el).hidden).toBe(true);
+    expect(el.state.screenIndex).toBe(0);
+    btn.click();
+    expect(menuEl(el).hidden).toBe(false);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('Space on Start over does not go Next; clicking it restarts', () => {
+    const el = createDeck(SAMPLE_DECK);
+    key(el, 'End');
+    expect(el.state.screenIndex).toBe(14);
+    const btn = restartBtn(el);
+    btn.focus();
+    const ev = spaceOn(btn);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(el.state.screenIndex).toBe(14);
+    btn.click();
+    expect(el.state).toEqual({ screenIndex: 0, stepIndex: 0, zoom: 0 });
+  });
+
+  it('Space on a menu item does not go Next or close the menu; clicking it navigates', () => {
+    const el = createDeck(SAMPLE_DECK);
+    indicatorBtn(el).click(); // open the menu
+    const item = menuItems(el).find((b) => b.textContent === 'Walking');
+    expect(item).toBeDefined();
+    item!.focus();
+    const ev = spaceOn(item!);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(menuEl(el).hidden).toBe(false);
+    expect(el.state.screenIndex).toBe(0);
+    item!.click();
+    expect(menuEl(el).hidden).toBe(true);
+    expect(el.screens[el.state.screenIndex].title).toBe('Next and Previous');
+  });
+
+  it('Space on a panel link does not go Next', () => {
+    const el = createDeck('# Links\n\n- [Walkdown](https://example.com)\n');
+    const link = screenEl(el).querySelector('a');
+    expect(link).not.toBeNull();
+    link!.focus();
+    const ev = spaceOn(link!);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(el.state.screenIndex).toBe(0);
+    expect(el.state.stepIndex).toBe(0);
+  });
+
+  it('Space on the screen region and on the host still goes Next', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const screen = screenEl(el);
+    screen.focus();
+    const ev1 = spaceOn(screen);
+    expect(ev1.defaultPrevented).toBe(true);
+    expect(el.state.screenIndex).toBe(1);
+    key(el, ' '); // host itself — screen 1 has 3 steps, so Next advances the step, not the screen
+    expect(el.state.screenIndex).toBe(1);
+    expect(el.state.stepIndex).toBe(1);
+  });
+});
