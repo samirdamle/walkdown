@@ -76,7 +76,7 @@ Simple, magical presentation from Markdown
 
 - A screen has a height, and sometimes the content is taller than it. Walkdown does not shrink the words until they are unreadable, and it does not cut anything off.
 - Instead, the screen scrolls inside itself. The deck stays put. You scroll the screen, and you keep walking.
-- Type never goes below 12 pixels on a phone. If the words will not fit at a readable size, the screen scrolls sooner.
+- Type never goes below 14 pixels on a phone. If the words will not fit at a readable size, the screen scrolls sooner.
 - Scroll with the wheel, or with the up and down arrows. A swipe up and down scrolls too.
 - A long screen is not a failure. It is a screen with more to say, and the reader gets to it by scrolling.
 - This screen is deliberately long. Keep scrolling, and you will reach the end of it.

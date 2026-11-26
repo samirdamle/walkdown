@@ -92,6 +92,10 @@ describe('examples/walkdown-itself.md', () => {
   it('the long screen is 8 panels — it scrolls internally, it is not split', () => {
     expect(screens[6]?.panels).toHaveLength(8);
     expect(screens[6]?.title).toBe('When a screen is too tall');
+    // The type floor is 14px since PR #58 (was 12px) — the deck
+    // copy says so too (issue #64).
+    expect(screens[6]?.panels[2]?.text).toContain('Type never goes below 14 pixels');
+    expect(screens[6]?.panels[2]?.text).not.toContain('12 pixels');
   });
 
   it('the last Section overrides to slide-in at 250ms with the dark class', () => {
