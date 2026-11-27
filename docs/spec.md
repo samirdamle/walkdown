@@ -1128,6 +1128,12 @@ In load / application order, most deck-specific last:
   `<meta name="color-scheme" content="light dark">` so its
   canvas and root scrollbars are themed before the deck loads.
 
+- The host element honours the `hidden` attribute: the renderer
+  defaults include `:host([hidden]) { display: none; }`, because
+  the `:host` rule sets `display: block`, which would otherwise
+  override the attribute and leave a hidden deck visible,
+  focusable and in the accessibility tree (issue #87).
+
 Classes are hooks, not a layer: a `class:` or `panel-class:`
 (§11.3) names classes that the stylesheets above define.
 An element carrying a class no stylesheet defines renders
