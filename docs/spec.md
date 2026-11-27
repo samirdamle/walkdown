@@ -1128,6 +1128,14 @@ error.
   navigation (§6) and is an author error the renderer
   SHOULD guard against where it can, and the spec does not
   bless it anywhere.
+- An `animation` / `animation-name` declaration on a screen
+  or panel selector MUST be dropped by the renderer: it could
+  bind `@keyframes` whose end state hides the panel
+  (`opacity: 0`, `display: none`, zero size) without ever
+  writing a hiding declaration. `@keyframes` blocks
+  themselves pass through — they cannot hide a panel without
+  the binding — and deck CSS MAY still animate anything that
+  is not a screen or a panel.
 - Per-panel classes (a class on one specific card) are
   deferred to v0.2 (§10.5). v0.1 has no syntax for them.
 

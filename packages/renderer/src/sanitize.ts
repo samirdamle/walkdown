@@ -20,6 +20,12 @@
  *   Anything else keeps its hiding declaration: deck CSS may
  *   hide its own decorative elements, it just may not hide a
  *   panel or a screen.
+ * - An `animation` / `animation-name` declaration is dropped on
+ *   the same selectors: it could bind `@keyframes` whose end
+ *   state hides the panel without ever writing a hiding
+ *   declaration. `@keyframes` blocks themselves pass through —
+ *   they cannot hide a panel without the binding — so deck CSS
+ *   may still animate anything that is not a screen or a panel.
  *
  * Everything else passes through untouched. A dropped rule is
  * logged (console.warn) so the author can see what was removed.
@@ -152,6 +158,15 @@ function sanitizeDeclarations(
       warnings.push(`dropped "${prop}: ${value}" in "${selector}" (deck CSS must not hide a screen or panel)`);
       continue;
     }
+    if (guardHiding && /^animation(-name)?$/i.test(prop)) {
+      // The binding is what lets @keyframes hide a panel: a keyframe end
+      // state (opacity: 0, display: none, zero size) applied with
+      // `forwards` hides the panel without any hiding declaration on the
+      // rule itself. The other animation longhands are harmless without
+      // a name, so only the binding is dropped.
+      warnings.push(`dropped "${prop}: ${value}" in "${selector}" (animation on a screen or panel could hide it via @keyframes)`);
+      continue;
+    }
     kept.push(`${prop}: ${value}`);
   }
   return kept.length > 0 ? kept.join('; ') : null;
@@ -182,6 +197,9 @@ export function sanitizeCss(css: string, options: SanitizeOptions = {}): string 
       }
       if (/^@keyframes\b/i.test(head)) {
         // Keyframes are animation only; they cannot hide a panel by themselves.
+        // The binding is what applies them, and `animation` / `animation-name`
+        // are dropped on screen/panel selectors (see sanitizeDeclarations),
+        // so a hiding end-state can never reach a panel or a screen.
         out.push(`${head} { ${body.trim()} }`);
         continue;
       }

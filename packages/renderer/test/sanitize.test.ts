@@ -36,6 +36,51 @@ describe('sanitizeCss', () => {
     expect(sanitizeCss('.wd-panel { height: 0; }').trim()).toBe('');
   });
 
+  it('drops animation on a panel selector so @keyframes cannot hide it', () => {
+    // The F13 bypass: @keyframes x { to { opacity: 0 } } plus
+    // `.wd-panel { animation: x 1s forwards; }` hid the panel
+    // without any hiding declaration. The keyframes block itself
+    // passes through (it cannot hide anything without the binding);
+    // the binding on the panel is dropped, the rest of the rule kept.
+    const out = sanitizeCss('@keyframes x { to { opacity: 0 } } .wd-panel { color: red; animation: x 1s forwards; }');
+    expect(out).toContain('@keyframes x { to { opacity: 0 } }');
+    expect(out).toContain('color: red');
+    expect(out).not.toContain('animation:');
+  });
+
+  it('drops animation-name on a panel selector, keeps the other longhands', () => {
+    // The other longhands are harmless without a name to apply.
+    const out = sanitizeCss('.wd-panel { animation-name: x; animation-duration: 1s; animation-fill-mode: forwards; }');
+    expect(out).not.toContain('animation-name');
+    expect(out).toContain('animation-duration: 1s');
+    expect(out).toContain('animation-fill-mode: forwards');
+  });
+
+  it('drops animation case-insensitively, on screens and on deck classes', () => {
+    expect(sanitizeCss('.wd-screen { ANIMATION: x 1s forwards; }').trim()).toBe('');
+    expect(sanitizeCss('.wd-panel { Animation-Name: x; }').trim()).toBe('');
+    const out = sanitizeCss('.hero { animation: x 1s forwards; }', { deckClasses: ['hero'] });
+    expect(out.trim()).toBe('');
+  });
+
+  it('drops animation on a panel selector inside @media', () => {
+    const out = sanitizeCss('@media (max-width: 600px) { .wd-panel { animation: x 1s forwards; } }');
+    expect(out.trim()).toBe('');
+  });
+
+  it('lets deck CSS animate anything that is not a screen or panel', () => {
+    const out = sanitizeCss('@keyframes spin { to { transform: rotate(360deg) } } .badge { animation: spin 2s infinite; }');
+    expect(out).toContain('@keyframes spin { to { transform: rotate(360deg) } }');
+    expect(out).toContain('animation: spin 2s infinite');
+  });
+
+  it('warns about a dropped animation binding', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    sanitizeCss('.wd-panel { animation: x 1s forwards; }');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('@keyframes'));
+    warn.mockRestore();
+  });
+
   it('lets deck CSS hide its own decorative elements (not a screen or panel)', () => {
     const out = sanitizeCss('.note { display: none; }');
     expect(out).toContain('display: none');
