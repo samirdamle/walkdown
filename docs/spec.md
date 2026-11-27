@@ -621,6 +621,16 @@ Let the current state be `(s, k)` — screen *s*, step *k* — with
 - **Jump to screen *s*:** go to `(s, 0)` if arriving forward,
   `(s, steps(s) − 1)` if arriving backward. A jump shows the
   target with no reveal animation (§5).
+- **Document title:** when the element carries the
+  `document-title` attribute, a screen change MUST update
+  `document.title` to "`<screen title>` — `<deck title>`" (the
+  screen title alone when the deck has no title); when the
+  screen has no title the document title MUST be left alone. A
+  step change within a screen does not change the title: it is
+  per screen. Without the attribute the element MUST NOT touch
+  `document.title` — an embedded deck never hijacks its host
+  page's title (issue #86). The update is guarded so a missing
+  or restricted `document` cannot break navigation.
 
 ### 6.3 Click halves
 

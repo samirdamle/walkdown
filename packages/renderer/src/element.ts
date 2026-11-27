@@ -25,6 +25,12 @@
  * overrides it. There is no automatic `prefers-color-scheme`
  * switching in v0.1 — the deck author chooses, explicitly.
  *
+ * Document title: with the `document-title` attribute the element
+ * owns `document.title` and updates it per screen (§6.2, issue
+ * #86); without it the element never touches the page title, so
+ * an embedded deck cannot hijack its host page's title. The demo
+ * page opts in.
+ *
  * Navigation (spec §6.1): wheel / ArrowUp/Down scroll within the
  * screen; ArrowRight or right-half click/tap = Next; ArrowLeft or
  * left-half click/tap = Previous; Space/PageDown = Next
@@ -96,7 +102,7 @@ function focusablesInPanel(panel: HTMLElement): HTMLElement[] {
 }
 
 export class WalkdownDeckElement extends HTMLElement {
-  static observedAttributes = ['src', 'markdown', 'theme'];
+  static observedAttributes = ['src', 'markdown', 'theme', 'document-title'];
 
   private shadow: ShadowRoot;
   private deckEl!: HTMLDivElement;
@@ -236,6 +242,21 @@ export class WalkdownDeckElement extends HTMLElement {
     return this._themeOverride ?? this._deck?.theme ?? 'light';
   }
 
+  /**
+   * Whether this element owns `document.title` (§6.2, issue #86):
+   * with the `document-title` attribute the tab title follows the
+   * current screen; without it (the default) the element never
+   * touches the page title, so an embedded deck cannot hijack its
+   * host page's title. The demo page opts in.
+   */
+  get documentTitle(): boolean {
+    return this.hasAttribute('document-title');
+  }
+  set documentTitle(value: boolean) {
+    if (value) this.setAttribute('document-title', '');
+    else this.removeAttribute('document-title');
+  }
+
   /** Current walk state (screenIndex, stepIndex, zoom). */
   get state(): WalkState {
     return { ...this._state };
@@ -265,6 +286,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this._applyThemeVars();
     this._applyDeckStyles();
     this._render({ animate: false });
+    this._applyDocumentTitle();
     this._applyLayout();
     this._updateScrollCue();
   }
@@ -323,6 +345,12 @@ export class WalkdownDeckElement extends HTMLElement {
       this._themeOverride = value === 'dark' ? 'dark' : 'light';
       this._applyThemeVars();
       this._applyLayout();
+    }
+    if (name === 'document-title' && value !== null) {
+      // Opting in owns the document title from now on (§6.2, issue
+      // #86): apply the current screen's title at once, so the tab
+      // does not wait for the next navigation.
+      this._applyDocumentTitle();
     }
   }
 
@@ -488,6 +516,9 @@ export class WalkdownDeckElement extends HTMLElement {
       } catch {
         // Non-browser or restricted context: the walk still works.
       }
+      // The tab title follows the screen (§6.2, issue #86) — only
+      // when this element owns it (the `document-title` attribute).
+      this._applyDocumentTitle();
       // Any navigation dismisses the menu (§6.6) — it is a
       // transient overlay, and the walk has moved on.
       if (this._navMenu.isOpen) this._navMenu.close();
@@ -501,6 +532,32 @@ export class WalkdownDeckElement extends HTMLElement {
     // panel can make the screen scrollable.
     if (clamped.screenIndex !== prev.screenIndex) this._applyLayout();
     else this._updateScrollCue();
+  }
+
+  /**
+   * Owns `document.title` when the `document-title` attribute is
+   * present (§6.2, issue #86): the tab title follows the current
+   * screen — "`<screen title>` — `<deck title>`", the screen title
+   * alone when the deck has none — and is left alone when the
+   * screen has no title. A step change within a screen does not
+   * change the title: it is per screen, so a redundant write is
+   * skipped. Guarded like the `replaceState` call: a missing or
+   * restricted `document` must never break navigation. Removing
+   * the attribute stops future updates; it does not restore the
+   * title the element overwrote — that title is the host page's
+   * to manage once it takes ownership back.
+   */
+  private _applyDocumentTitle(): void {
+    if (!this.hasAttribute('document-title') || this._deck === null || this._facts === null) return;
+    const screen = this._facts.screens[this._state.screenIndex];
+    const screenTitle = screen?.title;
+    if (screenTitle === undefined) return;
+    const title = this._deck.title === undefined ? screenTitle : `${screenTitle} — ${this._deck.title}`;
+    try {
+      if (document.title !== title) document.title = title;
+    } catch {
+      // Non-browser or restricted context: the walk still works.
+    }
   }
 
   private _setZoom(zoom: number): void {
