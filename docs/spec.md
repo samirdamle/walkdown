@@ -337,6 +337,13 @@ code, fenced code blocks, links, images, blockquotes, and thematic
 breaks. The choice MUST be recorded in the implementation plan
 when it is made; the spec does not depend on it.
 
+Links are a trust boundary: only `http:`, `https:`, `mailto:`,
+relative, and fragment URLs become live links. Any other scheme
+(`javascript:`, `data:`, `vbscript:`, …) MUST render as plain text
+— the link text stays, the URL is dropped, no `<a>` is emitted
+(issue #83). A third-party deck loaded via `src` MUST NOT be able
+to produce a live `javascript:` link.
+
 ### 3.3 Error tolerance
 
 Walkdown is a reader's tool: a deck with a mistake in it MUST
