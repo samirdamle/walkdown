@@ -1100,6 +1100,16 @@ In load / application order, most deck-specific last:
   (`--wd-font-body`, `--wd-reserve-bottom`, …) are measured per
   pass and still go inline on `.wd-deck` (§7.2).
 
+- The theme layer also tells the browser the active theme: it
+  sets `color-scheme: light` / `color-scheme: dark` on
+  `.wd-deck`, so UA surfaces inside the deck (scrollbars, form
+  controls, canvas) match the theme the deck chose. This is NOT
+  automatic `prefers-color-scheme` switching — the value
+  follows the deck's explicit `theme` (§2.1), never the system
+  preference. The demo page likewise declares
+  `<meta name="color-scheme" content="light dark">` so its
+  canvas and root scrollbars are themed before the deck loads.
+
 Classes are hooks, not a layer: a `class:` or `panel-class:`
 (§11.3) names classes that the stylesheets above define.
 An element carrying a class no stylesheet defines renders

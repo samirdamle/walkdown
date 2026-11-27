@@ -121,6 +121,21 @@ describe('theme vars in a stylesheet layer (issue #75)', () => {
     expect(themeVarsCss('light')).not.toContain(':host');
   });
 
+  it('the theme layer sets color-scheme on .wd-deck per theme (§11.2, issue #85)', () => {
+    // One declaration, driven by the theme: the browser themes
+    // the UA surfaces inside the deck (scrollbars, form
+    // controls, canvas) to match the theme the deck chose. The
+    // value is the theme name itself, not a token — and each
+    // layer carries only its own value, exactly once.
+    expect(themeVarsCss('light')).toContain('.wd-deck {\n  color-scheme: light;\n}');
+    expect(themeVarsCss('dark')).toContain('.wd-deck {\n  color-scheme: dark;\n}');
+    expect(themeVarsCss('light')).not.toContain('color-scheme: dark');
+    expect(themeVarsCss('dark')).not.toContain('color-scheme: light');
+    for (const theme of ['light', 'dark'] as const) {
+      expect(themeVarsCss(theme).split('color-scheme:').length - 1).toBe(1);
+    }
+  });
+
   it('the default stylesheet reads only the private aliases for theme vars', () => {
     expect(DEFAULT_CSS).not.toContain('var(--wd-color-');
     expect(DEFAULT_CSS).not.toContain('var(--wd-font-family-');

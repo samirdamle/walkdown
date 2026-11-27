@@ -73,15 +73,23 @@ import { STACK_DISMISS_DISTANCE, STACK_DISMISS_ROTATE_DEG } from './stack.js';
  * `var()`; do not seed the public property on `:host`"). The
  * renderer replaces this layer's text when the theme changes
  * (element `_applyThemeVars`); it is never re-set on layout
- * passes. No value here is hand-written: every fallback comes
- * from `themeVars()`, so the token-generation drift test still
- * guards them.
+ * passes. No alias fallback here is hand-written: every one
+ * comes from `themeVars()`, so the token-generation drift test
+ * still guards them. The layer's one other declaration,
+ * `color-scheme` on `.wd-deck` (spec §11.2, issue #85), takes
+ * the theme name itself as its value — `light` or `dark` — so
+ * the browser themes the UA surfaces inside the deck
+ * (scrollbars, form controls, canvas) to match the theme the
+ * deck chose. The layer is replaced on a theme change, so the
+ * value tracks the theme; this is NOT automatic
+ * `prefers-color-scheme` switching, which stays a deliberate
+ * v0.1 non-goal.
  */
 export function themeVarsCss(theme: Theme): string {
   const aliases = Object.entries(themeVars(theme))
     .map(([name, value]) => `  --_${name.slice(2)}: var(${name}, ${value});`)
     .join('\n');
-  return `/* Theme defaults for "${theme}" — generated from themeVars(); the renderer replaces this layer on a theme change. */\n.wd-deck, .wd-deck * {\n${aliases}\n}`;
+  return `/* Theme defaults for "${theme}" — generated from themeVars(); the renderer replaces this layer on a theme change. */\n.wd-deck, .wd-deck * {\n${aliases}\n}\n.wd-deck {\n  color-scheme: ${theme};\n}`;
 }
 
 export const DEFAULT_CSS = `
