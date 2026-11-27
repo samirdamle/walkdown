@@ -1269,6 +1269,50 @@ describe('navigation menu (§6.6)', () => {
   });
 });
 
+describe('step-count indicator name (§6.6, issue #82)', () => {
+  function indicator(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-progress-text') as HTMLButtonElement;
+  }
+  function description(el: WalkdownDeckElement): HTMLElement {
+    return el.shadowRoot?.querySelector('#wd-progress-desc') as HTMLElement;
+  }
+
+  it('the accessible name is the visible text, with the context as a description', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const btn = indicator(el);
+    // No aria-label: the name comes from the button's content, so it
+    // is exactly the visible text — a voice-control user saying
+    // "click 1 / 54" matches it (WCAG 2.5.3 Label in Name).
+    expect(btn.hasAttribute('aria-label')).toBe(false);
+    expect(btn.textContent).toBe('1 / 54');
+    // jsdom does not compute accessible names, so the name is pinned
+    // at the mechanism level: no label override + content IS the
+    // visible text. The computed name itself wants a live check
+    // (Voice Control / screen reader on the demo).
+    expect(btn.getAttribute('aria-describedby')).toBe('wd-progress-desc');
+    const desc = description(el);
+    expect(desc.classList.contains('wd-visually-hidden')).toBe(true);
+    expect(desc.textContent).toBe('Step 1 of 54. Activate to jump to a screen.');
+  });
+
+  it('the description follows the step as the deck walks', () => {
+    const el = createDeck(SAMPLE_DECK);
+    key(el, 'ArrowRight');
+    expect(progressText(el)).toBe('2 / 54');
+    expect(description(el).textContent).toBe('Step 2 of 54. Activate to jump to a screen.');
+    el.jumpTo(14);
+    expect(progressText(el)).toBe('52 / 54');
+    expect(description(el).textContent).toBe('Step 52 of 54. Activate to jump to a screen.');
+  });
+
+  it('an empty deck clears the count and the description', () => {
+    const el = createDeck('');
+    expect(progressText(el)).toBe('');
+    expect(description(el).textContent).toBe('');
+    expect(indicator(el).hasAttribute('aria-label')).toBe(false);
+  });
+});
+
 describe('reveal auto-scroll (§7.4)', () => {
   /**
    * jsdom has no layout, so the scroll geometry is mocked:

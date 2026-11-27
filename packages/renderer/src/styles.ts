@@ -600,6 +600,28 @@ export const DEFAULT_CSS = `
 }
 .wd-progress-text[aria-expanded="true"] { border-color: var(--_wd-color-accent); }
 
+/* Visually-hidden utility (accessibility guide, §3; issue #82):
+   hides content visually but keeps it in the accessibility tree
+   — the step-count button's extra context lives here and is
+   referenced by aria-describedby, so the button's accessible
+   name stays exactly its visible text ("26 / 51", WCAG 2.5.3
+   Label in Name). The :focus-within / :active exception is the
+   guide's: it lets focusable content wrapped in this class
+   become visible (a skip link, say). Never display: none or
+   visibility: hidden here — either would drop the text from
+   the accessibility tree and the description with it. */
+.wd-visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
 /* Controls auto-hide on idle on desktop (§6.5); never on touch, where there is no hover to bring them back.
    visibility: hidden — not opacity alone — so the buttons leave
    the tab order while idle: a keyboard user can never land on

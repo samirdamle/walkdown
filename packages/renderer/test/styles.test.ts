@@ -219,3 +219,23 @@ describe('scrollbar thumb contrast (issue #80)', () => {
     }
   });
 });
+
+describe('visually-hidden utility (issue #82)', () => {
+  it('the rule hides visually but keeps the text in the accessibility tree', () => {
+    // The step-count description (§6.6) lives in this class: the
+    // rule is the accessibility guide's utility verbatim.
+    const m = /\.wd-visually-hidden:where\(:not\(:focus-within, :active\)\) \{([^}]*)\}/.exec(DEFAULT_CSS);
+    expect(m).not.toBeNull();
+    const body = m![1];
+    expect(body).toContain('position: absolute');
+    expect(body).toContain('clip-path: inset(50%)');
+    expect(body).toContain('width: 1px');
+    expect(body).toContain('height: 1px');
+    // Never display: none / visibility: hidden — either would drop
+    // the description from the accessibility tree with the text.
+    expect(body).not.toContain('display: none');
+    expect(body).not.toContain('visibility: hidden');
+    // One rule, one selector — no second copy elsewhere.
+    expect(DEFAULT_CSS.split('.wd-visually-hidden').length - 1).toBe(1);
+  });
+});

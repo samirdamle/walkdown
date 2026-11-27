@@ -675,6 +675,14 @@ through it — the way Start and End are reached on screen.
   the menu; clicking it again closes it. The trigger is a
   real `<button>` with `aria-haspopup="menu"` and
   `aria-expanded` reflecting the menu's state.
+- **Accessible name (WCAG 2.5.3 Label in Name, issue #82):**
+  the indicator's accessible name MUST be its visible text
+  (`N / M` — the step count), so a voice-control user saying
+  "click 26 / 51" matches it. The extra context ("Step N of
+  M. Activate to jump to a screen.") MUST NOT be packed into
+  the label; it is an accessible description, via
+  `aria-describedby` pointing at a visually-hidden element,
+  announced after the name.
 - **Contents, in deck order:** "First screen", one item per
   Section, "Last screen". A Section's item carries the
   Section's name as its text. A Section with no title (§2.4)
