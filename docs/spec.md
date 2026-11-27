@@ -879,6 +879,14 @@ lengths, container size) → CSS variables + column count. It MUST:
   label use the dark theme's muted (7.5:1 on the dark background,
   AAA; 6.9:1 on the dark panel). The light muted (2.63:1 on dark)
   MUST NOT be used there (issue #74).
+- On a screen carrying the `dark` class, the panels MUST use the
+  dark theme too: the panel background is the dark panel, and
+  the panel text, blockquotes, code and links use the dark ink,
+  muted and accent (dark ink is 14.84:1 on the dark panel, AAA;
+  dark muted 6.86:1; dark accent 8.39:1). A light panel background
+  with dark-ink text MUST NOT occur on a dark screen (issue
+  #111). The bottom controls are unchanged by this: they sit on
+  the screen, not in a panel, and are already readable.
 - The scrollbar thumb MUST clear 3:1 against the screen
   background in both themes — including on a dark screen in a
   light deck, whose background is dark. The thumb has its own

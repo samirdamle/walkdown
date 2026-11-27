@@ -34,9 +34,12 @@
  * bottom-reserve fallback (`--wd-space` min) — plus the stack
  * pile values (`--wd-stack-*`, all Proposal tokens, spec §4.2)
  * and the dismiss distance/rotation the pile CSS shares with
- * the WAAPI choreography in stack.ts. A third pair is the
- * dark-screen chrome below (dark muted + dark background,
- * settled tokens). Everything else here is hand-written chrome.
+ * the WAAPI choreography in stack.ts. A third group is the
+ * dark-screen rules below: the label and cue (dark muted + dark
+ * background, settled tokens) and the dark-panel alias
+ * redefinition (issue #111), which redefines the five colour
+ * aliases the panel subtree reads, with the dark tokens as
+ * fallbacks. Everything else here is hand-written chrome.
  */
 import {
   COLORS,
@@ -534,8 +537,10 @@ export const DEFAULT_CSS = `
    the settled dark theme tokens (COLORS.dark), not literals: the dark muted
    is 7.5:1 on the dark background (AAA) and 6.9:1 on the dark panel, where
    the light muted was 2.63:1 on dark. The light muted stays for the chrome
-   that sits on light surfaces (panel blockquotes, the progress pill, the
-   empty state). A light screen in a dark-theme deck is not handled — no
+   that sits on light surfaces (the progress pill, the empty state) — and
+   for panel blockquotes on light screens; on dark screens the blockquotes
+   take the dark muted via the panel alias redefinition below (issue #111).
+   A light screen in a dark-theme deck is not handled — no
    such deck exists; that case is still open (issue #75 did not take it on). */
 .wd-screen.dark .wd-section-label,
 .wd-screen.dark ~ .wd-scroll-cue {
@@ -543,6 +548,49 @@ export const DEFAULT_CSS = `
 }
 .wd-screen.dark ~ .wd-scroll-cue {
   background: linear-gradient(to bottom, transparent, ${COLORS.dark.bg} 80%);
+}
+
+/* Dark screens re-theme the panels (issue #111): on a screen
+   carrying the .dark class, the panels — and everything inside
+   them — use the dark theme. The deck's theme is light, so the
+   theme-layer aliases resolve light and the panel background
+   stayed light while the text inherited the screen's dark ink
+   (the deck's own .dark rule): near-white on white, unreadable
+   — step 44 / 54, screen 12 "Make it move". F3 re-themed the
+   label and cue with literals; the panels were missed.
+   The fix redefines the private aliases under
+   .wd-screen.dark .wd-panel, so the whole panel subtree goes
+   dark in one move: the panel background and border, the
+   blockquote muted, the code background (an ink mix) and the
+   link accent all read the aliases, so they all follow. The
+   redefinition keeps the var() form with the dark token as
+   fallback, exactly like the theme layer: a deck stylesheet
+   that sets a public theme var still wins inside dark panels,
+   without !important. The panel's own text is the redefined
+   ink alias, so the fix does not rely on the deck's .dark rule
+   happening to set a color — on the sample deck the computed
+   value is identical to the inherited one. The trade-off: a
+   deck's screen-level text color no longer flows into panels
+   on dark screens; a deck can still override per panel via the
+   public --wd-color-ink var, or a matching-specificity rule in
+   a later layer. The bottom controls are untouched (already
+   readable: dark chevrons on light circles), and the screen
+   background stays the deck's own .dark rule. */
+.wd-screen.dark .wd-panel,
+.wd-screen.dark .wd-panel * {
+  --_wd-color-panel: var(--wd-color-panel, ${COLORS.dark.panel});
+  --_wd-color-ink: var(--wd-color-ink, ${COLORS.dark.ink});
+  --_wd-color-muted: var(--wd-color-muted, ${COLORS.dark.muted});
+  --_wd-color-border: var(--wd-color-border, ${COLORS.dark.border});
+  --_wd-color-accent: var(--wd-color-accent, ${COLORS.dark.accent});
+}
+/* The text color lives on the panel alone, not on the
+   descendants: a color on the * selector would outrank the
+   link and blockquote rules below (they read the accent and
+   muted aliases) and flatten them to ink. Descendants inherit
+   the panel's color unless they have their own rule. */
+.wd-screen.dark .wd-panel {
+  color: var(--_wd-color-ink);
 }
 
 /* --- Controls (§6.5): minimal — Previous / Next chevrons and a step count. --- */
