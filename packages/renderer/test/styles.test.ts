@@ -378,3 +378,14 @@ describe('visually-hidden utility (issue #82)', () => {
     expect(DEFAULT_CSS.split('.wd-visually-hidden').length - 1).toBe(1);
   });
 });
+
+describe('host hidden attribute (issue #87)', () => {
+  it('a hidden host is display: none, despite :host setting display: block', () => {
+    // One rule, one selector — no second copy elsewhere.
+    expect(DEFAULT_CSS.split(':host([hidden])').length - 1).toBe(1);
+    expect(DEFAULT_CSS).toContain(':host([hidden]) {\n  display: none;\n}');
+    // The rule exists because :host sets display: block above,
+    // which would otherwise override the hidden attribute.
+    expect(DEFAULT_CSS).toContain(':host {\n  display: block;');
+  });
+});

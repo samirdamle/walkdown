@@ -107,6 +107,14 @@ export const DEFAULT_CSS = `
   box-sizing: border-box;
 }
 
+/* The hidden attribute must still hide the host: :host sets
+   display: block above, which would otherwise override it and
+   leave a hidden deck visible, focusable and in the accessibility
+   tree (issue #87, guide custom-elements). */
+:host([hidden]) {
+  display: none;
+}
+
 .wd-deck {
   position: relative;
   width: 100%;
