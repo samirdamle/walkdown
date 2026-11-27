@@ -314,6 +314,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.navMenuEl.addEventListener('keydown', this._onNavMenuKeyDown);
     this.restartBtn.addEventListener('click', this._onRestartClick);
     document.addEventListener('pointerdown', this._onDocumentPointerDown);
+    document.addEventListener('focusin', this._onDocumentFocusIn);
     window.addEventListener('hashchange', this._onHashChange);
     if (typeof ResizeObserver !== 'undefined') {
       this._resizeObserver = new ResizeObserver(() => this._applyLayout());
@@ -344,6 +345,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.navMenuEl.removeEventListener('keydown', this._onNavMenuKeyDown);
     this.restartBtn.removeEventListener('click', this._onRestartClick);
     document.removeEventListener('pointerdown', this._onDocumentPointerDown);
+    document.removeEventListener('focusin', this._onDocumentFocusIn);
     window.removeEventListener('hashchange', this._onHashChange);
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
@@ -690,6 +692,11 @@ export class WalkdownDeckElement extends HTMLElement {
   /** A click/tap outside the deck closes the menu (§6.6). */
   private _onDocumentPointerDown = (e: PointerEvent): void => {
     this._navMenu.handleOutsidePointerDown(e);
+  };
+
+  /** Focus landing outside the menu (and outside the indicator) closes it (§6.6). */
+  private _onDocumentFocusIn = (e: FocusEvent): void => {
+    this._navMenu.handleFocusIn(e);
   };
 
   // --- Input ------------------------------------------------------------

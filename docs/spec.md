@@ -689,10 +689,11 @@ through it — the way Start and End are reached on screen.
   themes: no border, no rounded corners.
 - **Closing:** Escape closes the menu and returns focus to
   the indicator; clicking or tapping outside the deck closes
-  it; tapping the screen while the menu is open only closes
-  it (it MUST NOT also navigate); selecting an item closes
-  it; any other navigation (Next, Previous, Home, End, a
-  deep link) also closes it.
+  it; focus landing outside the menu (and outside the
+  indicator) closes it; tapping the screen while the menu is
+  open only closes it (it MUST NOT also navigate); selecting
+  an item closes it; any other navigation (Next, Previous,
+  Home, End, a deep link) also closes it.
 - **Focus and current state:** when the menu opens, focus
   moves into it — to the current Section's item, or the
   first item if the current screen has no Section. When the

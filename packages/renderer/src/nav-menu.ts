@@ -173,6 +173,24 @@ export class NavMenu {
     if (!this._host.contains(e.target as Node)) this.close();
   }
 
+  /**
+   * Focus landing outside the menu (and outside the trigger)
+   * closes it (§6.6). `focusin` is composed, so the real target
+   * is the first entry of the composed path — `e.target`
+   * retargets to the host for focus inside the Shadow DOM,
+   * which would read as "outside" for every internal control.
+   * Closing returns focus to the indicator, like every other
+   * close path (§6.6) — the Tab's natural destination is
+   * overridden in favour of that uniform behaviour.
+   */
+  handleFocusIn(e: FocusEvent): void {
+    if (!this._open) return;
+    const path = e.composedPath();
+    const target = (path.length > 0 ? path[0] : e.target) as Node | null;
+    if (target === null || target === undefined) return;
+    if (!this._menuEl.contains(target) && !this._triggerEl.contains(target)) this.close();
+  }
+
   /** Build the menu items for a new deck (built with the DOM API, so Section titles need no escaping). */
   private _build(deck: Deck | null, facts: DeckFacts | null): void {
     if (deck === null || facts === null || deck === this._menuDeck) return;
