@@ -27,4 +27,12 @@ describe('demo page', () => {
     expect(html).toContain('<meta name="color-scheme" content="light dark">');
     expect(html.split('name="color-scheme"').length - 1).toBe(1);
   });
+
+  it('opts the demo into per-screen tab titles (§6.2, issue #86)', () => {
+    // The demo owns its tab title, so the tab reads
+    // "Screen title — Walkdown" as the deck walks. Without the
+    // attribute the element never touches the page title; that
+    // is the default for embeds.
+    expect(demoPage()).toContain('<walkdown-deck src="../examples/walkdown-itself.md" document-title>');
+  });
 });

@@ -1970,3 +1970,117 @@ describe('host focus delegates to the screen region (§6.1, issue #81)', () => {
     expect(links.state).toEqual({ screenIndex: 0, stepIndex: 1, zoom: 0 });
   });
 });
+
+describe('document title follows the screen (§6.2, issue #86)', () => {
+  let savedTitle: string;
+
+  beforeEach(() => {
+    savedTitle = document.title;
+  });
+
+  afterEach(() => {
+    document.title = savedTitle;
+  });
+
+  function createDeckWithTitle(markdown: string): WalkdownDeckElement {
+    const el = document.createElement('walkdown-deck') as WalkdownDeckElement;
+    el.setAttribute('document-title', '');
+    el.setContainerSize(1440, 900);
+    el.markdown = markdown;
+    document.body.appendChild(el);
+    stubScreenRect(el);
+    return el;
+  }
+
+  it('sets "Screen — Deck" on load and follows the screen, not the step', () => {
+    const el = createDeckWithTitle(SAMPLE_DECK);
+    expect(document.title).toBe('Walkdown — Walkdown');
+    el.next();
+    expect(document.title).toBe('What it is — Walkdown');
+    // A step change within screen 2 does not change the title:
+    // it is per screen.
+    el.next();
+    expect(el.state).toEqual({ screenIndex: 1, stepIndex: 1, zoom: 0 });
+    expect(document.title).toBe('What it is — Walkdown');
+    el.jumpTo(4);
+    expect(document.title).toBe('The punchline first — Walkdown');
+  });
+
+  it('leaves the title alone without the attribute', () => {
+    document.title = 'Host page';
+    const el = createDeck(SAMPLE_DECK);
+    el.next();
+    el.jumpTo(4);
+    expect(document.title).toBe('Host page');
+  });
+
+  it('leaves the title alone on a screen with no title', () => {
+    const el = createDeckWithTitle(
+      '---\ntitle: Test Deck\n---\n\n# First\n\n- a\n\n---\n\n- no heading here\n\n---\n\n# Third\n\n- c\n',
+    );
+    expect(document.title).toBe('First — Test Deck');
+    el.next();
+    expect(el.state.screenIndex).toBe(1);
+    expect(document.title).toBe('First — Test Deck');
+    el.next();
+    expect(document.title).toBe('Third — Test Deck');
+  });
+
+  it('uses the screen title alone when the deck has no title', () => {
+    // No frontmatter title and no `#` heading anywhere, so the
+    // parser has no deck title to fall back to (it falls back to
+    // the first `#` heading, §2.1) — but the `##` heading still
+    // titles the screen.
+    createDeckWithTitle('## Only\n\n- a\n');
+    expect(document.title).toBe('Only');
+  });
+
+  it('does nothing for an empty deck', () => {
+    document.title = 'Host page';
+    createDeckWithTitle('');
+    expect(document.title).toBe('Host page');
+  });
+
+  it('applies the title at once when the attribute is added after load, and stops when removed', () => {
+    document.title = 'Host page';
+    const el = createDeck(SAMPLE_DECK);
+    expect(document.title).toBe('Host page');
+    el.setAttribute('document-title', '');
+    expect(document.title).toBe('Walkdown — Walkdown');
+    el.removeAttribute('document-title');
+    el.next();
+    expect(document.title).toBe('Walkdown — Walkdown');
+  });
+
+  it('exposes the opt-in as a documentTitle property', () => {
+    const el = createDeck(SAMPLE_DECK);
+    expect(el.documentTitle).toBe(false);
+    el.documentTitle = true;
+    expect(el.hasAttribute('document-title')).toBe(true);
+    expect(document.title).toBe('Walkdown — Walkdown');
+    el.documentTitle = false;
+    expect(el.hasAttribute('document-title')).toBe(false);
+  });
+
+  it('navigation still works when the title cannot be written', () => {
+    // jsdom lets the test shadow document.title with a throwing
+    // setter; the guard in _applyDocumentTitle must swallow it.
+    const descriptor = Object.getOwnPropertyDescriptor(document, 'title');
+    Object.defineProperty(document, 'title', {
+      configurable: true,
+      get: () => 'Host page',
+      set: () => {
+        throw new Error('title is read-only here');
+      },
+    });
+    try {
+      const el = createDeckWithTitle(SAMPLE_DECK);
+      expect(() => el.next()).not.toThrow();
+      expect(el.state.screenIndex).toBe(1);
+      expect(document.title).toBe('Host page');
+    } finally {
+      if (descriptor === undefined) delete (document as unknown as Record<string, unknown>).title;
+      else Object.defineProperty(document, 'title', descriptor);
+    }
+  });
+});

@@ -39,7 +39,11 @@
   </script>
 </head>
 <body>
-  <walkdown-deck src="../examples/walkdown-itself.md"></walkdown-deck>
+  <!-- `document-title`: the demo opts into per-screen tab titles
+       (§6.2, issue #86) — the tab reads "Screen title — Walkdown"
+       as the deck walks. Without it the element never touches the
+       page title; that is the default for embeds. -->
+  <walkdown-deck src="../examples/walkdown-itself.md" document-title></walkdown-deck>
   <script type="module">
     import '@walkdown/renderer';
   </script>
