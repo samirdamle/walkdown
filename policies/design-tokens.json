@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-25",
+  "date": "2026-11-27",
   "enforcement_kinds": {
     "css-var": "The token is a CSS custom property on .wd-deck; the renderer stylesheet applies it directly.",
     "css-var-clamp": "The token is a CSS custom property; the renderer stylesheet applies it with clamp(min, preferred, max). Enforced by construction.",
@@ -21,7 +21,7 @@
       "body_font": "Inter",
       "default": false,
       "name": "Inter + Fraunces",
-      "notes": "Opt-in theme, NOT the default. The default theme uses the system stacks above; a deck opts into Inter/Fraunces by linking the theme stylesheet.",
+      "notes": "Opt-in theme. Its body half (Inter) is now the default theme (Samir, 2026-11-27); opting in only swaps the title font to Fraunces. A deck opts in by linking the theme stylesheet through frontmatter `stylesheets:`.",
       "title_font": "Fraunces",
       "via": "external stylesheet (frontmatter `stylesheets:`)"
     }
@@ -559,10 +559,10 @@
       "max": null,
       "min": null,
       "name": "--wd-font-family-body",
-      "preferred": "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "preferred": "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
       "property": "Body / UI font stack",
-      "settled_date": "2026-11-25",
-      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)",
+      "settled_date": "2026-11-27",
+      "settled_source": "Samir's decision 2026-11-27 (Inter as the default font; supersedes the 2026-11-25 system-stacks default)",
       "status": "settled",
       "units": [
         "font-stack"
@@ -575,10 +575,10 @@
       "max": null,
       "min": null,
       "name": "--wd-font-family-title",
-      "preferred": "Georgia, \"Iowan Old Style\", \"Palatino Linotype\", \"Times New Roman\", serif",
+      "preferred": "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
       "property": "Title font stack",
-      "settled_date": "2026-11-25",
-      "settled_source": "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)",
+      "settled_date": "2026-11-27",
+      "settled_source": "Samir's decision 2026-11-27 (Inter Bold for headings; supersedes the 2026-11-25 Georgia default — the Bold weight comes from the stylesheet, font-weight: 700 on .wd-title and the browser default on panel headings)",
       "status": "settled",
       "units": [
         "font-stack"

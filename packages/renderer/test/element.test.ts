@@ -430,7 +430,8 @@ describe('themes and stylesheets', () => {
     expect(themeVarOf(el, '--wd-color-bg')).toBe('#FAFAF7');
     expect(themeVarOf(el, '--wd-color-ink')).toBe('#1B1B18');
     expect(themeVarOf(el, '--wd-color-accent')).toBe('#2E7D6B');
-    expect(themeVarOf(el, '--wd-font-family-title')).toContain('Georgia');
+    expect(themeVarOf(el, '--wd-font-family-title')).toContain('Inter');
+    expect(themeVarOf(el, '--wd-font-family-body')).toContain('Inter');
   });
 
   it('the sample deck overrides its fonts to Open Sans via its inline CSS', async () => {
@@ -452,7 +453,7 @@ describe('themes and stylesheets', () => {
     // (The !important in the deck file is now removable — the
     // theme layer no longer sets inline style — but the deck
     // file itself is left as-is here; removal is a follow-up.)
-    expect(themeVarOf(el, '--wd-font-family-title')).toContain('Georgia');
+    expect(themeVarOf(el, '--wd-font-family-title')).toContain('Inter');
     expect(panelVisible(el, 0)).toBe(true);
   });
 
