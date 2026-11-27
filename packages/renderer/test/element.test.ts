@@ -1838,3 +1838,75 @@ describe('panel re-render preserves focus (§5, issue #79)', () => {
     }
   });
 });
+
+describe('host focus delegates to the screen region (§6.1, issue #81)', () => {
+  /** Dispatch a keydown on a shadow-DOM target, crossing the shadow boundary like a real keypress. */
+  function keyOn(target: Element, keyName: string): void {
+    target.dispatchEvent(new window.KeyboardEvent('keydown', { key: keyName, bubbles: true, composed: true, cancelable: true }));
+  }
+  /** The first focusable element inside the shadow tree, in DOM order, skipping hidden subtrees. */
+  function firstFocusable(el: WalkdownDeckElement): Element | null {
+    const all = [...(el.shadowRoot?.querySelectorAll('button, [tabindex]') ?? [])] as HTMLElement[];
+    return (
+      all.find((n) => {
+        if (n.closest('[hidden]')) return false;
+        if ((n as HTMLButtonElement).disabled) return false;
+        return true;
+      }) ?? null
+    );
+  }
+
+  // jsdom 26 does not implement delegatesFocus delegation (probed:
+  // host.focus() leaves shadowRoot.activeElement null even with
+  // delegatesFocus: true, and shadowRoot.delegatesFocus is
+  // undefined), so the delegation itself is pinned by the
+  // attachShadow call below, and the "lands on the screen region"
+  // half by the first-focusable test — in a real browser
+  // delegatesFocus forwards host focus to the first focusable
+  // child, and this proves that child is the screen region. The
+  // rendered behaviour wants a live-demo check: Tab through the
+  // deck and confirm Tab lands on the screen region, never on a
+  // bare host stop.
+
+  it('attaches the shadow root with delegatesFocus: true', () => {
+    const spy = vi.spyOn(Element.prototype, 'attachShadow');
+    const el = createDeck(SAMPLE_DECK);
+    expect(el.shadowRoot).not.toBeNull();
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ mode: 'open', delegatesFocus: true }));
+  });
+
+  it('the host stays a tab stop — the delegating one, not a bare one', () => {
+    const el = createDeck(SAMPLE_DECK);
+    expect(el.tabIndex).toBe(0);
+  });
+
+  it('the first focusable inside is the screen region, labelled Screen N of M', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const screen = screenEl(el);
+    expect(firstFocusable(el)).toBe(screen);
+    expect(screen.tabIndex).toBe(0);
+    expect(screen.getAttribute('role')).toBe('region');
+    expect(screen.getAttribute('aria-label')?.startsWith('Screen 1 of 15')).toBe(true);
+  });
+
+  it('keyboard navigation still works from focus inside the shadow tree', () => {
+    const el = createDeck(SAMPLE_DECK);
+    // What delegation does in a real browser: focus lands on the
+    // screen region. ArrowRight from there advances a screen.
+    screenEl(el).focus();
+    keyOn(screenEl(el), 'ArrowRight');
+    expect(el.state.screenIndex).toBe(1);
+    // Space on the screen region advances a step (screen 2 has 3 steps).
+    keyOn(screenEl(el), ' ');
+    expect(el.state).toEqual({ screenIndex: 1, stepIndex: 1, zoom: 0 });
+    // A keydown on a panel link also reaches the host listener
+    // (ArrowRight is unconditional — only Space is target-sensitive,
+    // §6.1, issue #73).
+    const links = createDeck('<!-- reveal: step -->\n\n# Links\n\n- [Walkdown](https://example.com)\n- Plain\n');
+    const link = screenEl(links).querySelector('a');
+    expect(link).not.toBeNull();
+    link!.focus();
+    keyOn(link!, 'ArrowRight');
+    expect(links.state).toEqual({ screenIndex: 0, stepIndex: 1, zoom: 0 });
+  });
+});

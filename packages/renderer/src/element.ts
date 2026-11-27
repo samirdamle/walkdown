@@ -137,7 +137,12 @@ export class WalkdownDeckElement extends HTMLElement {
 
   constructor() {
     super();
-    this.shadow = this.attachShadow({ mode: 'open' });
+    // The shadow root delegates focus (§6.1, issue #81): the host
+    // stays a tab stop (tabIndex = 0 in connectedCallback), but
+    // focusing it — Tab, click, or focus() — moves focus to the
+    // first focusable element inside, the screen region, so Tab
+    // never stops on the bare host, which has no role and no name.
+    this.shadow = this.attachShadow({ mode: 'open', delegatesFocus: true });
     this.shadow.innerHTML = `
       <style id="wd-theme"></style>
       <style id="wd-default">${DEFAULT_CSS}</style>
