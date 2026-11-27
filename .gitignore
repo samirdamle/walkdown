@@ -158,3 +158,10 @@ vite.config.ts.timestamp-*
 
 # macOS
 .DS_Store
+
+# VS Code
+.vscode/
+.env
+.env.production
+.env.local
+.env.*
