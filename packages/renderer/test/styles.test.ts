@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { COLORS, controlSizePx, NAV_MENU_MAX_HEIGHT_CSS, SPACE_MIN_PX, themeVars } from '@walkdown/core';
 import type { Theme } from '@walkdown/core';
@@ -54,8 +57,10 @@ describe('dark-screen chrome (issue #74)', () => {
       `background: linear-gradient(to bottom, transparent, ${COLORS.dark.bg} 80%);`,
     );
     // No second, hand-written copy of either value may hide in the CSS:
-    // the token is the one source, here and in themeVars().
-    expect(DEFAULT_CSS.split('#A9A9A0').length - 1).toBe(1);
+    // the token is the one source, here and in themeVars(). The muted
+    // appears twice, not once: this rule and the dark-panel alias
+    // redefinition below (issue #111) — both interpolate the token.
+    expect(DEFAULT_CSS.split('#A9A9A0').length - 1).toBe(2);
     expect(DEFAULT_CSS.split('#18181C').length - 1).toBe(1);
   });
 
@@ -67,6 +72,110 @@ describe('dark-screen chrome (issue #74)', () => {
       'background: linear-gradient(to bottom, transparent, var(--_wd-color-bg) 80%);',
     );
     expect(DEFAULT_CSS).toContain('.wd-section-label {');
+  });
+});
+
+/**
+ * Read the sample deck's theme file. Same pattern as the demo
+ * test (demo.test.ts): under the jsdom environment
+ * import.meta.url is not a file: URL, so fall back to cwd.
+ */
+function themeFile(): string {
+  try {
+    return readFileSync(
+      fileURLToPath(new URL('../../../examples/walkdown-theme.css', import.meta.url)),
+      'utf8',
+    );
+  } catch {
+    return readFileSync(resolve(process.cwd(), '../../examples/walkdown-theme.css'), 'utf8');
+  }
+}
+
+describe('dark-screen panels (issue #111)', () => {
+  it('dark-screen panels use the dark token set; light screens are byte-identical', () => {
+    // The values are the settled dark theme tokens.
+    expect(COLORS.dark.panel).toBe('#202024');
+    expect(COLORS.dark.ink).toBe('#F5F5F0');
+    expect(COLORS.dark.muted).toBe('#A9A9A0');
+    expect(COLORS.dark.border).toBe('#2E2E33');
+    expect(COLORS.dark.accent).toBe('#7FC8B8');
+    // The alias redefinition: panel + every descendant, five
+    // colour aliases, dark token as the var() fallback — the
+    // same form the theme layer uses.
+    const aliasBlock = /\.wd-screen\.dark \.wd-panel,\n\.wd-screen\.dark \.wd-panel \* \{([^}]*)\}/.exec(
+      DEFAULT_CSS,
+    );
+    expect(aliasBlock).not.toBeNull();
+    const body = aliasBlock![1];
+    for (const [name, value] of [
+      ['panel', COLORS.dark.panel],
+      ['ink', COLORS.dark.ink],
+      ['muted', COLORS.dark.muted],
+      ['border', COLORS.dark.border],
+      ['accent', COLORS.dark.accent],
+    ] as Array<[string, string]>) {
+      expect(body).toContain(`--_wd-color-${name}: var(--wd-color-${name}, ${value});`);
+    }
+    // No color: on the descendants: a color on the * selector
+    // would outrank the link and blockquote rules and flatten
+    // them to ink. The text color lives on the panel alone.
+    expect(body).not.toContain('color:');
+    expect(DEFAULT_CSS).toContain('.wd-screen.dark .wd-panel {\n  color: var(--_wd-color-ink);\n}');
+    // The panel subtree derives from the aliases, so the
+    // redefinition takes it dark: blockquote muted, code an ink
+    // mix, links accent.
+    expect(DEFAULT_CSS).toContain('color: var(--_wd-color-muted);');
+    expect(DEFAULT_CSS).toContain(
+      'background: color-mix(in srgb, var(--_wd-color-ink) 7%, transparent);',
+    );
+    expect(DEFAULT_CSS).toContain('.wd-panel a { color: var(--_wd-color-accent); }');
+    // Light screens unchanged: the base panel rule still reads
+    // the aliases, with no dark literal in it.
+    const panel = /\.wd-panel \{[^}]*\}/.exec(DEFAULT_CSS);
+    expect(panel).not.toBeNull();
+    expect(panel![0]).toContain('background: var(--_wd-color-panel);');
+    expect(panel![0]).toContain('border: 1px solid var(--_wd-color-border);');
+    expect(panel![0]).not.toContain('#202024');
+    // No second, hand-written copy of any dark value: each
+    // appears exactly once in the CSS — in the alias block —
+    // except the muted, which F3 already uses for the label
+    // and cue (see the updated count there).
+    expect(DEFAULT_CSS.split('#202024').length - 1).toBe(1);
+    expect(DEFAULT_CSS.split('#F5F5F0').length - 1).toBe(1);
+    expect(DEFAULT_CSS.split('#2E2E33').length - 1).toBe(1);
+    expect(DEFAULT_CSS.split('#7FC8B8').length - 1).toBe(1);
+    expect(DEFAULT_CSS.split('#A9A9A0').length - 1).toBe(2);
+    // The bottom controls are untouched: no dark-screen rule
+    // reaches them (they sit on the screen, not in a panel,
+    // and are already readable).
+    expect(DEFAULT_CSS).not.toContain('.wd-screen.dark .wd-controls');
+    expect(DEFAULT_CSS).not.toContain('.wd-screen.dark ~ .wd-controls');
+  });
+
+  it('dark text on the dark panel clears 4.5:1', () => {
+    // The issue quoted 16.19:1 for the ink — that is the ink on
+    // the dark BACKGROUND; on the dark panel it is 14.84:1.
+    // Still AAA, still far above the 4.5:1 minimum.
+    const cases: Array<[string, string, number]> = [
+      [COLORS.dark.ink, COLORS.dark.panel, 14.84],
+      [COLORS.dark.muted, COLORS.dark.panel, 6.86],
+      [COLORS.dark.accent, COLORS.dark.panel, 8.39],
+    ];
+    for (const [fg, bg, expected] of cases) {
+      const ratio = contrastRatio(fg, bg);
+      expect(ratio).toBeGreaterThanOrEqual(4.5);
+      expect(ratio).toBeCloseTo(expected, 1);
+    }
+  });
+
+  it("the deck's own .dark rule still owns the screen background", () => {
+    // The renderer does not touch deck stylesheets: the sample
+    // deck's .dark rule still sets the screen background and
+    // text colour the panels sit on.
+    const css = themeFile();
+    expect(css).toContain('.dark {');
+    expect(css).toContain('background: #18181c;');
+    expect(css).toContain('color: #f5f5f0;');
   });
 });
 
@@ -137,8 +246,20 @@ describe('theme vars in a stylesheet layer (issue #75)', () => {
   });
 
   it('the default stylesheet reads only the private aliases for theme vars', () => {
-    expect(DEFAULT_CSS).not.toContain('var(--wd-color-');
-    expect(DEFAULT_CSS).not.toContain('var(--wd-font-family-');
+    // The one exception: the dark-panel alias redefinition (issue
+    // #111) DEFINES the aliases, so it reads the public vars with
+    // the dark values as fallbacks — exactly like themeVarsCss
+    // does. Everything else reads only the aliases.
+    const darkPanels = /\.wd-screen\.dark \.wd-panel,\n\.wd-screen\.dark \.wd-panel \* \{[^}]*\}/.exec(
+      DEFAULT_CSS,
+    );
+    expect(darkPanels).not.toBeNull();
+    // Exactly the five colour aliases the panel subtree reads —
+    // no font alias, no background, no thumb.
+    expect(darkPanels![0].split('var(--wd-color-').length - 1).toBe(5);
+    const rest = DEFAULT_CSS.replace(darkPanels![0], '');
+    expect(rest).not.toContain('var(--wd-color-');
+    expect(rest).not.toContain('var(--wd-font-family-');
     for (const name of THEME_VAR_NAMES) {
       expect(DEFAULT_CSS).toContain(`var(--_${name.slice(2)})`);
     }
