@@ -7,7 +7,7 @@
  * only tells it the current facts and state; the fitted
  * body size lives here, never in the element.
  */
-import { bottomReservePx, computeLayout, controlsHeightFallbackPx, FONT_FLOOR_PX } from '@walkdown/core';
+import { bottomReservePx, computeLayout, controlsHeightFallbackPx, FONT_FLOOR_PX, fontScaleFactor } from '@walkdown/core';
 import type { WalkState } from '@walkdown/core';
 import type { DeckFacts } from './facts.js';
 
@@ -15,6 +15,20 @@ import type { DeckFacts } from './facts.js';
 export interface ContainerSize {
   width: number;
   height: number;
+}
+
+/**
+ * The user's root font size (CSS px) — read from the host's
+ * document (§7.3, issue #76). Falls back to the 16px default
+ * when unreadable (jsdom reports no computed root size, or
+ * the document has no view). The fitted type scales by
+ * (rootPx / 16), never below 1 — see `fontScaleFactor`.
+ */
+export function readRootFontSizePx(host: HTMLElement): number {
+  const view = host.ownerDocument.defaultView;
+  if (view === null) return 16;
+  const px = parseFloat(view.getComputedStyle(host.ownerDocument.documentElement).fontSize);
+  return Number.isFinite(px) && px > 0 ? px : 16;
 }
 
 /** Measure the container the element lays out in. Falls back to a desktop-sized viewport when there is no layout yet (jsdom, or not yet painted), so the first render is still correct. */
@@ -98,6 +112,11 @@ export class LayoutController {
     // steps; only the type size changes, never a position.
     // The fit also reserves the bottom controls' height plus
     // clearance, so panels never run underneath them.
+    // The fitted type scales with the user's root font size
+    // (§7.3): read fresh on every layout pass, so a changed
+    // browser default takes effect on the next pass (resize,
+    // screen change, zoom change).
+    const rootFontSizePx = readRootFontSizePx(this._host);
     const result = computeLayout({
       containerWidth: width,
       containerHeight: height,
@@ -105,10 +124,11 @@ export class LayoutController {
       contentLengths: screen.panels.map((p) => p.text.length),
       reservedBottomPx: this.controlsReservePx(width),
       zoom: state.zoom,
+      rootFontSizePx,
     });
     for (const [k, v] of Object.entries(result.vars)) this._deckEl.style.setProperty(k, v);
     this._fittedBodyPx = result.fontBodyPx;
-    this._fitMeasuredFont();
+    this._fitMeasuredFont(rootFontSizePx);
     this.updateScrollCue();
   }
 
@@ -125,11 +145,13 @@ export class LayoutController {
    * Measurement is the authority (§7.4): the fit is an
    * estimate (average glyph ≈ 0.5em, uniform line-height), so
    * after layout, shrink the body size 1px at a time while the
-   * screen still overflows, down to the 14px floor. At the
-   * floor the screen scrolls internally and the scroll cue
-   * shows. This pass only ever shrinks — growing is the fit's
-   * job, on the next layout pass (resize, screen change, zoom
-   * change — never a step change).
+   * screen still overflows, down to the floor. At the floor
+   * the screen scrolls internally and the scroll cue shows.
+   * This pass only ever shrinks — growing is the fit's job, on
+   * the next layout pass (resize, screen change, zoom change
+   * — never a step change). The floor is the root-scaled floor
+   * (§7.3): at a larger root the pass stops at the scaled
+   * floor, never at the 14px default-root floor.
    *
    * The measurement sees the FULL screen, not just the visible
    * panels: hidden panels take no space (§5), so they are
@@ -146,15 +168,16 @@ export class LayoutController {
    * Skipped when there is no layout yet (jsdom, or not yet
    * painted: clientHeight is 0 and there is nothing to measure).
    */
-  private _fitMeasuredFont(): void {
+  private _fitMeasuredFont(rootFontSizePx: number): void {
     const el = this._screenEl;
     if (el.clientHeight === 0 || this._fittedBodyPx <= 0) return;
+    const floorPx = FONT_FLOOR_PX * fontScaleFactor(rootFontSizePx);
     this._screenEl.classList.add('wd-screen--measuring');
     try {
       let size = this._fittedBodyPx;
       let guard = 0;
-      while (size > FONT_FLOOR_PX && el.scrollHeight > el.clientHeight + 4 && guard < 24) {
-        size = Math.max(FONT_FLOOR_PX, size - 1);
+      while (size > floorPx && el.scrollHeight > el.clientHeight + 4 && guard < 24) {
+        size = Math.max(floorPx, size - 1);
         this._deckEl.style.setProperty('--wd-font-body', `${size}px`);
         guard++;
       }

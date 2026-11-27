@@ -15,16 +15,18 @@
  *
  * Body type is content-fit (§2.2): the engine chooses the
  * largest body size whose estimated screen height fits the
- * container, between the 14px floor and the 32px ceiling,
- * after reserving the bottom controls' height plus clearance
- * (see `reservedBottomPx`). The estimate is conservative
- * (average glyph ≈ 0.5em, line-height 1.55); the renderer
- * measures for real and shrinks further if the estimate was
- * optimistic.
+ * container, between the floor and the ceiling (14px / 32px at
+ * the 16px default root; both scale with the user's root font
+ * size, §7.3, so the range keeps its 2.29× ratio), after
+ * reserving the bottom controls' height plus clearance (see
+ * `reservedBottomPx`). The estimate is conservative (average
+ * glyph ≈ 0.5em, line-height 1.55); the renderer measures for
+ * real and shrinks further if the estimate was optimistic.
  *
- * Degradation (§7.3, §7.5): type never goes below the 14px
- * floor — when even the floor does not fit, the floor wins
- * and the screen scrolls. That is correct behaviour, not a bug.
+ * Degradation (§7.3, §7.5): type never goes below the floor
+ * (14px at the default root, root-scaled above it) — when even
+ * the floor does not fit, the floor wins and the screen scrolls.
+ * That is correct behaviour, not a bug.
  */
 import {
   COLS_MAX,
@@ -88,6 +90,20 @@ export function clampPx(min: number, preferred: number, max: number): number {
   return Math.min(max, Math.max(min, preferred));
 }
 
+/**
+ * Root-font scale factor (§7.3, issue #76): the factor by
+ * which the fitted type scales with the user's root font size
+ * — `(rootPx / 16)`, never below 1. A larger browser default
+ * (or OS text scaling) gets a proportionally larger deck; a
+ * smaller root still gets the settled 14px floor / 32px
+ * ceiling, never smaller. Non-finite or non-positive roots
+ * fall back to the 16px default.
+ */
+export function fontScaleFactor(rootFontSizePx: number): number {
+  const root = Number.isFinite(rootFontSizePx) && rootFontSizePx > 0 ? rootFontSizePx : 16;
+  return Math.max(1, root / 16);
+}
+
 /** Average glyph width, in em — the estimation constant (§7.4). */
 const AVG_CHAR_WIDTH_EM = 0.5;
 
@@ -146,32 +162,45 @@ export interface FitFontSizeInput {
   gapTitlePx: number;
   padPanelPx: number;
   gapPanelPx: number;
+  /**
+   * Floor / ceiling for the fit (CSS px). Default the settled
+   * 14px floor / 32px ceiling; the renderer passes the
+   * root-scaled bounds (§7.3), so the fitted range keeps its
+   * 2.29× ratio at any root size.
+   */
+  fontFloorPx?: number;
+  fontCeilingPx?: number;
 }
 
 /**
  * Content-fit body size (design-policies §2.2): the largest
- * body size in [14px floor, 32px ceiling] whose estimated
- * screen height fits the container — after reserving
- * `reservedBottomPx` at the bottom for the navigation controls
- * plus clearance (§7.2), so the fitted text never runs
- * underneath them. Binary search over a non-decreasing step
- * function — as the size grows, lines only get longer and
- * taller, so the estimate never shrinks. Returns the floor
- * when even the floor does not fit; the caller then scrolls
- * instead of shrinking further.
+ * body size in [floor, ceiling] whose estimated screen height
+ * fits the container — after reserving `reservedBottomPx` at
+ * the bottom for the navigation controls plus clearance
+ * (§7.2), so the fitted text never runs underneath them. The
+ * bounds default to the settled 14px floor / 32px ceiling;
+ * the renderer passes the root-scaled bounds (§7.3), so the
+ * fitted range keeps its 2.29× ratio at any root size. Binary
+ * search over a non-decreasing step function — as the size
+ * grows, lines only get longer and taller, so the estimate
+ * never shrinks. Returns the floor when even the floor does
+ * not fit; the caller then scrolls instead of shrinking
+ * further.
  */
 export function fitFontSize(input: FitFontSizeInput): number {
   const reserved = Math.max(0, input.reservedBottomPx ?? 0);
   const height = Math.max(1, input.containerHeight - reserved);
+  const floor = input.fontFloorPx ?? FONT_FLOOR_PX;
+  const ceiling = input.fontCeilingPx ?? FONT_BODY_MAX_PX;
   const fits = (f: number): boolean =>
     estimateScreenHeight({ ...input, fontBodyPx: f }) <= height;
   // Binary search approaches the boundary from below and never
   // lands on it — so check the ceiling (and the floor) exactly
   // first, and only search the open interval between them.
-  if (fits(FONT_BODY_MAX_PX)) return FONT_BODY_MAX_PX;
-  if (!fits(FONT_FLOOR_PX)) return FONT_FLOOR_PX;
-  let lo = FONT_FLOOR_PX;
-  let hi = FONT_BODY_MAX_PX;
+  if (fits(ceiling)) return ceiling;
+  if (!fits(floor)) return floor;
+  let lo = floor;
+  let hi = ceiling;
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
     if (fits(mid)) lo = mid;
@@ -241,24 +270,34 @@ export function computeLayout(input: LayoutInput): LayoutResult {
 
   const tf = titleFactor(panelCount);
 
-  // Type scale (§2.1/§2.2): the title keeps its viewport
-  // clamp (the title factor scales preferred + ceiling, never
-  // the floor); the body is content-fit — the largest size
-  // that fits the screen's TOTAL content, 14px floor to 32px
-  // ceiling, after reserving the bottom controls' height plus
-  // clearance. Zoom multiplies the computed size after the fit
-  // (§2.4), then the absolute 14px floor applies — zooming out
-  // can never take text below 14px.
+  // Type scale (§2.1/§2.2, §7.3): the fitted sizes scale with
+  // the user's root font size — factor (rootPx / 16), never
+  // below 1 — so a larger browser default (or OS text scaling)
+  // gets a proportionally larger deck, and the fitted range
+  // keeps its 2.29× ratio (floor and ceiling scale together).
+  // At the 16px default root the sizes are unchanged. The
+  // title keeps its viewport clamp (the title factor scales
+  // preferred + ceiling, never the floor); the body is
+  // content-fit — the largest size that fits the screen's TOTAL
+  // content, floor to ceiling, after reserving the bottom
+  // controls' height plus clearance. Zoom multiplies the
+  // computed size after the fit (§2.4), then the (scaled) floor
+  // applies — zooming out can never take text below the floor.
+  const scale = fontScaleFactor(input.rootFontSizePx ?? 16);
+  const floorPx = FONT_FLOOR_PX * scale;
+  const ceilingPx = FONT_BODY_MAX_PX * scale;
   const reserved = Math.max(0, input.reservedBottomPx ?? 0);
-  const applyZoom = (size: number): number => Math.max(FONT_FLOOR_PX, size * zoomFactor(zoom));
-  const titleBasePx = clampPx(FONT_TITLE_MIN_PX, (FONT_TITLE_VW * vw + FONT_TITLE_PX) * tf, FONT_TITLE_MAX_PX * tf);
+  const applyZoom = (size: number): number => Math.max(floorPx, size * zoomFactor(zoom));
+  const titleBasePx = clampPx(FONT_TITLE_MIN_PX * scale, (FONT_TITLE_VW * vw + FONT_TITLE_PX) * tf * scale, FONT_TITLE_MAX_PX * tf * scale);
   const fontTitlePx = round1(applyZoom(titleBasePx));
-  const fontCodePx = round1(applyZoom(clampPx(FONT_CODE_MIN_PX, FONT_CODE_VW * vw + FONT_CODE_PX, FONT_CODE_MAX_PX)));
-  // Small text is a fixed 14px: the floor raise makes its min
-  // and max coincide, so the old `0.85vw + 7px` preferred term
-  // can never apply — it is gone, not clamped. Zoom still
-  // multiplies it (and the floor still bounds it below).
-  const fontSmallPx = round1(applyZoom(FONT_SMALL_PX));
+  const fontCodePx = round1(applyZoom(clampPx(FONT_CODE_MIN_PX * scale, (FONT_CODE_VW * vw + FONT_CODE_PX) * scale, FONT_CODE_MAX_PX * scale)));
+  // Small text is a fixed 14px at the default root: the floor
+  // raise makes its min and max coincide, so the old `0.85vw +
+  // 7px` preferred term can never apply — it is gone, not
+  // clamped. It scales with the root like the rest of the type.
+  // Zoom still multiplies it (and the floor still bounds it
+  // below).
+  const fontSmallPx = round1(applyZoom(FONT_SMALL_PX * scale));
 
   const columns = columnCount(width, panelCount);
 
@@ -290,6 +329,8 @@ export function computeLayout(input: LayoutInput): LayoutResult {
     gapTitlePx,
     padPanelPx,
     gapPanelPx,
+    fontFloorPx: floorPx,
+    fontCeilingPx: ceilingPx,
   });
   const fontBodyPx = floor1(applyZoom(fitBodyPx));
 
@@ -299,7 +340,7 @@ export function computeLayout(input: LayoutInput): LayoutResult {
     '--wd-font-title': px(fontTitlePx),
     '--wd-font-code': px(fontCodePx),
     '--wd-font-small': px(fontSmallPx),
-    '--wd-font-floor': px(FONT_FLOOR_PX),
+    '--wd-font-floor': px(floorPx),
     '--wd-line-height-body': String(LINE_HEIGHT_BODY),
     '--wd-line-height-title': String(LINE_HEIGHT_TITLE),
     '--wd-space': px(spacePx),

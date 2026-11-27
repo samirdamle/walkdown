@@ -817,6 +817,21 @@ lengths, container size) → CSS variables + column count. It MUST:
   container; what grows on larger containers is the *fit* — a
   sparse screen grows toward the 32px ceiling instead of
   sitting at a formula floor.
+- **Root font size (settled 2026-11-26, issue #76): the fitted
+  type scales with the user's root font size.** The renderer
+  reads `getComputedStyle(document.documentElement).fontSize`
+  on every layout pass, and the engine multiplies the fitted
+  sizes by `(rootPx / 16)` — floor, ceiling, title, code and
+  small text alike, so the fitted range keeps its 2.29× ratio
+  at any root. The factor is never below 1: a smaller root
+  still gets the settled 14px / 32px sizes. At the 16px
+  default root the sizes are unchanged. Zoom still multiplies
+  on top of the scaled size, bounded by the scaled floor
+  below. The demo opts into OS text scaling with
+  `<meta name="text-scale" content="scale">` (Chrome 146+;
+  Safari/Firefox ignore it), so the root the fit reads already
+  carries the user's OS preference where the browser supports
+  it.
 - **Zoom:** `+` zooms type in, `-` zooms type out. Zoom is a
   reader control, not an author setting. It MUST persist across
   screens within a session, apply on top of the fluid type

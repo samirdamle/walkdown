@@ -631,17 +631,20 @@ export const DEFAULT_CSS = `
 }
 .wd-nav-menu[hidden] { display: none; }
 /* Menu items are finger targets, not captions (§6.6): type at
-   clamp(16px, 1.2vw + 10px, 20px) — clearly above the 14px
-   small size — and at least 48px tall, a touch above the
+   clamp(1rem, 1.2vw + 0.625rem, 1.25rem) — clearly above the
+   14px small size — and at least 48px tall, a touch above the
    settled 44px touch floor (C8), with the same 56px cap as
-   the controls. Padding comes from --wd-space. */
+   the controls. The type clamp is font-relative (rem) plus
+   viewport-relative (vw), so it follows the user's root font
+   size (§7.3); the min-height is a dimension, not type, so it
+   stays px/vw. Padding comes from --wd-space. */
 .wd-nav-menu-item {
   display: block;
   width: 100%;
   min-height: clamp(48px, 3vw + 12px, 56px);
   text-align: left;
   font-family: var(--_wd-font-family-body);
-  font-size: clamp(16px, 1.2vw + 10px, 20px);
+  font-size: clamp(1rem, 1.2vw + 0.625rem, 1.25rem);
   line-height: 1.4;
   color: var(--_wd-color-ink);
   background: transparent;
