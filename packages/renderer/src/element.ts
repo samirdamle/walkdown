@@ -74,6 +74,27 @@ import { DEFAULT_CSS, themeVarsCss } from './styles.js';
 const IDLE_HIDE_MS = 2500;
 const SCROLL_STEP_FRACTION = 0.4;
 
+/** Focus inside the panels, recorded before a rebuild so it can be restored after it (§5, issue #79). */
+interface SavedPanelsFocus {
+  /** The `data-panel` index of the panel holding focus. */
+  panelIndex: number;
+  /** The focused element's position among that panel's focusable descendants. */
+  focusableIndex: number;
+}
+
+/**
+ * A panel's focusable descendants, in document order. Links are the
+ * case decks produce (`renderInline` emits real `<a href>`); the
+ * rest covers author HTML. `[tabindex]` is included whole —
+ * including `-1` — because save/restore matches by position, and
+ * programmatic focus works on `-1` elements.
+ */
+function focusablesInPanel(panel: HTMLElement): HTMLElement[] {
+  return Array.from(panel.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).filter(
+    (el): el is HTMLElement => el instanceof HTMLElement && !el.hasAttribute('hidden'),
+  );
+}
+
 export class WalkdownDeckElement extends HTMLElement {
   static observedAttributes = ['src', 'markdown', 'theme'];
 
@@ -481,6 +502,64 @@ export class WalkdownDeckElement extends HTMLElement {
     this._applyLayout();
   }
 
+  /**
+   * Records focus inside the panels before a rebuild (§5, issue
+   * #79): the rebuild destroys the focused element, so without a
+   * record it falls to `<body>`. Null when focus is not inside
+   * the panels (controls, screen region, menu) — those elements
+   * are not rebuilt, so there is nothing to restore.
+   */
+  private _savePanelsFocus(): SavedPanelsFocus | null {
+    const active = this.shadow.activeElement;
+    if (!(active instanceof HTMLElement)) return null;
+    const panel = active.closest('[data-panel]');
+    if (!(panel instanceof HTMLElement) || !this.panelsEl.contains(panel)) return null;
+    const focusables = focusablesInPanel(panel);
+    const focusableIndex = focusables.indexOf(active);
+    if (focusableIndex < 0) return null;
+    const panelIndex = Number(panel.getAttribute('data-panel'));
+    if (!Number.isInteger(panelIndex)) return null;
+    return { panelIndex, focusableIndex };
+  }
+
+  /**
+   * Puts focus back after a rebuild: the same element when its
+   * panel is still visible (same panel, same position among its
+   * focusables), its panel's first focusable when that element
+   * is gone, and the screen region when the panel itself is gone
+   * or hidden — stepped back past it, its stack card dismissed,
+   * or the screen changed. The screen region is the always-safe
+   * place to land: it is focusable, labelled, and inside the deck.
+   * `aria-hidden` is the uniform hidden signal for both layouts
+   * (plain panels carry it with the `hidden` attribute; dismissed
+   * stack cards carry it with `visibility: hidden`).
+   */
+  private _restorePanelsFocus(saved: SavedPanelsFocus | null): void {
+    if (saved === null) return;
+    const panel = this.panelsEl.querySelector(`[data-panel="${saved.panelIndex}"]`);
+    if (panel instanceof HTMLElement && panel.getAttribute('aria-hidden') !== 'true') {
+      const focusables = focusablesInPanel(panel);
+      const target = focusables[saved.focusableIndex] ?? focusables[0];
+      if (target !== undefined) {
+        target.focus();
+        return;
+      }
+    }
+    this.screenEl.focus();
+  }
+
+  /**
+   * Replaces the panels' HTML, preserving focus (§5, issue #79).
+   * Used for the synchronous render and for the stack
+   * choreography's deferred swap, which is the same rebuild a
+   * beat later: record focus first, swap, restore.
+   */
+  private _setPanelsHtml(html: string): void {
+    const saved = this._savePanelsFocus();
+    this.panelsEl.innerHTML = html;
+    this._restorePanelsFocus(saved);
+  }
+
   private _render(opts: { animate: boolean; jump?: boolean; prev?: WalkState }): void {
     const deck = this._deck;
     const empty = deck === null || isEmptyDeck(deck) || this.screens.length === 0;
@@ -553,9 +632,9 @@ export class WalkdownDeckElement extends HTMLElement {
       stackAnimating = this._startStackAnimation(screen, prev.stepIndex, this._state.stepIndex);
     }
     if (!stackAnimating) {
-      this.panelsEl.innerHTML = isStack
-        ? stackPanelsHtml(screen, this._state.stepIndex)
-        : panelsHtml(screen.panels, visible);
+      this._setPanelsHtml(
+        isStack ? stackPanelsHtml(screen, this._state.stepIndex) : panelsHtml(screen.panels, visible),
+      );
     }
     // Screen-level class hooks (§11.3).
     this.screenEl.classList.remove(...this._lastScreenClasses);
@@ -666,7 +745,7 @@ export class WalkdownDeckElement extends HTMLElement {
       this._stackAnimations = [];
       const current = this._facts?.screen(screenIndex);
       if (current === undefined || !isStackScreen(current)) return;
-      this.panelsEl.innerHTML = stackPanelsHtml(current, toStep);
+      this._setPanelsHtml(stackPanelsHtml(current, toStep));
       this._updateScrollCue();
     });
     return true;
