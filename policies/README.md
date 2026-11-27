@@ -21,7 +21,9 @@ are updated together in one PR.
 
 Samir adopted the recommended palette on 2026-11-25. The tokens
 `--wd-font-family-*` and `--wd-color-*` are settled, with the
-contrast ratios recorded in the JSON. All six text ratios were
+contrast ratios recorded in the JSON — except `--wd-color-thumb`,
+which is a Proposal (issue #80, F9; Samir has not settled the
+value). All six text ratios were
 verified by computation and match exactly.
 
 - **Fonts are system stacks only; the default theme downloads
@@ -40,6 +42,11 @@ verified by computation and match exactly.
   muted used for the chrome on dark screens, where the light
   muted was 2.63:1),
   border `#2E2E33`, accent ocean green (seafoam) `#7FC8B8` (9.2:1, AAA).
+- **Scrollbar thumb (Proposal, issue #80):** `#7A7A7A` in both
+  themes — 4.10:1 on the light background, 4.12:1 on the dark
+  background. One value for both themes because the thumb must
+  clear 3:1 against both backgrounds in either theme (a light
+  deck shows dark screens); `#7A7A7A` is the maximin grey.
 - **One accent only:** ocean green in both themes — `#2E7D6B` light, `#7FC8B8` dark.
 - **Inter (body) + Fraunces (titles) is an opt-in theme, not
   the default.** A deck opts in by linking the theme through

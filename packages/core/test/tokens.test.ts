@@ -88,7 +88,7 @@ describe('one token source', () => {
     expect(generateTokens(json)).toBe(readFileSync(GENERATED_PATH, 'utf8'));
   });
 
-  it('the JSON and §8 agree: 31 §8 rows + 9 font/colour tokens = 40', () => {
+  it('the JSON and §8 agree: 31 §8 rows + 10 font/colour tokens = 41', () => {
     const json = loadTokens();
     const doc = readFileSync(SECTION_8_PATH, 'utf8');
     const sec8 = doc.split('## 8.')[1].split('## 9.')[0];
@@ -108,8 +108,8 @@ describe('one token source', () => {
         .map((c) => c.trim().replace(/`/g, '').replace(/\*\*/g, ''));
       section8.set(cells[0], { min: cells[2], pref: cells[3], max: cells[4], units: cells[5], status: cells[6] });
     }
-    expect(json.token_count).toBe(40);
-    expect(json.tokens).toHaveLength(40);
+    expect(json.token_count).toBe(41);
+    expect(json.tokens).toHaveLength(41);
     const fontColour = [
       '--wd-color-accent',
       '--wd-color-bg',
@@ -117,6 +117,7 @@ describe('one token source', () => {
       '--wd-color-ink',
       '--wd-color-muted',
       '--wd-color-panel',
+      '--wd-color-thumb',
       '--wd-font-family-body',
       '--wd-font-family-code',
       '--wd-font-family-title',
@@ -171,8 +172,8 @@ describe('one token source', () => {
     );
     expect(FONT_FAMILY_CODE).toBe('ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace');
     expect(COLORS).toEqual({
-      light: { bg: '#FAFAF7', panel: '#FFFFFF', ink: '#1B1B18', muted: '#5C5C57', border: '#E5E5DF', accent: '#2E7D6B' },
-      dark: { bg: '#18181C', panel: '#202024', ink: '#F5F5F0', muted: '#A9A9A0', border: '#2E2E33', accent: '#7FC8B8' },
+      light: { bg: '#FAFAF7', panel: '#FFFFFF', ink: '#1B1B18', muted: '#5C5C57', border: '#E5E5DF', accent: '#2E7D6B', thumb: '#7A7A7A' },
+      dark: { bg: '#18181C', panel: '#202024', ink: '#F5F5F0', muted: '#A9A9A0', border: '#2E2E33', accent: '#7FC8B8', thumb: '#7A7A7A' },
     });
     expect(FONT_FLOOR_PX).toBe(14);
     expect(ZOOM_STEP).toBe(1.1);
@@ -203,20 +204,23 @@ describe('one token source', () => {
   });
 
   it('Proposal tokens are marked, Settled tokens are not', () => {
-    expect(PROPOSAL_TOKENS).toHaveLength(21);
+    expect(PROPOSAL_TOKENS).toHaveLength(22);
     expect(PROPOSAL_TOKENS).toContain('--wd-nav-menu-max-height');
     expect(PROPOSAL_TOKENS).toContain('--wd-stack-offset');
     expect(PROPOSAL_TOKENS).toContain('--wd-stack-scale-step');
     expect(PROPOSAL_TOKENS).toContain('--wd-stack-shade-step');
     expect(PROPOSAL_TOKENS).toContain('--wd-stack-visible-behind');
+    expect(PROPOSAL_TOKENS).toContain('--wd-color-thumb');
     expect(PROPOSAL_TOKENS).not.toContain('--wd-font-floor');
     expect(PROPOSAL_TOKENS).not.toContain('--wd-color-accent');
     expect(TOKEN_META['--wd-font-floor'].status).toBe('settled');
     expect(TOKEN_META['--wd-nav-menu-max-height'].status).toBe('proposal');
     expect(TOKEN_META['--wd-stack-offset'].status).toBe('proposal');
+    expect(TOKEN_META['--wd-color-thumb'].status).toBe('proposal');
     const generated = readFileSync(GENERATED_PATH, 'utf8');
     expect(generated).toContain('// PROPOSAL — --wd-nav-menu-max-height');
     expect(generated).toContain('// PROPOSAL — --wd-stack-offset');
+    expect(generated).toContain('thumb: "#7A7A7A", // 4.1:1 on bg — non-text ≥3:1; PROPOSAL');
     expect(generated).not.toContain('// PROPOSAL — --wd-font-floor');
     expect(generated).not.toContain('// PROPOSAL — --wd-color-accent');
   });

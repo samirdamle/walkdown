@@ -19,7 +19,7 @@
  */
 import type { Theme } from './types.js';
 
-/** The six colour slots of one theme. */
+/** The seven colour slots of one theme. */
 export interface ColorSet {
   bg: string;
   panel: string;
@@ -27,6 +27,7 @@ export interface ColorSet {
   muted: string;
   border: string;
   accent: string;
+  thumb: string;
 }
 
 /** Every token in the JSON, as written — the machine-readable mirror. */
@@ -71,6 +72,7 @@ export const TOKEN_META = {
   "--wd-color-muted": { property: "Secondary text", status: "settled", min: null, preferred: null, max: null, units: "hex", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25" },
   "--wd-color-border": { property: "Borders / hairlines", status: "settled", min: null, preferred: null, max: null, units: "hex", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25" },
   "--wd-color-accent": { property: "Accent (one accent only)", status: "settled", min: null, preferred: null, max: null, units: "hex", settledDate: "2026-11-26", settledSource: "Samir chose whole-theme ocean green 2026-11-26 (replaces amber/gold adopted 2026-11-25)" },
+  "--wd-color-thumb": { property: "Scrollbar thumb", status: "proposal", min: null, preferred: null, max: null, units: "hex", settledDate: null, settledSource: null },
 } as const;
 
 /** Names of the Proposal tokens — Settled tokens are never in this list. */
@@ -96,6 +98,7 @@ export const PROPOSAL_TOKENS: readonly string[] = [
   "--wd-stack-shade-step",
   "--wd-stack-visible-behind",
   "--wd-safe-area",
+  "--wd-color-thumb",
 ];
 
 /** Named constants derived from the tokens (see the derivation table in scripts/generate-tokens.mjs). */
@@ -105,7 +108,7 @@ export const FONT_FAMILY_BODY = "system-ui, -apple-system, \"Segoe UI\", Roboto,
 export const FONT_FAMILY_TITLE = "Georgia, \"Iowan Old Style\", \"Palatino Linotype\", \"Times New Roman\", serif";
 // --wd-font-family-code (settled; preferred)
 export const FONT_FAMILY_CODE = "ui-monospace, \"SF Mono\", \"Cascadia Code\", Menlo, Consolas, monospace";
-// --wd-color-* (settled; values.light/dark; contrast ratios in the JSON)
+// --wd-color-* (values.light/dark; contrast ratios in the JSON; Proposal entries marked PROPOSAL)
 export const COLORS: Record<Theme, ColorSet> = {
   light: {
     bg: "#FAFAF7",
@@ -114,6 +117,7 @@ export const COLORS: Record<Theme, ColorSet> = {
     muted: "#5C5C57", // 6.4:1 on bg — AA
     border: "#E5E5DF",
     accent: "#2E7D6B", // 4.7:1 on bg — AA
+    thumb: "#7A7A7A", // 4.1:1 on bg — non-text ≥3:1; PROPOSAL
   },
   dark: {
     bg: "#18181C",
@@ -122,6 +126,7 @@ export const COLORS: Record<Theme, ColorSet> = {
     muted: "#A9A9A0", // 7.5:1 on bg — AAA
     border: "#2E2E33",
     accent: "#7FC8B8", // 9.2:1 on bg — AAA
+    thumb: "#7A7A7A", // 4.1:1 on bg — non-text ≥3:1; PROPOSAL
   },
 };
 // --wd-font-floor (settled; min)

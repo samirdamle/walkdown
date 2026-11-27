@@ -834,6 +834,13 @@ lengths, container size) → CSS variables + column count. It MUST:
   label use the dark theme's muted (7.5:1 on the dark background,
   AAA; 6.9:1 on the dark panel). The light muted (2.63:1 on dark)
   MUST NOT be used there (issue #74).
+- The scrollbar thumb MUST clear 3:1 against the screen
+  background in both themes — including on a dark screen in a
+  light deck, whose background is dark. The thumb has its own
+  colour token (`--wd-color-thumb`, #7A7A7A in both themes:
+  4.10:1 on the light background, 4.12:1 on the dark
+  background); the border colour MUST NOT be used for it (it
+  was 1.21:1 on light, 1.31:1 on dark) (issue #80).
 - Reveal scrolls to the newly revealed panel: when a step
   reveals a panel that is not fully visible in the screen's
   scroll viewport, the renderer scrolls the screen just far

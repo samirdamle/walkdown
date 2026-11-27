@@ -157,3 +157,65 @@ describe('idle auto-hide (§6.5, issue #77)', () => {
     expect(DEFAULT_CSS.split('visibility: visible;').length - 1).toBe(2);
   });
 });
+
+/**
+ * WCAG relative luminance + contrast, so the ≥3:1 acceptance
+ * for the scrollbar thumb is enforced, not just recorded.
+ * (No helper exists in the repo — F3 recorded its ratios in
+ * docs only. The thumb's margins are comfortable, but a future
+ * token change must fail here rather than ship a thumb below
+ * 3:1 on some backdrop.)
+ */
+function relativeLuminance(hex: string): number {
+  const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const linear = channels.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+describe('scrollbar thumb contrast (issue #80)', () => {
+  it('the thumb has its own token, 4.10:1 on light and 4.12:1 on dark', () => {
+    // The token is a Proposal (Samir has not settled the value);
+    // the value is the same mid-grey in both themes — the thumb
+    // must clear 3:1 against BOTH backgrounds in either theme,
+    // and #7A7A7A is the maximin.
+    expect(COLORS.light.thumb).toBe('#7A7A7A');
+    expect(COLORS.dark.thumb).toBe('#7A7A7A');
+    // The rule reads the thumb alias, not the border: the border
+    // was 1.21:1 on light / 1.31:1 on dark.
+    expect(DEFAULT_CSS).toContain('scrollbar-color: var(--_wd-color-thumb) transparent;');
+    expect(DEFAULT_CSS).not.toContain('scrollbar-color: var(--_wd-color-border)');
+    // No second, hand-written copy of the value may hide in the
+    // CSS: the token is the one source (the one literal is the
+    // comment on the rule itself).
+    expect(DEFAULT_CSS.split('#7A7A7A').length - 1).toBe(1);
+    // The theme layer carries the thumb var with the token value
+    // as fallback, so a deck override wins without !important.
+    expect(themeVars('light')['--wd-color-thumb']).toBe('#7A7A7A');
+    expect(themeVarsCss('light')).toContain('--_wd-color-thumb: var(--wd-color-thumb, #7A7A7A);');
+    expect(themeVarsCss('dark')).toContain('--_wd-color-thumb: var(--wd-color-thumb, #7A7A7A);');
+  });
+
+  it('the thumb clears 3:1 on every backdrop it can sit on', () => {
+    // Four cases, not two: a light deck shows dark screens
+    // (background #18181C) as well as light ones, so the light
+    // thumb is measured against both backgrounds — and the dark
+    // thumb against both too, for the light screen in a dark
+    // deck (still open, same class as F3's).
+    const cases: Array<[string, string, number]> = [
+      [COLORS.light.thumb, COLORS.light.bg, 4.1],
+      [COLORS.light.thumb, COLORS.dark.bg, 4.12],
+      [COLORS.dark.thumb, COLORS.dark.bg, 4.12],
+      [COLORS.dark.thumb, COLORS.light.bg, 4.1],
+    ];
+    for (const [thumb, bg, expected] of cases) {
+      const ratio = contrastRatio(thumb, bg);
+      expect(ratio).toBeGreaterThanOrEqual(3);
+      expect(ratio).toBeCloseTo(expected, 1);
+    }
+  });
+});
