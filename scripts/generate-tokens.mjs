@@ -217,7 +217,7 @@ function derive(tokens) {
     comment: `--wd-font-family-code (settled; preferred)`,
   });
 
-  const colorNames = ['bg', 'panel', 'ink', 'muted', 'border', 'accent'];
+  const colorNames = ['bg', 'panel', 'ink', 'muted', 'border', 'accent', 'thumb'];
   const colorTokens = colorNames.map((key) => get(`--wd-color-${key}`));
   for (const t of colorTokens) {
     if (!t.values || t.values.light === undefined || t.values.dark === undefined) {
@@ -230,16 +230,22 @@ function derive(tokens) {
     for (const t of colorTokens) {
       const key = t.name.replace('--wd-color-', '');
       const ratio = t.contrast?.[theme];
-      const note = ratio ? ` // ${ratio.ratio} on bg — ${ratio.wcag}` : '';
+      // A Proposal colour must never look Settled: its entry
+      // carries the marker (the COLORS comment below says so too).
+      const proposal = t.status === 'proposal' ? '; PROPOSAL' : '';
+      const note = ratio ? ` // ${ratio.ratio} on bg — ${ratio.wcag}${proposal}` : proposal ? ` // PROPOSAL` : '';
       colorLines.push(`    ${key}: ${jsString(t.values[theme])},${note}`);
     }
     colorLines.push(`  },`);
   }
+  const colorsComment = colorTokens.every((t) => t.status === 'settled')
+    ? `--wd-color-* (settled; values.light/dark; contrast ratios in the JSON)`
+    : `--wd-color-* (values.light/dark; contrast ratios in the JSON; Proposal entries marked PROPOSAL)`;
   out.push({
     name: 'COLORS',
     type: 'Record<Theme, ColorSet>',
     value: `{\n${colorLines.join('\n')}\n}`,
-    comment: `--wd-color-* (settled; values.light/dark; contrast ratios in the JSON)`,
+    comment: colorsComment,
   });
 
   const scalar = (constName, tokenName, field, parse) => {
@@ -395,7 +401,7 @@ export function generateTokens(json) {
   lines.push(` */`);
   lines.push(`import type { Theme } from './types.js';`);
   lines.push(``);
-  lines.push(`/** The six colour slots of one theme. */`);
+  lines.push(`/** The seven colour slots of one theme. */`);
   lines.push(`export interface ColorSet {`);
   lines.push(`  bg: string;`);
   lines.push(`  panel: string;`);
@@ -403,6 +409,7 @@ export function generateTokens(json) {
   lines.push(`  muted: string;`);
   lines.push(`  border: string;`);
   lines.push(`  accent: string;`);
+  lines.push(`  thumb: string;`);
   lines.push(`}`);
   lines.push(``);
   lines.push(`/** Every token in the JSON, as written — the machine-readable mirror. */`);

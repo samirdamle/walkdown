@@ -10,7 +10,7 @@
   "issue": 13,
   "notes": [
     "\u00a78 is described as 25 tokens in tracking (issues #9/#11, PRs #10/#12), but its table actually contains 27 rows. This file includes all 27; nothing was dropped to match the count. Samir's call if the count matters.",
-    "Font-family and colour tokens are SETTLED (Samir adopted Neo's palette recommendation 2026-11-25). System font stacks only \u2014 no webfont download for the default theme. All six text contrast ratios were verified by computation against the stated backgrounds and match exactly. Light muted (#5C5C57) is AA and secondary-text only.",
+    "Font-family and colour tokens are SETTLED (Samir adopted Neo's palette recommendation 2026-11-25). System font stacks only \u2014 no webfont download for the default theme. All six text contrast ratios were verified by computation against the stated backgrounds and match exactly. Light muted (#5C5C57) is AA and secondary-text only. Exception: --wd-color-thumb (issue #80) is Proposal — Samir has not settled the value.",
     "Settled \u00a79 decisions that are not \u00a78 tokens (root font size 16px; fluid layout as the primary mechanism; centre-crop for images in v0.1) are recorded in design-policies.md \u00a79, not as tokens here. If \u00a78 gains tokens for them, this file gains matching entries.",
     "Formulas are written in vw/vh for the full-screen case; the renderer MUST use container query units (cqw/cqh) when the deck is embedded in a page, card or iframe (design-policies \u00a70, spec \u00a77.2). Read vw as 1% of container width and vh as 1% of container height throughout.",
     "A dash (\u2014) in \u00a78 means the bound does not apply; it is null here.",
@@ -32,7 +32,7 @@
     "proposal": "A number this document proposes; Samir may change it in a later review.",
     "settled": "A decision Samir has already made; the structured form MUST reproduce the settled value exactly."
   },
-  "token_count": 40,
+  "token_count": 41,
   "tokens": [
     {
       "enforcement": [
@@ -763,6 +763,39 @@
       "values": {
         "dark": "#7FC8B8",
         "light": "#2E7D6B"
+      }
+    },
+    {
+      "contrast": {
+        "dark": {
+          "against": "--wd-color-bg",
+          "ratio": "4.1:1",
+          "wcag": "non-text ≥3:1"
+        },
+        "light": {
+          "against": "--wd-color-bg",
+          "ratio": "4.1:1",
+          "wcag": "non-text ≥3:1"
+        }
+      },
+      "enforcement": [
+        "css-var"
+      ],
+      "max": null,
+      "min": null,
+      "name": "--wd-color-thumb",
+      "notes": "Scrollbar thumb (issue #80, F9). Same mid-grey in both themes: the thumb must clear 3:1 against BOTH backgrounds in either theme — a light deck shows dark screens (deck .dark background #18181C) as well as light ones — and #7A7A7A is the maximin: 4.10:1 on the light background, 4.12:1 on the dark background. The issue's suggested color-mix (ink 40% over transparent) was rejected: 2.48:1 on light, and 1.01:1 on a dark screen in a light deck (a regression from today's 14.0:1).",
+      "preferred": null,
+      "property": "Scrollbar thumb",
+      "settled_date": null,
+      "settled_source": null,
+      "status": "proposal",
+      "units": [
+        "hex"
+      ],
+      "values": {
+        "dark": "#7A7A7A",
+        "light": "#7A7A7A"
       }
     }
   ]

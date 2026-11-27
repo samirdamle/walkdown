@@ -34,5 +34,6 @@ export function themeVars(theme: Theme): Record<string, string> {
     '--wd-color-muted': c.muted,
     '--wd-color-border': c.border,
     '--wd-color-accent': c.accent,
+    '--wd-color-thumb': c.thumb,
   };
 }

@@ -169,7 +169,22 @@ export const DEFAULT_CSS = `
   display: flex;
   flex-direction: column;
   scrollbar-width: thin;
-  scrollbar-color: var(--_wd-color-border) transparent;
+  /* Scrollbar thumb (issue #80, F9): its own token, not the
+     border colour. The border was 1.21:1 on light / 1.31:1 on
+     dark against the transparent track over the screen
+     background — a nearly invisible thumb on desktop. The thumb
+     token (#7A7A7A, both themes — a Proposal) is the maximin
+     mid-grey: 4.10:1 on the light background, 4.12:1 on the
+     dark background, so it clears 3:1 on every backdrop the
+     thumb can sit on, including a dark screen in a light deck
+     (whose background is the dark background). A color-mix off
+     ink was rejected: ink 40% over transparent is 2.48:1 on light and
+     1.01:1 on a dark screen — a regression from the border's
+     14.0:1 there. The track stays transparent: with overlay
+     scrollbars the track may remain transparent while the thumb
+     shows, so the thumb must contrast against the screen
+     background itself, not the track. */
+  scrollbar-color: var(--_wd-color-thumb) transparent;
 }
 
 /* Bottom clearance (§7.2, issue #38): a trailing in-flow
