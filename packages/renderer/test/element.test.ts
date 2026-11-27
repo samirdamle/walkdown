@@ -1654,3 +1654,138 @@ describe('idle auto-hide (§6.5, issue #77)', () => {
     expect(varOf(el, '--wd-reserve-bottom')).toBe(before);
   });
 });
+
+describe('panel re-render preserves focus (§5, issue #79)', () => {
+  const LINKS_DECK = `<!-- reveal: step -->
+
+# Links
+
+- [First](https://example.com/a) and [second](https://example.com/b)
+
+- [Third](https://example.com/c)
+`;
+
+  const TWO_SCREEN_DECK = `<!-- reveal: step -->
+
+# One
+
+- [Link](https://example.com)
+
+---
+
+# Two
+
+- Plain panel
+`;
+
+  const STACK_LINKS_DECK = `<!-- reveal: step; effect: stack; direction: left -->
+
+# Pile
+
+- [One](https://example.com/1)
+- [Two](https://example.com/2)
+- [Three](https://example.com/3)
+`;
+
+  /** What the shadow tree thinks is focused (jsdom tracks this on .focus()). */
+  function shadowActive(el: WalkdownDeckElement): Element | null {
+    return el.shadowRoot?.activeElement ?? null;
+  }
+  /** A link inside a panel, by panel index and link position within it. */
+  function panelLink(el: WalkdownDeckElement, panelIndex: number, linkIndex: number): HTMLElement {
+    const panel = panels(el)[panelIndex] as HTMLElement;
+    return panel.querySelectorAll('a')[linkIndex] as HTMLElement;
+  }
+  function nextButton(el: WalkdownDeckElement): HTMLButtonElement {
+    return el.shadowRoot?.querySelector('.wd-next') as HTMLButtonElement;
+  }
+
+  it('focus on a panel link survives advancing a step, restored to the same link', () => {
+    const el = createDeck(LINKS_DECK);
+    expect(panelVisible(el, 0)).toBe(true);
+    // Focus the SECOND link: the restore matches by position
+    // within the panel, not just "the panel's first focusable".
+    const second = panelLink(el, 0, 1);
+    second.focus();
+    expect(shadowActive(el)).toBe(second);
+    el.next();
+    // The rebuild destroyed the old node; focus is on the new
+    // node for the same link (same href, same position).
+    const restored = panelLink(el, 0, 1);
+    expect((restored as HTMLAnchorElement).getAttribute('href')).toBe('https://example.com/b');
+    expect(shadowActive(el)).toBe(restored);
+  });
+
+  it('focus on a link in the panel hidden by Previous falls back to the screen region', () => {
+    const el = createDeck(LINKS_DECK);
+    el.next();
+    expect(panelVisible(el, 1)).toBe(true);
+    panelLink(el, 1, 0).focus();
+    el.prev();
+    expect(panelVisible(el, 1)).toBe(false);
+    expect(shadowActive(el)).toBe(screenEl(el));
+  });
+
+  it('focus on a link survives a screen change by falling back to the screen region', () => {
+    const el = createDeck(TWO_SCREEN_DECK);
+    panelLink(el, 0, 0).focus();
+    el.next();
+    expect(el.state.screenIndex).toBe(1);
+    expect(shadowActive(el)).toBe(screenEl(el));
+  });
+
+  it('focus on a control outside the panels is left alone by a step change', () => {
+    const el = createDeck(LINKS_DECK);
+    const next = nextButton(el);
+    next.focus();
+    expect(shadowActive(el)).toBe(next);
+    el.next();
+    expect(shadowActive(el)).toBe(next);
+  });
+
+  it('stack: focus on a behind-card link survives the step, restored to the promoted card', () => {
+    const el = createDeck(STACK_LINKS_DECK);
+    // Panel 1 is behind the front card but visible (peeking), so
+    // its link is focusable; the step promotes it to the front.
+    const behind = panelLink(el, 1, 0);
+    behind.focus();
+    el.next();
+    const promoted = panelLink(el, 1, 0);
+    expect((promoted as HTMLAnchorElement).getAttribute('href')).toBe('https://example.com/2');
+    expect(shadowActive(el)).toBe(promoted);
+  });
+
+  it('stack: focus on the front-card link falls back to the screen region when the card is dismissed', () => {
+    const el = createDeck(STACK_LINKS_DECK);
+    // No WAAPI in jsdom, so the step renders synchronously: the
+    // front card is dismissed in the same render.
+    panelLink(el, 0, 0).focus();
+    el.next();
+    const dismissed = panels(el)[0] as HTMLElement;
+    expect(dismissed.getAttribute('aria-hidden')).toBe('true');
+    expect(shadowActive(el)).toBe(screenEl(el));
+  });
+
+  it('stack: the same fallback holds through the WAAPI choreography (stubbed)', async () => {
+    Object.defineProperty(window.Element.prototype, 'animate', {
+      value: vi.fn(function (this: HTMLElement) {
+        return { finished: Promise.resolve(), cancel: vi.fn() };
+      }),
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const el = createDeck(STACK_LINKS_DECK);
+      panelLink(el, 0, 0).focus();
+      el.next();
+      // The swap is deferred until the choreography finishes:
+      // focus is still on the (animated) front card's link.
+      expect(shadowActive(el)).toBe(panelLink(el, 0, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(panels(el)[0]?.getAttribute('aria-hidden')).toBe('true');
+      expect(shadowActive(el)).toBe(screenEl(el));
+    } finally {
+      delete (window.Element.prototype as unknown as Record<string, unknown>).animate;
+    }
+  });
+});

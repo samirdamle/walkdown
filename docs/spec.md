@@ -531,6 +531,12 @@ order, direction `left` (irrelevant unless the effect is
   with the reverse of its enter animation, then — on the next
   backward step — moves to the previous screen at its last step
   (fully revealed).
+- Focus survives a re-render: the panels rebuild on every step and
+  screen change, so if focus is inside a panel when one happens,
+  the renderer restores it afterwards — to the same element when
+  its panel is still visible, otherwise to the screen region. On a
+  stack screen the same rule covers the dismiss swap: a focused
+  card that flies away leaves focus on the screen region (issue #79).
 - On a `stack` screen (§4.2, §8) the step model is the same
   count with a different picture: step *k* shows the pile with
   the first *k* cards dismissed. Moving forward dismisses the
