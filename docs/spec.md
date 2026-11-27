@@ -659,6 +659,14 @@ Let the current state be `(s, k)` — screen *s*, step *k* — with
   movement (threshold: at least ~48 CSS px, or 1/8 of the
   screen width, whichever is smaller — exact value is a
   renderer tuning constant, recorded when implemented).
+- The screen MUST NOT let a gesture escape to the browser or
+  the page behind it: `overscroll-behavior-x: none` keeps a
+  horizontal edge swipe from chaining into the browser's
+  back/forward navigation gesture, and
+  `overscroll-behavior-y: contain` keeps a vertical scroll at
+  the top or bottom from chaining to the page behind an
+  embedded deck. (Partial on iOS Safari: edge swipes can
+  still reach the browser there.)
 
 ### 6.5 Controls
 

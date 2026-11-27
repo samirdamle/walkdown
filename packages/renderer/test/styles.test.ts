@@ -389,3 +389,26 @@ describe('host hidden attribute (issue #87)', () => {
     expect(DEFAULT_CSS).toContain(':host {\n  display: block;');
   });
 });
+
+describe('screen overscroll behavior (issue #88)', () => {
+  it('.wd-screen carries overscroll-behavior-x: none and overscroll-behavior-y: contain', () => {
+    // One declaration each — no second copy elsewhere.
+    expect(DEFAULT_CSS.split('overscroll-behavior-x: none').length - 1).toBe(1);
+    expect(DEFAULT_CSS.split('overscroll-behavior-y: contain').length - 1).toBe(1);
+    // The declarations live on the base .wd-screen rule — the
+    // vertical scroller with the JS horizontal swipe — not on
+    // the deck, the host, or the reduced-motion override (the
+    // only other .wd-screen rule, indented inside the media
+    // query). The base rule is the unindented one.
+    const start = DEFAULT_CSS.indexOf('\n.wd-screen {');
+    expect(start).toBeGreaterThan(-1);
+    const end = DEFAULT_CSS.indexOf('\n}', start);
+    const screenRule = DEFAULT_CSS.slice(start, end);
+    expect(screenRule).toContain('overscroll-behavior-x: none;');
+    expect(screenRule).toContain('overscroll-behavior-y: contain;');
+    // The screen is the scroller: overflow-y auto, horizontal
+    // gestures handed to JS — the declarations belong here.
+    expect(screenRule).toContain('overflow-y: auto;');
+    expect(screenRule).toContain('touch-action: pan-y;');
+  });
+});
