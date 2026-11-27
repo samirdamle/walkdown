@@ -585,6 +585,15 @@ Scroll and advance are separate inputs by design (settled, brief
 | Click the step count | Open the navigation menu (§6.6) |
 | `+` / `-` | Zoom type in / out (§7.3) |
 
+- The deck host is a delegating tab stop, not a bare one: the
+  shadow root is attached with `delegatesFocus: true`, so
+  focusing the host — by Tab, by click, or by `focus()` —
+  moves focus to the first focusable element inside, the
+  screen region (§5, labelled `Screen N of M: …`), and Tab
+  never stops on the host itself, which has no role and no
+  name (issue #81). The host keeps `tabindex="0"` so the
+  delegating stop exists in the tab order at all.
+
 ### 6.2 Transitions
 
 Let the current state be `(s, k)` — screen *s*, step *k* — with
