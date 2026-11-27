@@ -106,6 +106,7 @@ export class WalkdownDeckElement extends HTMLElement {
   private sectionEl!: HTMLDivElement;
   private progressBarEl!: HTMLDivElement;
   private progressTextEl!: HTMLButtonElement;
+  private progressDescEl!: HTMLSpanElement;
   private prevBtn!: HTMLButtonElement;
   private nextBtn!: HTMLButtonElement;
   private navMenuEl!: HTMLDivElement;
@@ -160,7 +161,8 @@ export class WalkdownDeckElement extends HTMLElement {
         <div class="wd-nav-menu" id="wd-nav-menu" role="menu" aria-label="Jump to" hidden></div>
         <div class="wd-controls">
           <button class="wd-prev" type="button" aria-label="Previous step">‹</button>
-          <button class="wd-progress-text" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="wd-nav-menu" aria-live="polite"></button>
+          <button class="wd-progress-text" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="wd-nav-menu" aria-describedby="wd-progress-desc" aria-live="polite"></button>
+          <span id="wd-progress-desc" class="wd-visually-hidden"></span>
           <button class="wd-next" type="button" aria-label="Next step">›</button>
         </div>
         <div class="wd-empty" hidden><p>This deck is empty.</p></div>
@@ -172,6 +174,7 @@ export class WalkdownDeckElement extends HTMLElement {
     this.panelsEl = this.shadow.querySelector('.wd-panels') as HTMLDivElement;
     this.progressBarEl = this.shadow.querySelector('.wd-progress-bar') as HTMLDivElement;
     this.progressTextEl = this.shadow.querySelector('.wd-progress-text') as HTMLButtonElement;
+    this.progressDescEl = this.shadow.querySelector('#wd-progress-desc') as HTMLSpanElement;
     this.prevBtn = this.shadow.querySelector('.wd-prev') as HTMLButtonElement;
     this.nextBtn = this.shadow.querySelector('.wd-next') as HTMLButtonElement;
     this.navMenuEl = this.shadow.querySelector('.wd-nav-menu') as HTMLDivElement;
@@ -576,7 +579,7 @@ export class WalkdownDeckElement extends HTMLElement {
       this.screenEl.style.display = 'none';
       this.progressBarEl.style.width = '0%';
       this.progressTextEl.textContent = '';
-      this.progressTextEl.removeAttribute('aria-label');
+      this.progressDescEl.textContent = '';
       this.endNoteEl.hidden = true;
       this.deckEl.classList.toggle('wd-deck--end', false);
       this._navMenu.close(false);
@@ -691,8 +694,16 @@ export class WalkdownDeckElement extends HTMLElement {
     // Progress counts steps, not screens (§1.3).
     const { current, total } = facts.progress(this._state);
     this.progressBarEl.style.width = total > 0 ? `${(current / total) * 100}%` : '0%';
+    // The button's accessible name IS its visible text ("26 / 51",
+    // §6.6, issue #82): no aria-label, so a voice-control user
+    // saying "click 26 / 51" matches it (WCAG 2.5.3 Label in Name).
+    // The extra context is an accessible description instead —
+    // aria-describedby points at the visually-hidden span, so it
+    // is announced after the name and can be skipped, never
+    // packed into the label. The span sits outside the button,
+    // so its text changes do not trigger the button's aria-live.
     this.progressTextEl.textContent = `${current} / ${total}`;
-    this.progressTextEl.setAttribute('aria-label', `Step ${current} of ${total}. Activate to jump to a screen.`);
+    this.progressDescEl.textContent = `Step ${current} of ${total}. Activate to jump to a screen.`;
     this.prevBtn.disabled = facts.isAtStart(this._state);
     this.nextBtn.disabled = facts.isAtEnd(this._state);
     this.endNoteEl.hidden = !facts.isAtEnd(this._state);
