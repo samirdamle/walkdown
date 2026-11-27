@@ -5,6 +5,7 @@ import {
   computeLayout,
   estimateScreenHeight,
   fitFontSize,
+  fontScaleFactor,
   spaceUnitPx,
   titleFactor,
 } from '../src/layout.js';
@@ -287,5 +288,97 @@ describe('space unit (design-policies §3.1, C12)', () => {
     // the screen instead of a fixed 8px.
     expect(spaceUnitPx(360) / 2).toBe(4);
     expect(spaceUnitPx(1440) / 2).toBe(8);
+  });
+});
+
+describe('root font size scaling (§7.3, issue #76)', () => {
+  it('fontScaleFactor is (rootPx / 16), never below 1', () => {
+    expect(fontScaleFactor(16)).toBe(1);
+    expect(fontScaleFactor(20)).toBe(1.25);
+    expect(fontScaleFactor(24)).toBe(1.5);
+    expect(fontScaleFactor(32)).toBe(2);
+    // A smaller root still gets the settled sizes — the deck
+    // never renders below the 14px floor / 32px ceiling.
+    expect(fontScaleFactor(12)).toBe(1);
+    expect(fontScaleFactor(8)).toBe(1);
+    // Non-finite or non-positive roots fall back to 16.
+    expect(fontScaleFactor(NaN)).toBe(1);
+    expect(fontScaleFactor(Infinity)).toBe(1);
+    expect(fontScaleFactor(0)).toBe(1);
+    expect(fontScaleFactor(-4)).toBe(1);
+  });
+
+  it('the 16px default root is identical to omitting rootFontSizePx', () => {
+    const cases = [
+      { w: 1440, h: 900, n: 1, chars: 120, zoom: 0 },
+      { w: 360, h: 800, n: 6, chars: 120, zoom: 0 },
+      { w: 768, h: 800, n: 3, chars: 42, zoom: 2 },
+      { w: 1440, h: 900, n: 8, chars: 500, zoom: -4 },
+    ] as const;
+    for (const c of cases) {
+      const lengths = Array.from({ length: c.n }, () => c.chars);
+      const base = computeLayout({ containerWidth: c.w, containerHeight: c.h, panelCount: c.n, contentLengths: lengths, zoom: c.zoom });
+      const scaled = computeLayout({ containerWidth: c.w, containerHeight: c.h, panelCount: c.n, contentLengths: lengths, zoom: c.zoom, rootFontSizePx: 16 });
+      expect(scaled).toEqual(base);
+    }
+  });
+
+  it('a larger root scales the ceiling case proportionally', () => {
+    // One short panel fits at the ceiling at both roots:
+    // 32px at the 16px root, 40px at the 20px root.
+    const base = layout(1440, 900, 1, 42);
+    const scaled = computeLayout({ containerWidth: 1440, containerHeight: 900, panelCount: 1, contentLengths: [42], rootFontSizePx: 20 });
+    expect(base.fontBodyPx).toBe(32);
+    expect(scaled.fontBodyPx).toBe(40);
+    expect(varPx(scaled, '--wd-font-body')).toBe(40);
+    expect(varPx(scaled, '--wd-font-floor')).toBe(17.5);
+    expect(varPx(scaled, '--wd-font-small')).toBe(17.5);
+    // Title and code scale by the same 1.25×.
+    expect(varPx(scaled, '--wd-font-title')).toBeCloseTo(varPx(base, '--wd-font-title') * 1.25, 1);
+    expect(varPx(scaled, '--wd-font-code')).toBeCloseTo(varPx(base, '--wd-font-code') * 1.25, 1);
+    // The fitted range keeps its 2.29× ratio: 40 / 17.5.
+    expect(40 / 17.5).toBeCloseTo(32 / 14, 3);
+  });
+
+  it('a smaller root is clamped: identical to the default root', () => {
+    const base = layout(1440, 900, 3, 120);
+    const small = computeLayout({ containerWidth: 1440, containerHeight: 900, panelCount: 3, contentLengths: [120, 120, 120], rootFontSizePx: 12 });
+    expect(small).toEqual(base);
+  });
+
+  it('a dense screen bottoms out at the scaled floor (the fit is height-constrained)', () => {
+    // 8×120 chars at 360px: the fit is height-bound, so the
+    // scaled body is NOT 1.25× the default fit — the bigger
+    // title leaves less height for the body. What the scale
+    // guarantees is the bounds: the size stays inside the
+    // scaled [17.5, 40] range, and here it lands on the
+    // scaled floor (the screen scrolls rather than shrinking
+    // below it, §7.3).
+    const scaled = computeLayout({ containerWidth: 360, containerHeight: 800, panelCount: 8, contentLengths: Array.from({ length: 8 }, () => 120), rootFontSizePx: 20 });
+    expect(scaled.fontBodyPx).toBe(17.5);
+    expect(varPx(scaled, '--wd-font-floor')).toBe(17.5);
+  });
+
+  it('zoom multiplies on top of the scaled size, bounded by the scaled floor below', () => {
+    // The dense phone screen sits at the 17.5px scaled floor;
+    // zooming out cannot take it below 17.5.
+    const dense = { containerWidth: 360, containerHeight: 800, panelCount: 8, contentLengths: Array.from({ length: 8 }, () => 120), rootFontSizePx: 20 };
+    const out = computeLayout({ ...dense, zoom: -4 });
+    expect(out.fontBodyPx).toBe(17.5);
+    for (const name of ['--wd-font-body', '--wd-font-title', '--wd-font-code', '--wd-font-small']) {
+      expect(varPx(out, name)).toBeGreaterThanOrEqual(17.5);
+    }
+    // Zooming in multiplies the scaled fit (40px ceiling → 44px at +1).
+    const zoomed = computeLayout({ containerWidth: 1440, containerHeight: 900, panelCount: 1, contentLengths: [42], zoom: 1, rootFontSizePx: 20 });
+    expect(zoomed.fontBodyPx).toBeCloseTo(44, 0);
+  });
+
+  it('fitFontSize honours passed bounds', () => {
+    const input = { containerHeight: 900, contentLengths: [42], columns: 1, columnWidth: 1000, screenPadYPx: 16, titlePx: 56, gapTitlePx: 16, padPanelPx: 16, gapPanelPx: 16 };
+    expect(fitFontSize({ ...input, fontFloorPx: 17.5, fontCeilingPx: 40 })).toBe(40);
+    expect(fitFontSize({ ...input, contentLengths: [5000], fontFloorPx: 17.5, fontCeilingPx: 40 })).toBe(17.5);
+    // Defaults unchanged.
+    expect(fitFontSize(input)).toBe(32);
+    expect(fitFontSize({ ...input, contentLengths: [5000] })).toBe(14);
   });
 });

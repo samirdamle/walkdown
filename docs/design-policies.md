@@ -167,8 +167,12 @@ looks wrong, the formula is wrong — say so in review.
 chooses the largest size, 14px floor to 32px ceiling, whose
 estimated screen height fits the container (line-height 1.55,
 average glyph 0.5em wide, 60ch line-length cap, column count
-from the panel total). The renderer then measures the real
-overflow and shrinks further if the estimate was optimistic.
+from the panel total). The floor and ceiling are the sizes at
+the 16px default root: both scale with the user's root font
+size, factor (rootPx / 16), never below 1 (spec §7.3), so the
+14→32 range keeps its 2.29× ratio at any root. The renderer
+then measures the real overflow and shrinks further if the
+estimate was optimistic.
 The fit runs on the TOTAL content of all panels on the screen
 and is fixed for the screen — revealing another panel never
 changes the type size; the grid, and every visible panel's

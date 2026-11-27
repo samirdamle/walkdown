@@ -25,6 +25,7 @@ export {
   spaceUnitPx,
   fitFontSize,
   estimateScreenHeight,
+  fontScaleFactor,
   FONT_BODY_MAX_PX,
 } from './layout.js';
 export { bottomReservePx, CONTROLS_HEIGHT_FALLBACK_PX, controlsHeightFallbackPx, controlSizePx, fallbackReservePx } from './reserve.js';

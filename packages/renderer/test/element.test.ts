@@ -746,6 +746,52 @@ describe('top-left alignment and content-fit (design-policies §2.2)', () => {
   });
 });
 
+describe('root font size scaling (§7.3, issue #76)', () => {
+  // The root font size is global test state: restore it after
+  // every test in this block so no other test sees a 20px root.
+  afterEach(() => {
+    document.documentElement.style.fontSize = '';
+  });
+
+  it('a larger root scales the fitted deck type proportionally', () => {
+    document.documentElement.style.fontSize = '20px';
+    const el = createDeck('# Short\n\n- One short bullet.\n');
+    // One short panel fits at the ceiling at both roots:
+    // 32px at the 16px default, 40px at the 20px root.
+    expect(varOf(el, '--wd-font-body')).toBe('40px');
+    expect(varOf(el, '--wd-font-floor')).toBe('17.5px');
+    expect(varOf(el, '--wd-font-small')).toBe('17.5px');
+  });
+
+  it('the default root is unchanged', () => {
+    const el = createDeck('# Short\n\n- One short bullet.\n');
+    expect(varOf(el, '--wd-font-body')).toBe('32px');
+    expect(varOf(el, '--wd-font-floor')).toBe('14px');
+  });
+
+  it('a smaller root is clamped to the default sizes', () => {
+    document.documentElement.style.fontSize = '12px';
+    const el = createDeck('# Short\n\n- One short bullet.\n');
+    expect(varOf(el, '--wd-font-body')).toBe('32px');
+    expect(varOf(el, '--wd-font-floor')).toBe('14px');
+  });
+
+  it('the measurement pass stops at the scaled floor', () => {
+    document.documentElement.style.fontSize = '20px';
+    const el = createDeck('# Short\n\n- One short bullet.\n');
+    const screen = screenEl(el);
+    // jsdom reports no layout: pretend the screen overflows at any size.
+    Object.defineProperty(screen, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(screen, 'clientHeight', { value: 600, configurable: true });
+    Object.defineProperty(screen, 'scrollTop', { value: 0, configurable: true });
+    el.setContainerSize(1440, 900);
+    // The pass shrinks 1px at a time but never below the
+    // scaled 17.5px floor.
+    expect(varOf(el, '--wd-font-body')).toBe('17.5px');
+    expect(screen.classList.contains('wd-screen--measuring')).toBe(false);
+  });
+});
+
 describe('viewport-relative chrome (audit C1–C12)', () => {
   // jsdom does not apply Shadow DOM stylesheets to computed
   // style, so the rules are asserted on the text of the
@@ -952,10 +998,13 @@ describe('navigation menu (§6.6)', () => {
   });
 
   it('items are finger-sized, and the current item is a background highlight only — no border, ocean-green tint', () => {
-    // Type clearly above the 14px small size; at least 48px
-    // tall, a touch above the settled 44px touch floor (C8);
-    // both viewport-relative clamps, never a fixed px size.
-    expect(DEFAULT_CSS).toContain('font-size: clamp(16px, 1.2vw + 10px, 20px);');
+    // Type clearly above the 14px small size (1rem = 16px at
+    // the default root, 1.25rem = 20px max); at least 48px
+    // tall, a touch above the settled 44px touch floor (C8).
+    // The type clamp is rem + vw — font-relative, so it
+    // follows the user's root font size (§7.3); the min-height
+    // clamp is a dimension, not type, so it stays px/vw.
+    expect(DEFAULT_CSS).toContain('font-size: clamp(1rem, 1.2vw + 0.625rem, 1.25rem);');
     expect(DEFAULT_CSS).toContain('min-height: clamp(48px, 3vw + 12px, 56px);');
     // The current item keeps its bold, but the old treatment —
     // amber left border, rounded corners, peach background —

@@ -120,6 +120,15 @@ export interface LayoutInput {
   reservedBottomPx?: number;
   /** Zoom steps from default (default 0). */
   zoom?: number;
+  /**
+   * The user's root font size in CSS px (default 16) — read
+   * from `getComputedStyle(document.documentElement).fontSize`
+   * by the renderer. The fitted type scales by (rootPx / 16),
+   * never below 1 (§7.3): a larger root gets a proportionally
+   * larger deck, and the settled 14px floor / 32px ceiling are
+   * the sizes at the 16px default root.
+   */
+  rootFontSizePx?: number;
 }
 
 /** Output of the layout engine: CSS variables + column count (§7.2). */

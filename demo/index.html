@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Opt into OS text scaling (Chrome 146+; Safari/Firefox
+       ignore it): the browser scales the root font size to the
+       user's OS preference, and the deck's fit scales with the
+       root (§7.3, issue #76). -->
+  <meta name="text-scale" content="scale">
   <title>Walkdown — demo</title>
   <style>
     html, body { height: 100%; margin: 0; }
