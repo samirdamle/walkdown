@@ -26,12 +26,21 @@ which is a Proposal (issue #80, F9; Samir has not settled the
 value). All six text ratios were
 verified by computation and match exactly.
 
-- **Fonts are system stacks only; the default theme downloads
-  no webfont.** Body/UI: `system-ui, -apple-system, "Segoe UI",
-  Roboto, "Helvetica Neue", Arial, sans-serif`. Titles:
-  `Georgia, "Iowan Old Style", "Palatino Linotype",
-  "Times New Roman", serif`. Code: `ui-monospace, "SF Mono",
-  "Cascadia Code", Menlo, Consolas, monospace`.
+- **Fonts (settled 2026-11-27, Samir's decision — Inter is now the
+  default).** Body/UI: Inter Regular (400) — `Inter, system-ui,
+  -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+  sans-serif`. Titles: Inter Bold (700) — the same stack; the Bold
+  weight comes from the stylesheet (`font-weight: 700` on
+  `.wd-title`, the browser default on panel headings). Code:
+  `ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas,
+  monospace` (unchanged). The default theme loads Inter from
+  Google Fonts (400 + 700, `display=swap`); the host page carries
+  the `<link>` (the demo does) because document-level `@font-face`
+  rules apply inside the shadow DOM, and the renderer itself never
+  fetches fonts. Offline, or if the font fails to load, the stack
+  falls back to the system stack — the deck still renders, in the
+  system font. Self-hosting the two woff2 files is the alternative
+  to the Google Fonts link.
 - **Colours, light:** background `#FAFAF7`, panel `#FFFFFF`,
   ink `#1B1B18` (16.5:1, AAA), muted `#5C5C57` (6.4:1, AA,
   secondary text only), border `#E5E5DF`, accent ocean green
@@ -48,10 +57,11 @@ verified by computation and match exactly.
   clear 3:1 against both backgrounds in either theme (a light
   deck shows dark screens); `#7A7A7A` is the maximin grey.
 - **One accent only:** ocean green in both themes — `#2E7D6B` light, `#7FC8B8` dark.
-- **Inter (body) + Fraunces (titles) is an opt-in theme, not
-  the default.** A deck opts in by linking the theme through
-  frontmatter `stylesheets:` (spec §11.4). The default theme
-  never loads it.
+- **Fraunces titles is an opt-in theme.** Its body half (Inter)
+  is now the default theme (Samir, 2026-11-27); opting in only
+  swaps the title font to Fraunces. A deck opts in by linking the
+  theme through frontmatter `stylesheets:` (spec §11.4). The
+  default theme never loads it.
 
 ## How the renderer consumes the tokens
 
