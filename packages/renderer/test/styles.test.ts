@@ -133,3 +133,27 @@ describe('theme vars in a stylesheet layer (issue #75)', () => {
     expect(DEFAULT_CSS).toContain('var(--wd-reserve-bottom)');
   });
 });
+
+describe('idle auto-hide (§6.5, issue #77)', () => {
+  it('idle-hidden controls leave the tab order after the fade', () => {
+    // The idle rule hides with visibility, delayed until the
+    // 300ms fade completes, so the fade still plays; the base
+    // rule flips visibility back with no delay, so the controls
+    // reappear the moment the idle class lifts.
+    const idle = /\.wd-deck--idle \.wd-controls \{[^}]*\}/.exec(DEFAULT_CSS);
+    expect(idle).not.toBeNull();
+    expect(idle![0]).toContain('opacity: 0;');
+    expect(idle![0]).toContain('visibility: hidden;');
+    expect(idle![0]).toContain('transition: opacity 300ms ease-out, visibility 0s 300ms;');
+    expect(DEFAULT_CSS).toContain('transition: opacity 300ms ease-out, visibility 0s;');
+  });
+
+  it('the menu-open and touch overrides keep the controls visible and focusable', () => {
+    // Either override must restore both properties: opacity
+    // alone would leave the controls opaque but unfocusable
+    // while the menu is open, or on touch.
+    expect(DEFAULT_CSS).toContain('.wd-deck--nav-open .wd-controls { opacity: 1; visibility: visible; }');
+    expect(DEFAULT_CSS).toContain('.wd-deck--idle .wd-controls { opacity: 1; visibility: visible; }');
+    expect(DEFAULT_CSS.split('visibility: visible;').length - 1).toBe(2);
+  });
+});

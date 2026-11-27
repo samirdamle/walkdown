@@ -533,7 +533,12 @@ export const DEFAULT_CSS = `
   justify-content: space-between;
   padding: var(--wd-space) var(--wd-space-screen-x);
   z-index: 3;
-  transition: opacity 300ms ease-out;
+  /* visibility flips with no delay on the way back, so the
+     controls reappear the moment the idle class lifts and the
+     opacity fades in; the idle rule below delays it on the way
+     out, so the fade-out still plays before the buttons leave
+     the tab order (§6.5, issue #77). */
+  transition: opacity 300ms ease-out, visibility 0s;
   pointer-events: none;
 }
 .wd-controls button {
@@ -580,14 +585,24 @@ export const DEFAULT_CSS = `
 }
 .wd-progress-text[aria-expanded="true"] { border-color: var(--_wd-color-accent); }
 
-/* Controls auto-hide on idle on desktop (§6.5); never on touch, where there is no hover to bring them back. */
-.wd-deck--idle .wd-controls { opacity: 0; }
+/* Controls auto-hide on idle on desktop (§6.5); never on touch, where there is no hover to bring them back.
+   visibility: hidden — not opacity alone — so the buttons leave
+   the tab order while idle: a keyboard user can never land on
+   an invisible control. The visibility flips only after the
+   300ms fade, so the fade still plays; hiding changes neither
+   the controls' height nor the bottom reserve (§7.2). */
+.wd-deck--idle .wd-controls {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 300ms ease-out, visibility 0s 300ms;
+}
 @media (pointer: coarse) {
-  .wd-deck--idle .wd-controls { opacity: 1; }
+  .wd-deck--idle .wd-controls { opacity: 1; visibility: visible; }
 }
 /* While the menu is open the controls stay visible (§6.6): the
-   menu is anchored to them, and hiding them would strand it. */
-.wd-deck--nav-open .wd-controls { opacity: 1; }
+   menu is anchored to them, and hiding them would strand it —
+   including focus returning to the indicator on close. */
+.wd-deck--nav-open .wd-controls { opacity: 1; visibility: visible; }
 
 /* --- Navigation menu (§6.6): First screen, Sections, Last screen.
    Bottom-anchored above the controls band: the bottom edge sits
