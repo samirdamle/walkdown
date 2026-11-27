@@ -165,10 +165,10 @@ describe('one token source', () => {
     // purpose, update the JSON, regenerate, and update this
     // table in the same PR — a change here must be deliberate.
     expect(FONT_FAMILY_BODY).toBe(
-      'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     );
     expect(FONT_FAMILY_TITLE).toBe(
-      'Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif',
+      'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     );
     expect(FONT_FAMILY_CODE).toBe('ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace');
     expect(COLORS).toEqual({

@@ -12,6 +12,16 @@
        canvas and root scrollbars to match, and avoids a flash of
        un-themed content (§11.2, issue #85). -->
   <meta name="color-scheme" content="light dark">
+  <!-- Inter is the default theme font (400 body/UI, 700 headings;
+       issue #112): the host page loads it, because document-level
+       @font-face rules apply inside the shadow DOM and the
+       renderer itself never fetches fonts. display=swap keeps
+       text visible while the font loads; offline, the stack falls
+       back to the system fonts. Self-hosting the two woff2 files
+       is the alternative to this link. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <title>Walkdown — demo</title>
   <style>
     html, body { height: 100%; margin: 0; }

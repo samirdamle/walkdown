@@ -196,10 +196,13 @@ describe('theme vars in a stylesheet layer (issue #75)', () => {
       for (const [name, value] of Object.entries(themeVars(theme))) {
         expect(css).toContain(`--_${name.slice(2)}: var(${name}, ${value});`);
       }
-      // No hand-written copy: every theme value appears exactly
-      // once in the layer — the alias fallback is its only home.
-      for (const value of Object.values(themeVars(theme))) {
-        expect(css.split(value).length - 1).toBe(1);
+      // No hand-written copy: a theme value appears once per theme
+      // var that carries it — the alias fallback is its only home.
+      // (Body and title share one stack, so that value appears
+      // twice — once in each alias line, not as a copy.)
+      const values = Object.values(themeVars(theme));
+      for (const value of new Set(values)) {
+        expect(css.split(value).length - 1).toBe(values.filter((v) => v === value).length);
       }
     }
   });

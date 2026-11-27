@@ -35,4 +35,21 @@ describe('demo page', () => {
     // is the default for embeds.
     expect(demoPage()).toContain('<walkdown-deck src="../examples/walkdown-itself.md" document-title>');
   });
+
+  it('loads Inter for the default theme (issue #112)', () => {
+    // The default theme font is a webfont, so the host page
+    // loads it: document-level @font-face rules apply inside
+    // the shadow DOM, and the renderer itself never fetches
+    // fonts. 400 for body/UI, 700 for headings; display=swap
+    // keeps text visible while the font loads. Exactly one
+    // stylesheet link: a second one would not change behaviour,
+    // but it would be a copy to drift.
+    const html = demoPage();
+    expect(html).toContain(
+      '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">',
+    );
+    expect(html.split('family=Inter').length - 1).toBe(1);
+    expect(html).toContain('<link rel="preconnect" href="https://fonts.googleapis.com">');
+    expect(html).toContain('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>');
+  });
 });

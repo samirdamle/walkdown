@@ -63,8 +63,8 @@ export const TOKEN_META = {
   "--wd-stack-shade-step": { property: "Stack brightness loss per level", status: "proposal", min: null, preferred: "0.07", max: null, units: "unitless", settledDate: null, settledSource: null },
   "--wd-stack-visible-behind": { property: "Stack cards visible behind the front card", status: "proposal", min: null, preferred: "2", max: null, units: "count", settledDate: null, settledSource: null },
   "--wd-safe-area": { property: "Safe-area padding", status: "proposal", min: "env(safe-area-inset-*)", preferred: "max(policy, safe-area)", max: null, units: "px", settledDate: null, settledSource: null },
-  "--wd-font-family-body": { property: "Body / UI font stack", status: "settled", min: null, preferred: "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif", max: null, units: "font-stack", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)" },
-  "--wd-font-family-title": { property: "Title font stack", status: "settled", min: null, preferred: "Georgia, \"Iowan Old Style\", \"Palatino Linotype\", \"Times New Roman\", serif", max: null, units: "font-stack", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)" },
+  "--wd-font-family-body": { property: "Body / UI font stack", status: "settled", min: null, preferred: "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif", max: null, units: "font-stack", settledDate: "2026-11-27", settledSource: "Samir's decision 2026-11-27 (Inter as the default font; supersedes the 2026-11-25 system-stacks default)" },
+  "--wd-font-family-title": { property: "Title font stack", status: "settled", min: null, preferred: "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif", max: null, units: "font-stack", settledDate: "2026-11-27", settledSource: "Samir's decision 2026-11-27 (Inter Bold for headings; supersedes the 2026-11-25 Georgia default — the Bold weight comes from the stylesheet, font-weight: 700 on .wd-title and the browser default on panel headings)" },
   "--wd-font-family-code": { property: "Code font stack", status: "settled", min: null, preferred: "ui-monospace, \"SF Mono\", \"Cascadia Code\", Menlo, Consolas, monospace", max: null, units: "font-stack", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25 (system stacks, no webfont download)" },
   "--wd-color-bg": { property: "Deck background", status: "settled", min: null, preferred: null, max: null, units: "hex", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25" },
   "--wd-color-panel": { property: "Panel background", status: "settled", min: null, preferred: null, max: null, units: "hex", settledDate: "2026-11-25", settledSource: "Samir adopted Neo's palette recommendation 2026-11-25" },
@@ -103,9 +103,9 @@ export const PROPOSAL_TOKENS: readonly string[] = [
 
 /** Named constants derived from the tokens (see the derivation table in scripts/generate-tokens.mjs). */
 // --wd-font-family-body (settled; preferred)
-export const FONT_FAMILY_BODY = "system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif";
+export const FONT_FAMILY_BODY = "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif";
 // --wd-font-family-title (settled; preferred)
-export const FONT_FAMILY_TITLE = "Georgia, \"Iowan Old Style\", \"Palatino Linotype\", \"Times New Roman\", serif";
+export const FONT_FAMILY_TITLE = "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif";
 // --wd-font-family-code (settled; preferred)
 export const FONT_FAMILY_CODE = "ui-monospace, \"SF Mono\", \"Cascadia Code\", Menlo, Consolas, monospace";
 // --wd-color-* (values.light/dark; contrast ratios in the JSON; Proposal entries marked PROPOSAL)
