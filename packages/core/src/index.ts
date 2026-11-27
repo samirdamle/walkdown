@@ -29,7 +29,7 @@ export {
   FONT_BODY_MAX_PX,
 } from './layout.js';
 export { bottomReservePx, CONTROLS_HEIGHT_FALLBACK_PX, controlsHeightFallbackPx, controlSizePx, fallbackReservePx } from './reserve.js';
-export { renderInline, renderBlocks, plainText } from './markdown.js';
+export { renderInline, renderBlocks, plainText, isSafeLinkUrl } from './markdown.js';
 export {
   themeVars,
   COLORS,

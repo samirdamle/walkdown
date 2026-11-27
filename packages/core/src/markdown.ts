@@ -26,6 +26,35 @@ export function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * URL schemes a Markdown link may use and still become a live
+ * `<a href>` (spec §3.2, issue #83). Anything else — `javascript:`,
+ * `data:`, `vbscript:`, unknown schemes — renders as plain text.
+ * Relative references and fragments have no scheme and are always safe.
+ * `tel:` is deliberately NOT here: the allowlist is exactly
+ * `http:`/`https:`/`mailto:` plus relative/fragment.
+ */
+const ALLOWED_LINK_SCHEMES = new Set(['http', 'https', 'mailto']);
+
+/**
+ * Whether a link URL from deck Markdown may become a live link.
+ * The check is case-insensitive, and strips the leading C0 controls
+ * and spaces browsers strip before parsing — otherwise
+ * `\u0001javascript:…` would slip through (WHATWG URL removes
+ * leading C0 controls and space, so it would execute as
+ * `javascript:`). A URL with no scheme (relative / fragment /
+ * protocol-relative) is safe. The URL arrives already HTML-escaped,
+ * so an entity-encoded scheme (`javascript&colon;…`) never matches
+ * a scheme here and is treated as a relative URL — which is what
+ * the browser does with it too, since entities decode only once.
+ */
+export function isSafeLinkUrl(url: string): boolean {
+  const cleaned = url.replace(/^[\u0000-\u0020]+/, '');
+  const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(cleaned);
+  if (scheme === null) return true;
+  return ALLOWED_LINK_SCHEMES.has((scheme[1] ?? '').toLowerCase());
+}
+
 /** Inline Markdown: `code`, **bold**, *italic*, [links](…), ![images](…). */
 export function renderInline(text: string): string {
   // Tokenise code spans first so nothing inside them is parsed.
@@ -36,7 +65,13 @@ export function renderInline(text: string): string {
   });
   out = escapeHtml(out);
   out = out.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, '<img alt="$1" src="$2">');
-  out = out.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, '<a href="$2">$1</a>');
+  out = out.replace(
+    /\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g,
+    (_m, text: string, url: string) =>
+      // A disallowed scheme renders as plain text (§3.2, issue #83):
+      // the link text stays, the URL is dropped, no `<a>` is emitted.
+      isSafeLinkUrl(url) ? `<a href="${url}">${text}</a>` : text,
+  );
   out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   out = out.replace(/__([^_]+)__/g, '<strong>$1</strong>');
   out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
