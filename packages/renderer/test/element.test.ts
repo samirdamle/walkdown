@@ -482,6 +482,22 @@ describe('themes and stylesheets', () => {
     expect(theme.textContent).toContain('--_wd-color-bg: var(--wd-color-bg, #FAFAF7);');
   });
 
+  it('the theme layer sets color-scheme on .wd-deck per theme (§11.2, issue #85)', () => {
+    // The declaration lives in the theme layer, so it tracks
+    // the theme exactly like the aliases do — including when
+    // the theme changes after construction.
+    const el = document.createElement('walkdown-deck') as WalkdownDeckElement;
+    document.body.appendChild(el);
+    const theme = el.shadowRoot?.querySelector('#wd-theme') as HTMLStyleElement;
+    expect(theme.textContent).toContain('color-scheme: light;');
+    expect(theme.textContent).not.toContain('color-scheme: dark;');
+    el.setAttribute('theme', 'dark');
+    expect(theme.textContent).toContain('color-scheme: dark;');
+    expect(theme.textContent).not.toContain('color-scheme: light;');
+    el.setAttribute('theme', 'light');
+    expect(theme.textContent).toContain('color-scheme: light;');
+  });
+
   it('a deck stylesheet can override a theme var without !important (§11.2)', () => {
     const el = createDeck('# Tinted\n\n- Panel.\n\n```css\n.wd-deck { --wd-color-accent: #B00020; }\n```\n');
     const inline = el.shadowRoot?.querySelector('#wd-inline') as HTMLStyleElement;
