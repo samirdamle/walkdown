@@ -182,6 +182,15 @@ export const DEFAULT_CSS = `
   overflow-x: hidden;
   /* Vertical gestures scroll natively; horizontal ones reach JS (§6.4). */
   touch-action: pan-y;
+  /* Overscroll (issue #88, F17): a horizontal edge swipe belongs to
+     the deck, not the browser's back/forward gesture, so the x axis
+     is none; a vertical scroll at the top or bottom must not chain
+     to the page behind an embedded deck, so the y axis is contain
+     (contain, not none, so the native overscroll visual inside the
+     screen is kept). Partial on iOS Safari per the guide: edge
+     swipes can still reach the browser there. */
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
   /* No bottom padding: the bottom clearance lives in the
      ::after spacer below, not in padding. */
   padding: var(--wd-space-screen-y) var(--wd-space-screen-x) 0;
