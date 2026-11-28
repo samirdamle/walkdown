@@ -1950,6 +1950,20 @@ describe('host focus delegates to the screen region (§6.1, issue #81)', () => {
     expect(screen.getAttribute('aria-label')?.startsWith('Screen 1 of 15')).toBe(true);
   });
 
+  it('the screen region carries no aria-roledescription — it announces as "region", never "presentation" (§6.1, issue #91)', () => {
+    const el = createDeck(SAMPLE_DECK);
+    const screen = screenEl(el);
+    // The announced role is the region's own role: no roledescription
+    // overrides it (jsdom does not compute accessible names, so the
+    // mechanism — the attribute's absence — is what the test can see).
+    expect(screen.hasAttribute('aria-roledescription')).toBe(false);
+    expect(screen.getAttribute('role')).toBe('region');
+    // And the word "presentation" appears nowhere in the shadow tree
+    // as a roledescription, so no element can announce as one.
+    const described = [...(el.shadowRoot?.querySelectorAll('[aria-roledescription]') as NodeListOf<HTMLElement>)];
+    expect(described.map((d) => d.getAttribute('aria-roledescription'))).not.toContain('presentation');
+  });
+
   it('keyboard navigation still works from focus inside the shadow tree', () => {
     const el = createDeck(SAMPLE_DECK);
     // What delegation does in a real browser: focus lands on the

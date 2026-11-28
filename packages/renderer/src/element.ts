@@ -157,7 +157,7 @@ export class WalkdownDeckElement extends HTMLElement {
       <style id="wd-inline"></style>
       <div class="wd-deck" part="deck">
         <div class="wd-progress" aria-hidden="true"><div class="wd-progress-bar"></div></div>
-        <div class="wd-screen" tabindex="0" role="region" aria-roledescription="presentation">
+        <div class="wd-screen" tabindex="0" role="region">
           <div class="wd-section-label"></div>
           <h1 class="wd-title"></h1>
           <div class="wd-panels"></div>
