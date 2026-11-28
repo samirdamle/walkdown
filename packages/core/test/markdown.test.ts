@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeLinkUrl, renderInline } from '../src/markdown.js';
+import { isSafeLinkUrl, renderBlocks, renderInline } from '../src/markdown.js';
 
 /**
  * Link URL allowlisting lives here (issue #83): `renderInline` turns
@@ -116,5 +116,42 @@ describe('isSafeLinkUrl — the allowlist', () => {
     ['\u0000\u0020javascript:alert(1)', false],
   ])('%s → %s', (url, expected) => {
     expect(isSafeLinkUrl(url)).toBe(expected);
+  });
+});
+
+/**
+ * Panel headings cap at <h2> (issue #90): `renderBlocks` renders
+ * panel content, and the screen title is the only <h1> (§2.3) — so
+ * a `#` heading inside a panel demotes to <h2>. Deeper levels are
+ * unchanged, so the outline stays sequential (h1 title, then h2).
+ * The demotion also applies inside blockquotes, which render
+ * through the same `renderBlocks` recursion.
+ */
+describe('renderBlocks — panel headings cap at h2 (issue #90)', () => {
+  it.each([
+    ['# Heading', '<h2>Heading</h2>'],
+    ['## Heading', '<h2>Heading</h2>'],
+    ['### Heading', '<h3>Heading</h3>'],
+    ['#### Heading', '<h4>Heading</h4>'],
+    ['###### Heading', '<h6>Heading</h6>'],
+  ])('%s → %s', (markdown, expected) => {
+    expect(renderBlocks(markdown)).toBe(expected);
+  });
+
+  it('never emits an <h1>, even with several # headings', () => {
+    const html = renderBlocks('# One\n\n# Two\n\n## Three\n\nText.');
+    expect(html).not.toContain('<h1');
+    expect(html).toContain('<h2>One</h2>');
+    expect(html).toContain('<h2>Two</h2>');
+    expect(html).toContain('<h2>Three</h2>');
+    expect(html).toContain('<p>Text.</p>');
+  });
+
+  it('keeps inline formatting inside a demoted heading', () => {
+    expect(renderBlocks('# Hello *world*')).toBe('<h2>Hello <em>world</em></h2>');
+  });
+
+  it('demotes a # heading inside a blockquote too', () => {
+    expect(renderBlocks('> # Quoted')).toBe('<blockquote><h2>Quoted</h2></blockquote>');
   });
 });
