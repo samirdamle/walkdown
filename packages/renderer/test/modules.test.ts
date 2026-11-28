@@ -251,6 +251,66 @@ describe('animatePanelIn (effects.ts)', () => {
     animatePanelIn(el, screen.panels[0] as Panel, screen, true);
     expect(el.className).toBe('');
   });
+
+  it('adds no enter class under prefers-reduced-motion, for any effect', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) =>
+        ({
+          matches: query === '(prefers-reduced-motion: reduce)',
+          media: query,
+          onchange: null,
+          addListener: () => {},
+          removeListener: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+    // Default effect (fade-in).
+    const screen = firstScreen('<!-- reveal: step -->\n\n# T\n\n- One\n');
+    const el = document.createElement('div');
+    animatePanelIn(el, screen.panels[0] as Panel, screen, true);
+    expect(el.className).toBe('');
+    expect(el.style.getPropertyValue('--wd-anim-duration')).toBe('');
+    // Slide-in, forward: the early return happens before the class is picked.
+    const slide = firstScreen('<!-- reveal: step; effect: slide-in; duration: 2s -->\n\n# T\n\n- One\n');
+    const sliding = document.createElement('div');
+    animatePanelIn(sliding, slide.panels[0] as Panel, slide, true);
+    expect(sliding.className).toBe('');
+    expect(sliding.style.getPropertyValue('--wd-anim-duration')).toBe('');
+  });
+
+  it('toggling reduced motion off mid-session replays nothing on an already-visible panel', () => {
+    let reduced = true;
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) =>
+        ({
+          matches: reduced && query === '(prefers-reduced-motion: reduce)',
+          media: query,
+          onchange: null,
+          addListener: () => {},
+          removeListener: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+    const screen = firstScreen('<!-- reveal: step -->\n\n# T\n\n- One\n');
+    const el = document.createElement('div');
+    animatePanelIn(el, screen.panels[0] as Panel, screen, true);
+    expect(el.className).toBe('');
+    // The preference flips mid-session. No stale class exists on the
+    // already-visible panel, so nothing replays — the flip alone adds nothing.
+    reduced = false;
+    expect(el.className).toBe('');
+    // And a panel revealed after the flip animates normally: the early
+    // return is preference-driven, not a permanent disable.
+    const fresh = document.createElement('div');
+    animatePanelIn(fresh, screen.panels[0] as Panel, screen, true);
+    expect(fresh.classList.contains('wd-enter--fade-in')).toBe(true);
+  });
 });
 
 describe('end-to-end walk-through through the split modules', () => {

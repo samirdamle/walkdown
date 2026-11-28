@@ -1000,7 +1000,10 @@ cannot be met, go one rung down.
 - **Reduced motion:** `prefers-reduced-motion: reduce` → no
   enter / exit animation at all. Steps still advance; content
   simply appears. Reveal auto-scroll is instant, never smooth,
-  under reduced motion. This is not optional. On a `stack`
+  under reduced motion. This is not optional. The enter class
+  is never added under reduced motion in the first place, so no
+  stale class can linger and toggling reduced motion off
+  mid-session replays nothing. On a `stack`
   screen the fly/zoom transitions are instant in the same way
   — the state changes immediately — but the pile layout itself
   (peek, shade, perspective) is not motion and stays.
