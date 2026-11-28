@@ -604,7 +604,11 @@ Scroll and advance are separate inputs by design (settled, brief
   screen region (§5, labelled `Screen N of M: …`), and Tab
   never stops on the host itself, which has no role and no
   name (issue #81). The host keeps `tabindex="0"` so the
-  delegating stop exists in the tab order at all.
+  delegating stop exists in the tab order at all. The screen
+  region carries no `aria-roledescription`, so it announces as
+  'region' (issue #91): 'presentation' would replace the
+  announced role with a word that in ARIA means no semantics
+  at all.
 
 ### 6.2 Transitions
 
