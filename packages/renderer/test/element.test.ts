@@ -2085,3 +2085,15 @@ describe('document title follows the screen (§6.2, issue #86)', () => {
     }
   });
 });
+
+describe('screen title is the only <h1> (issue #90)', () => {
+  it('a # heading inside a panel renders as <h2>; the screen has exactly one <h1>', () => {
+    const el = createDeck('# Screen title\n\n# Panel heading\n\nBody text.\n');
+    const h1s = screenEl(el).querySelectorAll('h1');
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]?.classList.contains('wd-title')).toBe(true);
+    expect(h1s[0]?.textContent).toBe('Screen title');
+    expect(panels(el)[0]?.querySelector('h2')?.textContent).toBe('Panel heading');
+    expect(screenEl(el).querySelector('.wd-panel h1')).toBeNull();
+  });
+});

@@ -184,7 +184,11 @@ export function renderBlocks(markdown: string): string {
       continue;
     }
     if (block.type === 'heading') {
-      const level = block.level ?? 1;
+      // Panel content MUST NOT contain an <h1> (issue #90): the
+      // screen title is the only <h1> (§2.3). A `#` heading inside a
+      // panel renders as <h2>; deeper levels are unchanged, so the
+      // outline stays sequential (h1 title, then h2 panel heading).
+      const level = Math.max(2, block.level ?? 1);
       const text = stripIndent(block.lines[0] ?? '').replace(/^#{1,6}\s+/, '');
       out.push(`<h${level}>${renderInline(text)}</h${level}>`);
       i++;

@@ -833,3 +833,24 @@ defaults:
     expect(totalSteps(deck)).toBe(3);
   });
 });
+
+describe('panel headings cap at h2 (issue #90)', () => {
+  it('a # heading inside a panel renders as <h2>; the screen title is untouched', () => {
+    const deck = parseDeck(`# Screen title\n\n# Panel heading\n\nBody text.\n`);
+    const screen = flatScreens(deck)[0];
+    expect(screen?.title).toBe('Screen title');
+    const html = (screen?.panels ?? []).flatMap((p) => p.blocks.map((b) => b.html)).join('');
+    expect(html).toContain('<h2>Panel heading</h2>');
+    expect(html).not.toContain('<h1');
+  });
+
+  it('the deck title still comes from the first # heading when a later # is a panel heading', () => {
+    const deck = parseDeck(`# Deck title\n\n# Panel heading\n\nBody text.\n`);
+    expect(deck.title).toBe('Deck title');
+    const screen = flatScreens(deck)[0];
+    expect(screen?.title).toBe('Deck title');
+    const html = (screen?.panels ?? []).flatMap((p) => p.blocks.map((b) => b.html)).join('');
+    expect(html).toContain('<h2>Panel heading</h2>');
+    expect(html).not.toContain('<h1');
+  });
+});

@@ -337,6 +337,11 @@ code, fenced code blocks, links, images, blockquotes, and thematic
 breaks. The choice MUST be recorded in the implementation plan
 when it is made; the spec does not depend on it.
 
+A `#` heading inside a panel MUST render as `<h2>`, never `<h1>`:
+the screen title is the only `<h1>` (§2.3), so panel content MUST
+NOT contain an `<h1>` (issue #90). Deeper heading levels are
+unchanged.
+
 Links are a trust boundary: only `http:`, `https:`, `mailto:`,
 relative, and fragment URLs become live links. Any other scheme
 (`javascript:`, `data:`, `vbscript:`, …) MUST render as plain text
